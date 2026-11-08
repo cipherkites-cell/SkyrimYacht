@@ -14,8 +14,8 @@ every frame, so dice can't be flung off the table or wedge in level geometry.
 
 - **Dice:** rounded boxes (corner and edge spheres), impulse solver with friction and restitution, fixed 1/960 s
   substeps. A die that settles leaning on another is nudged until it lies flat. Faces: +x 1, -x 6, +y 2, -y 5,
-  +z 3, -z 4.
-- **Cup:** inside wall, base, outside wall and underside. While shaking, the player's palm covers the mouth
+  +z 3, -z 4. `Drag` slides a die across the felt by hand without turning it over, shoving others aside.
+- **Cup:** inside wall, base, outside wall and underside. It stands on a side table right of the tray; the tray walls are 1.5 units tall, so a die in the cup only meets them when it is low by the tray. While shaking, the player's palm covers the mouth
   (`SetLid`), so dice can't jump out; tipping it pours them onto the tray.
 - **Scoring:** `src/sim/Yacht` has the thirteen boxes, the 35-point upper bonus at 63, 100-point bonuses for extra
   five-of-a-kinds and the joker rule.

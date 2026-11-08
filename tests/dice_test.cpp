@@ -20,6 +20,13 @@ namespace
 
 	constexpr double kFrame = 1.0 / 60.0;
 
+	// Where the cup stands when it's put down: on the side table to the right of the tray.
+	Vec3 SideTable(const DiceSim& a_sim)
+	{
+		const DiceSpec& s = a_sim.Spec();
+		return { s.trayHalfX + s.trayWallThick + 5.2, -s.trayHalfY + 3.2, s.cupWall };
+	}
+
 	Quat Tilt(double a_degrees)  // tips the cup's mouth towards +x
 	{
 		return Quat::FromAxisAngle({ 0, 1, 0 }, a_degrees * m::kPi / 180.0);
@@ -74,14 +81,36 @@ namespace
 	bool Throw(unsigned int a_seed, int (&a_faces)[5], double& a_settleTime, int& a_nudges)
 	{
 		DiceSim sim({}, a_seed);
+		const Vec3 side = SideTable(sim);
 		const Vec3 home{ -4.0, 0.0, 6.0 };
-		sim.PlaceCup(home, {});
+		sim.PlaceCup(side, {});
 		sim.LoadCup(0x1F);
-		sim.SetLid(true);
 
-		// Settle in the cup.
+		// Settle in the cup on the side table.
 		for (int i = 0; i < 20; ++i) {
-			sim.Step(kFrame, home, {});
+			sim.Step(kFrame, side, {});
+		}
+		for (int i = 0; i < DiceSim::kDice; ++i) {
+			if (!sim.InCup(i)) {
+				std::printf("  seed %u: die %d fell out of the cup on the side table\n", a_seed, i);
+				return false;
+			}
+		}
+
+		// Pick it up and carry it over the tray wall.
+		sim.SetLid(true);
+		const Vec3 lifted{ side.x, side.y, 7.0 };
+		for (int i = 1; i <= 15; ++i) {
+			sim.Step(kFrame, side + (lifted - side) * (i / 15.0), {});
+		}
+		for (int i = 1; i <= 15; ++i) {
+			sim.Step(kFrame, lifted + (home - lifted) * (i / 15.0), {});
+		}
+		for (int i = 0; i < DiceSim::kDice; ++i) {
+			if (!sim.InCup(i)) {
+				std::printf("  seed %u: die %d lost carrying the cup over\n", a_seed, i);
+				return false;
+			}
 		}
 
 		// Shake: a jerky circle with a bit of up and down.
@@ -118,10 +147,14 @@ namespace
 		for (int i = 0; i < 40; ++i) {
 			sim.Step(kFrame, pourAt, Tilt(125.0));
 		}
-		const Vec3 away{ -9.0, 0.0, 16.0 };
-		for (int i = 0; i < 20; ++i) {
-			const double k = (i + 1) / 20.0;
-			sim.Step(kFrame, pourAt + (away - pourAt) * k, Tilt(125.0 * (1.0 - k)));
+		const Vec3 above{ side.x, side.y, 7.0 };
+		for (int i = 0; i < 30; ++i) {
+			const double k = (i + 1) / 30.0;
+			sim.Step(kFrame, pourAt + (above - pourAt) * k, Tilt(125.0 * (1.0 - k)));
+		}
+		const Vec3 away = side;
+		for (int i = 0; i < 15; ++i) {
+			sim.Step(kFrame, above + (side - above) * ((i + 1) / 15.0), {});
 		}
 
 		double wait = 0.0;
@@ -194,10 +227,53 @@ namespace
 			Check(share > 0.12 && share < 0.215, "faces come up evenly");
 		}
 	}
+
+	void TestDrag()
+	{
+		DiceSim sim;
+		sim.PlaceCup(SideTable(sim), {});
+		sim.PlaceDie(0, { -6.0, 0.0, 0.6 }, 2);
+		sim.PlaceDie(1, { -2.0, 0.0, 0.6 }, 5);
+		for (int i = 0; i < 30; ++i) {
+			sim.Step(kFrame, sim.CupPos(), sim.CupRot());
+		}
+		// Slide die 0 right through die 1's spot.
+		for (int i = 0; i < 90; ++i) {
+			sim.Drag(0, { 3.0, 0.0, 0.6 });
+			sim.Step(kFrame, sim.CupPos(), sim.CupRot());
+			Check(!Overlapping(sim), "dragged die doesn't pass through another");
+		}
+		sim.EndDrag();
+		for (int i = 0; i < 90 && !sim.AllSettled(); ++i) {
+			sim.Step(kFrame, sim.CupPos(), sim.CupRot());
+		}
+		Check(sim.AllSettled(), "dice settle after a drag");
+		Check(sim.TopFace(0) == 2, "a dragged die keeps its face");
+		Check(sim.TopFace(1) == 5, "a pushed die slides instead of turning over");
+		Check(std::fabs(sim.DieAt(0).pos.x - 3.0) < 1.0, "dragged die ends near the hand");
+		Check(sim.DieAt(1).pos.x > 3.0, "pushed die was shoved ahead");
+	}
+
+	void TestSideTable()
+	{
+		// The cup can stand on the side table with dice in it without the tray walls grabbing them.
+		DiceSim sim;
+		sim.PlaceCup(SideTable(sim), {});
+		sim.LoadCup(0x1F);
+		for (int i = 0; i < 120; ++i) {
+			sim.Step(kFrame, sim.CupPos(), sim.CupRot());
+		}
+		for (int i = 0; i < DiceSim::kDice; ++i) {
+			Check(sim.InCup(i), "dice rest in the cup on the side table");
+			Check(sim.DieAt(i).vel.Length() < 2.0, "dice in the standing cup are still");
+		}
+	}
 }
 
 int main()
 {
+	TestDrag();
+	TestSideTable();
 	TestFaces();
 	TestDrop();
 	TestThrows();

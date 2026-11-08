@@ -87,6 +87,8 @@ EXPORT void y_place_cup(double px, double py, double pz, double qw, double qx, d
 EXPORT void y_set_lid(int a_closed) { g_sim.SetLid(a_closed != 0); }
 EXPORT void y_load(unsigned int a_mask) { g_sim.LoadCup(a_mask); }
 EXPORT void y_set_active(int a_index, int a_active) { g_sim.SetActive(a_index, a_active != 0); }
+EXPORT void y_drag(int a_index, double x, double y, double z) { g_sim.Drag(a_index, { x, y, z }); }
+EXPORT void y_drag_end() { g_sim.EndDrag(); }
 EXPORT void y_place_die(int a_index, double x, double y, double z, int a_face) { g_sim.PlaceDie(a_index, { x, y, z }, a_face); }
 
 EXPORT int y_step(double a_dt, double px, double py, double pz, double qw, double qx, double qy, double qz)

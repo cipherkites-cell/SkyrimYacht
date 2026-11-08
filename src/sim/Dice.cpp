@@ -110,6 +110,9 @@ namespace yacht
 	void DiceSim::SetActive(int a_index, bool a_active)
 	{
 		Die& d = _dice[a_index];
+		if (!a_active && _drag == a_index) {
+			_drag = -1;
+		}
 		d.state = a_active ? DieState::kActive : DieState::kOff;
 		d.vel = {};
 		d.spin = {};
@@ -126,6 +129,15 @@ namespace yacht
 		d.restTime = 0.0;
 		d.settled = false;
 		d.nudges = 0;
+	}
+
+	void DiceSim::Drag(int a_index, const Vec3& a_target)
+	{
+		if (_dice[a_index].state != DieState::kActive) {
+			return;
+		}
+		_drag = a_index;
+		_dragTarget = a_target;
 	}
 
 	bool DiceSim::InCup(int a_index) const
@@ -226,11 +238,35 @@ namespace yacht
 			}
 		}
 
+		Quat held{};
+		if (_drag >= 0) {
+			// Slide towards the hand, flat on the felt and without spinning.
+			Die& d = _dice[_drag];
+			Vec3 want = (_dragTarget - d.pos) * 18.0;
+			want.z = 0.0;
+			const double speed = want.Length();
+			if (speed > _spec.dragSpeed) {
+				want *= _spec.dragSpeed / speed;
+			}
+			d.vel.x = want.x;
+			d.vel.y = want.y;
+			d.spin = {};
+			d.settled = false;
+			d.restTime = 0.0;
+			held = d.rot;
+		}
+
 		Collect(a_cupVel, a_cupSpin);
 		Prepare(a_dt);
 		Solve();
 		Correct();
+		if (_drag >= 0) {
+			_dice[_drag].spin = {};
+		}
 		Integrate(a_dt);
+		if (_drag >= 0) {
+			_dice[_drag].rot = held;
+		}
 		UpdateSettle(a_dt);
 	}
 
@@ -309,8 +345,14 @@ namespace yacht
 				{ Y - s.y, { 0.0, -1.0, 0.0 } },
 				{ Y + s.y, { 0.0, 1.0, 0.0 } }
 			};
+			// Walls are trayWallHeight tall, except above the tray itself (dice bouncing high stay in). A sphere more than
+			// a wall's thickness past it is on the far side (a die in the cup over the side table) and is left alone.
+			const bool overTray = m::Abs(d.pos.x) < X && m::Abs(d.pos.y) < Y;
+			if (s.z >= _spec.trayWallHeight && !overTray) {
+				continue;
+			}
 			for (const auto& w : walls) {
-				if (w.gap < r) {
+				if (w.gap < r && w.gap > -_spec.trayWallThick) {
 					AddContact(a_index, -1, s - w.n * r, w.n, r - w.gap, _spec.feltFriction * 0.7, _spec.wallRestitution, {},
 						DiceEvent::Type::kDieWall);
 				}
@@ -576,7 +618,7 @@ namespace yacht
 			if (d.state != DieState::kActive) {
 				continue;
 			}
-			if (InCup(i)) {
+			if (InCup(i) || i == _drag) {
 				d.restTime = 0.0;
 				d.settled = false;
 				continue;

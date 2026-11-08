@@ -24,6 +24,10 @@ namespace yacht
 
 		double trayHalfX{ 11.0 };        // inside of the tray walls
 		double trayHalfY{ 7.5 };
+		double trayWallHeight{ 1.5 };    // walls stop dice below this; higher up only dice already over the tray
+		double trayWallThick{ 0.8 };
+
+		double dragSpeed{ 45.0 };        // fastest a die follows the player's hand when moved on the table
 
 		double cupRadius{ 2.6 };         // inside radius
 		double cupWall{ 0.22 };          // wall thickness
@@ -100,6 +104,12 @@ namespace yacht
 		void SetLid(bool a_closed) { _lid = a_closed; }
 		bool Lid() const { return _lid; }
 
+		// The player moving a die by hand: it slides towards a_target on the felt without turning over, pushing
+		// other dice out of the way. EndDrag lets go.
+		void Drag(int a_index, const Vec3& a_target);
+		void EndDrag() { _drag = -1; }
+		int  Dragged() const { return _drag; }
+
 		// Puts every die in a_mask (bit i = die i) into the cup, randomly turned, and makes it active.
 		void LoadCup(unsigned int a_mask);
 		// Takes a die out of play (to the rack) or back in.
@@ -175,6 +185,8 @@ namespace yacht
 		Vec3 _cupPos;
 		Quat _cupRot;
 		bool _lid{ false };
+		int  _drag{ -1 };
+		Vec3 _dragTarget;
 
 		Contact _contacts[kMaxContacts];
 		int     _contactCount{ 0 };
