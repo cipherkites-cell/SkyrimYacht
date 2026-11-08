@@ -1,0 +1,37 @@
+# Skyrim Yacht
+
+A tavern dice game for Skyrim SE, AE and GOG: shake a real dice cup, tip five dice onto a felt tray, keep the ones
+you like and re-roll the rest, then score them on a Yacht scorecard.
+
+Status: **physics test**. The dice simulation and the scoring rules are done and tested; the SKSE plugin comes next.
+
+## How it works
+
+Like Playable Pool, the dice never touch the game's own physics. `src/sim/Dice` is a small rigid-body simulation
+(plain C++, no game or standard-library code) that moves five rounded dice, the tray and a kinematic cup the player
+shakes and tips. The plugin will spawn collision-free dice and a cup and set their transforms from the simulation
+every frame, so dice can't be flung off the table or wedge in level geometry.
+
+- **Dice:** rounded boxes (corner and edge spheres), impulse solver with friction and restitution, fixed 1/960 s
+  substeps. A die that settles leaning on another is nudged until it lies flat. Faces: +x 1, -x 6, +y 2, -y 5,
+  +z 3, -z 4.
+- **Cup:** inside wall, base, outside wall and underside. While shaking, the player's palm covers the mouth
+  (`SetLid`), so dice can't jump out; tipping it pours them onto the tray.
+- **Scoring:** `src/sim/Yacht` has the thirteen boxes, the 35-point upper bonus at 63, 100-point bonuses for extra
+  five-of-a-kinds and the joker rule.
+
+## Layout
+
+| Path | |
+| --- | --- |
+| `src/sim/` | Dice physics and scoring (shared by the plugin, the tests and the preview) |
+| `tests/` | Native tests: 200 random throws must all land flat inside the tray, faces evenly spread |
+| `preview/` | The sim compiled to WebAssembly in a three.js page: `preview/build.sh` makes `yacht-preview.html` |
+
+## Building the tests and preview
+
+```
+g++ -std=c++20 -O2 -o build/dice_test tests/dice_test.cpp src/sim/Dice.cpp && ./build/dice_test
+g++ -std=c++20 -O2 -o build/yacht_test tests/yacht_test.cpp src/sim/Yacht.cpp && ./build/yacht_test
+./preview/build.sh   # needs clang with the wasm32 target and wasm-ld
+```
