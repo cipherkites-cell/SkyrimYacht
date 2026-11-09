@@ -171,6 +171,7 @@ namespace yacht
 		void CollideStatic(int a_index);
 		void CollideCup(int a_index, const Vec3& a_cupVel, const Vec3& a_cupSpin);
 		void CollidePair(int a_a, int a_b);
+		void Unjam(int a_a, int a_b);
 		void Prepare(double a_dt);
 		void Solve();
 		void Correct();

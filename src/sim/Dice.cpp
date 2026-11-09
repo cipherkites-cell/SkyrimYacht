@@ -161,12 +161,41 @@ namespace yacht
 		d.settled = false;
 		d.restTime = 0.0;
 		d.nudges = 0;
-		// Let go just inside the mouth, so it settles onto the others instead of bouncing back out.
-		d.pos = _cupPos + _cupRot.Rotate({ _rng.Range(-0.15, 0.15), _rng.Range(-0.15, 0.15), _spec.cupHeight - _spec.dieSize * 0.3 });
-		d.vel = _cupRot.Rotate({ 0.0, 0.0, -4.0 });
-		d.spin = { _rng.Range(-2.0, 2.0), _rng.Range(-2.0, 2.0), _rng.Range(-2.0, 2.0) };
-		const Quat a = Quat::FromAxisAngle({ _rng.Range(-1.0, 1.0), _rng.Range(-1.0, 1.0), _rng.Range(0.1, 1.0) }, _rng.Range(0.0, 2.0 * m::kPi));
-		d.rot = _cupRot * a;
+		// Put it in the lowest free spot of the same stacking pattern LoadCup uses (several dice can be dropped in the
+		// same instant, and they must not start inside each other). If the cup is full to the rim, it waits on top.
+		const double h = _spec.dieSize * 0.5;
+		const double spots[5][2] = { { 0.0, 0.9 }, { 180.0, 0.9 }, { 90.0, 0.9 }, { 270.0, 0.9 }, { 45.0, 0.3 } };
+		const double clear = _spec.dieSize * 1.2;
+		Vec3         local{ 0.0, 0.0, _spec.cupHeight + h };
+		double       yawDeg = 0.0;
+		bool         found = false;
+		for (int layer = 0; layer < 8 && !found; ++layer) {
+			const double z = h + 0.04 + layer * (_spec.dieSize + 0.06);
+			for (const auto& s : spots) {
+				const double a = s[0] * m::kPi / 180.0;
+				const Vec3   cand{ m::Cos(a) * s[1], m::Sin(a) * s[1], z };
+				const Vec3   world = _cupPos + _cupRot.Rotate(cand);
+				bool         free = true;
+				for (int j = 0; j < kDice && free; ++j) {
+					if (j != a_index && _dice[j].state == DieState::kActive && (_dice[j].pos - world).Length() < clear) {
+						free = false;
+					}
+				}
+				if (free) {
+					local = cand;
+					yawDeg = s[0];
+					found = true;
+					break;
+				}
+			}
+		}
+		d.pos = _cupPos + _cupRot.Rotate(local);
+		d.vel = _cupRot.Rotate({ 0.0, 0.0, -2.0 });
+		d.spin = {};
+		const int    face = 1 + static_cast<int>(_rng.Uniform() * 6.0);
+		const double quarter = static_cast<int>(_rng.Uniform() * 4.0) * (m::kPi * 0.5);
+		const Quat   yaw = Quat::FromAxisAngle({ 0, 0, 1 }, yawDeg * m::kPi / 180.0 + quarter + _rng.Range(-0.15, 0.15));
+		d.rot = _cupRot * yaw * FaceUp(face > 6 ? 6 : face);
 		d.rot.Normalize();
 	}
 
@@ -332,6 +361,7 @@ namespace yacht
 				if ((_dice[a].pos - _dice[b].pos).LengthSq() > reach * reach) {
 					continue;
 				}
+				Unjam(a, b);
 				CollidePair(a, b);
 				CollidePair(b, a);
 			}
@@ -456,6 +486,29 @@ namespace yacht
 				}
 			}
 		}
+	}
+
+	void DiceSim::Unjam(int a_a, int a_b)
+	{
+		// Corner contacts can't sort out two dice whose centres are nearly on top of each other (their pushes cancel).
+		// Shove them apart directly; this should never happen in normal play, but must never leave dice stuck.
+		Die&         A = _dice[a_a];
+		Die&         B = _dice[a_b];
+		const Vec3   d = A.pos - B.pos;
+		const double dist = d.Length();
+		const double minDist = _spec.dieSize * 0.7;
+		if (dist >= minDist) {
+			return;
+		}
+		Vec3 n = dist > 1e-6 ? d * (1.0 / dist) : Vec3{ _rng.Range(-1.0, 1.0), _rng.Range(-1.0, 1.0), 0.3 }.Normalized();
+		const double gap = minDist - dist;
+		const double wa = A.frozen ? 0.0 : 1.0;
+		const double wb = B.frozen ? 0.0 : 1.0;
+		if (wa + wb <= 0.0) {
+			return;
+		}
+		A.pos += n * (gap * wa / (wa + wb));
+		B.pos -= n * (gap * wb / (wa + wb));
 	}
 
 	void DiceSim::CollidePair(int a_a, int a_b)

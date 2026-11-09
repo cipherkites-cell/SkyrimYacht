@@ -324,6 +324,45 @@ namespace
 		Check(!Overlapping(sim), "dice in the cup don't overlap");
 	}
 
+	void TestDropManyAtOnce()
+	{
+		// The shout drops every die on the pad into the cup in the same instant: none may start inside another, and
+		// a throw afterwards must come out clean.
+		for (unsigned int seed = 1; seed <= 40; ++seed) {
+			DiceSim sim({}, seed);
+			const Vec3 cup = SideTable(sim);
+			sim.PlaceCup(cup, {});
+			for (int i = 0; i < DiceSim::kDice; ++i) {
+				sim.PlaceDie(i, { -6.0 + i * 2.5, 0.0, 0.6 }, 1 + i);
+			}
+			for (int i = 0; i < DiceSim::kDice; ++i) {
+				sim.AddToCup(i);
+			}
+			for (int f = 0; f < 90; ++f) {
+				sim.Step(kFrame, cup, {});
+			}
+			bool allIn = true;
+			for (int i = 0; i < DiceSim::kDice; ++i) {
+				allIn = allIn && sim.InCup(i);
+			}
+			Check(allIn, "all five dropped at once end up in the cup");
+			Check(!Overlapping(sim), "dice dropped at once don't jam inside each other");
+		}
+	}
+
+	void TestUnjam()
+	{
+		// Two dice put exactly on top of each other get pried apart.
+		DiceSim sim;
+		sim.PlaceCup(SideTable(sim), {});
+		sim.PlaceDie(0, { 0.0, 0.0, 0.6 }, 2);
+		sim.PlaceDie(1, { 0.0, 0.0, 0.6 }, 5);
+		for (int f = 0; f < 60; ++f) {
+			sim.Step(kFrame, sim.CupPos(), sim.CupRot());
+		}
+		Check(!Overlapping(sim), "dice placed inside each other separate");
+	}
+
 	void TestSideTable()
 	{
 		// The cup can stand on the side table with dice in it without the tray walls grabbing them.
@@ -345,6 +384,8 @@ int main()
 	TestDrag();
 	TestSideTable();
 	TestKeepers();
+	TestDropManyAtOnce();
+	TestUnjam();
 	TestAddToCup();
 	TestFaces();
 	TestDrop();
