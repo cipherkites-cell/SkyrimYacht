@@ -96,6 +96,57 @@ namespace Scene
 			return m;
 		}
 
+		// The preview camera's frame: where it is, and its right / forward / up axes in world space. Gamebryo cameras look
+		// down their own X axis (up Y, right Z); rather than trust that, the forward axis is the one pointing at the item
+		// the engine itself placed in view.
+		struct CamFrame
+		{
+			RE::NiPoint3 t, right, fwd, up;
+			bool         ok = false;
+		};
+		CamFrame g_cam;
+
+		RE::NiPoint3 Col(const RE::NiMatrix3& m, int c) { return { m.entry[0][c], m.entry[1][c], m.entry[2][c] }; }
+		float        Dot(const RE::NiPoint3& a, const RE::NiPoint3& b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
+
+		CamFrame FindCamera(const RE::NiPoint3& a_itemWorld)
+		{
+			CamFrame f;
+			auto*    scn = RE::UI3DSceneManager::GetSingleton();
+			auto*    cam = scn ? scn->camera.get() : nullptr;
+			if (!cam) {
+				return f;
+			}
+			const auto& w = cam->world;
+			f.t = w.translate;
+			const RE::NiPoint3 to = a_itemWorld - f.t;
+			int   best = 0;
+			float bestDot = 0.0f;
+			for (int c = 0; c < 3; ++c) {
+				const float d = Dot(Col(w.rotate, c), to);
+				if (std::fabs(d) > std::fabs(bestDot)) {
+					best = c;
+					bestDot = d;
+				}
+			}
+			const float sgn = bestDot < 0.0f ? -1.0f : 1.0f;
+			f.fwd = Col(w.rotate, best) * sgn;
+			if (best == 0) {  // Gamebryo: forward X, up Y, right Z
+				f.up = Col(w.rotate, 1);
+				f.right = Col(w.rotate, 2) * sgn;
+			} else if (best == 1) {  // Bethesda world: forward Y, up Z, right X
+				f.up = Col(w.rotate, 2);
+				f.right = Col(w.rotate, 0) * sgn;
+			} else {
+				f.up = Col(w.rotate, 1);
+				f.right = Col(w.rotate, 0) * sgn;
+			}
+			f.ok = true;
+			spdlog::info("Table: preview camera at ({:.1f}, {:.1f}, {:.1f}), forward axis {}{}; item {:.1f} ahead, {:.1f} right, {:.1f} up",
+				f.t.x, f.t.y, f.t.z, sgn < 0 ? "-" : "+", best, Dot(f.fwd, to), Dot(f.right, to), Dot(f.up, to));
+			return f;
+		}
+
 		RE::NiPoint3 Mul(const RE::NiMatrix3& m, const RE::NiPoint3& p)
 		{
 			return { m.entry[0][0] * p.x + m.entry[0][1] * p.y + m.entry[0][2] * p.z, m.entry[1][0] * p.x + m.entry[1][1] * p.y + m.entry[1][2] * p.z,
@@ -486,7 +537,9 @@ namespace Scene
 		const auto& cfg = Config::Get();
 		static float s_depth = 0.0f;
 		if (!g_placed) {
-			s_depth = cfg.depth > 0.0f ? cfg.depth : (std::max)(model->local.translate.y, 10.0f);
+			g_cam = FindCamera(model->world.translate);
+			const float ahead = g_cam.ok ? Dot(g_cam.fwd, model->world.translate - g_cam.t) : 0.0f;
+			s_depth = cfg.depth > 0.0f ? cfg.depth : (ahead > 1.0f ? ahead : 100.0f);
 			spdlog::info("Table: engine placed the tray at ({:.1f}, {:.1f}, {:.1f}) scale {:.3f}; frustum L {:.3f} R {:.3f} T {:.3f} B {:.3f}",
 				model->local.translate.x, model->local.translate.y, model->local.translate.z, model->local.scale, g_frustum.fLeft,
 				g_frustum.fRight, g_frustum.fTop, g_frustum.fBottom);
@@ -502,9 +555,29 @@ namespace Scene
 		const float rx = (g_frustum.fLeft - g_frustum.fRight) * d / g_screenW;
 		const float rz = (g_frustum.fBottom - g_frustum.fTop) * d / g_screenH;
 		g_pos = { -(cfg.centerX * g_screenW) * rx + g_frustum.fLeft * d, d, -(cfg.centerY * g_screenH) * rz + g_frustum.fBottom * d };
-		model->local.rotate = g_rot;
-		model->local.scale = g_scale;
-		model->local.translate = g_pos;
+		// camera space (x right, y ahead, z up) -> world -> the model's parent
+		{
+			RE::NiMatrix3 basis;  // columns: right, ahead, up
+			for (int r = 0; r < 3; ++r) {
+				basis.entry[r][0] = (&g_cam.right.x)[r];
+				basis.entry[r][1] = (&g_cam.fwd.x)[r];
+				basis.entry[r][2] = (&g_cam.up.x)[r];
+			}
+			if (!g_cam.ok) {
+				basis = RE::NiMatrix3();
+			}
+			const RE::NiMatrix3 wRot = basis * g_rot;
+			const RE::NiPoint3  wPos = g_cam.t + Mul(basis, g_pos);
+			RE::NiTransform     parent;
+			if (auto* p = model->parent) {
+				parent = p->world;
+			}
+			const RE::NiMatrix3 pInv = parent.rotate.Transpose();
+			const float         ps = parent.scale != 0.0f ? parent.scale : 1.0f;
+			model->local.rotate = pInv * wRot;
+			model->local.scale = g_scale / ps;
+			model->local.translate = Mul(pInv, wPos - parent.translate) / ps;
+		}
 		RE::NiUpdateData ud;
 		model->Update(ud);
 		if (!g_placed) {

@@ -1,4 +1,4 @@
-SkyrimYacht 0.1.6 (test build)
+SkyrimYacht 0.1.7 (test build)
 ==============================
 
 A game of Yacht (Yahtzee) you play against Skyrim's NPCs, with a cup you shake and dice that tumble.
