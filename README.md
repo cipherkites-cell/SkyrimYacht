@@ -26,7 +26,7 @@ every frame, so dice can't be flung off the table or wedge in level geometry.
   Your cup tier follows your last finished game's score.
 - **Sound:** every contact the sim reports is synthesised from the die's material (bone, iron and steel, precious
   metal, stone, stalhrim) and what it struck (another die, the linen, the tray, a wooden or metal cup), as hard as
-  the hit and panned to where it happened, in a small room reverb. Rolling and the rattle inside the cup are
+  the hit and panned to where it happened, with no room echo. Rolling and the rattle inside the cup are
   continuous layers that follow the dice.
 - **Fus Ro Dah:** an easter egg modelled on Unrelenting Force: the three words appear as they're spoken, then the
   blast bends the air in a cone across the board, kicks the view and throws the dice back into the cup.

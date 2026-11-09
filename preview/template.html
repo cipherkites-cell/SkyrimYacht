@@ -1160,9 +1160,9 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   // ------------------------------------------------------------------ sound
   // Every knock is synthesised from the physics. Each contact the sim reports plays a struck-object sound made from the
   // die's material and what it hit (another die, the linen, the tray's wood, the cup), as hard as the impact, panned to
-  // where it happened, in a small tavern room. Dice rolling on the linen and rattling in the cup are continuous layers.
+  // where it happened. Dice rolling on the linen and rattling in the cup are continuous layers.
   let audio = null, master = null, noiseBuf = null, soundOn = true, recent = 0, sfx = null, voices = 0;
-  let roomSend = null, roomIR = null, hallIR = null, rollGain = null, rattleGain = null, rattleBand = null;
+  let roomIR = null, hallIR = null, rollGain = null, rattleGain = null, rattleBand = null;
   const bufCache = new Map();
   // Modes as [frequency Hz, decay s, amplitude]. A die is a small hard block: its own resonances die in a few
   // milliseconds, so what you hear is a dry clack, coloured by the material, plus whatever it struck.
@@ -1218,12 +1218,10 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
       const d = noiseBuf.getChannelData(0);
       for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
       // The tavern: wood walls, low beams, short and warm.
-      roomIR = makeIR(1.3, 0.28, [[9, 0.5], [14, 0.35], [23, 0.3], [31, 0.22], [44, 0.15]]);
       hallIR = makeIR(3.4, 0.95, [[60, 0.45], [130, 0.35], [210, 0.25]]);
       sfx = audio.createGain(); sfx.gain.value = 1;
-      const room = audio.createConvolver(); room.normalize = false; room.buffer = roomIR;
-      const send = audio.createGain(); send.gain.value = 0.1; roomSend = send;
-      sfx.connect(master); sfx.connect(send); send.connect(room); room.connect(master);
+      // Dry: no room echo on the dice or the menus.
+      sfx.connect(master);
       // Dice sliding and rolling on the linen: a soft scuff under the knocks.
       const roll = audio.createBufferSource(); roll.buffer = noiseBuf; roll.loop = true;
       const rbp = audio.createBiquadFilter(); rbp.type = "bandpass"; rbp.frequency.value = 900; rbp.Q.value = 0.6;
@@ -2574,7 +2572,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     renderSound: async (what, style, dry) => {
       const keep = [audio, master, sfx, noiseBuf, roomIR, hallIR, rollGain, rattleGain, rattleBand, curDiceStyle];
       const off = new OfflineAudioContext(2, 48000 * 3.5, 48000);
-      initAudio(off); bufCache.clear(); if (dry) roomSend.gain.value = 0;
+      initAudio(off); bufCache.clear();
       if (style) curDiceStyle = style;
       if (what === "shout") shoutSound(); else hit(what, 70, 1);
       const buf = await off.startRendering();
