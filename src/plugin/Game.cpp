@@ -1516,6 +1516,58 @@ namespace Game
 		}
 	}
 
+	// Diagnostics: is our line in the conversation's topic list, and does each response's condition pass for this speaker?
+	void LogDialogue(RE::Actor* a_speaker)
+	{
+		auto* mtm = RE::MenuTopicManager::GetSingleton();
+		auto* dh = RE::TESDataHandler::GetSingleton();
+		if (!a_speaker || !mtm || !dh) {
+			return;
+		}
+		std::size_t listed = 0;
+		bool        offered = false;
+		std::string names;
+		if (mtm->dialogueList) {
+			for (auto* dlg : *mtm->dialogueList) {
+				++listed;
+				if (dlg) {
+					names += fmt::format(" '{}'", dlg->topicText.c_str());
+				}
+				if (dlg && dlg->parentTopic && dlg->parentTopic->GetFormID() == dh->LookupFormID(EspIds::kTopicPlay, EspIds::kPlugin)) {
+					offered = true;
+				}
+			}
+		}
+		auto* topic = dh->LookupForm<RE::TESTopic>(EspIds::kTopicPlay, EspIds::kPlugin);
+		auto* branch = dh->LookupForm<RE::BGSDialogueBranch>(EspIds::kBranchPlay, EspIds::kPlugin);
+		if (!topic) {
+			spdlog::info("  dialogue: YA_TopicPlay missing ({} topics in menu)", listed);
+			return;
+		}
+		spdlog::info("  dialogue: {} topics in menu, ours {}; topic quest {:08X} running {}, branch {:08X}, infos {}, type {}, subtype {}",
+			listed, offered ? "SHOWN" : "hidden", topic->ownerQuest ? topic->ownerQuest->GetFormID() : 0,
+			topic->ownerQuest && topic->ownerQuest->IsRunning(), topic->ownerBranch ? topic->ownerBranch->GetFormID() : 0, topic->numTopicInfos,
+			static_cast<int>(topic->data.type.get()), static_cast<int>(topic->data.subtype.get()));
+		spdlog::info("  menu:{}", names);
+		if (branch) {
+			spdlog::info("  branch: quest {:08X}, start topic {:08X}, flags {:X}, type {}", branch->quest ? branch->quest->GetFormID() : 0,
+				branch->startingTopic ? branch->startingTopic->GetFormID() : 0, branch->flags.underlying(), static_cast<int>(branch->type.get()));
+		}
+		auto* player = RE::PlayerCharacter::GetSingleton();
+		for (std::uint32_t i = 0; i < topic->numTopicInfos; ++i) {
+			auto* info = topic->topicInfos ? topic->topicInfos[i] : nullptr;
+			if (!info) {
+				continue;
+			}
+			std::string items;
+			for (auto* c = info->objConditions.head; c; c = c->next) {
+				RE::ConditionCheckParams params(a_speaker, player);
+				items += fmt::format(" f{}={}", static_cast<int>(c->data.functionData.function.get()), c->IsTrue(params) ? 1 : 0);
+			}
+			spdlog::info("  info {:08X}: all {}{}", info->GetFormID(), info->objConditions.IsTrue(a_speaker, player) ? 1 : 0, items);
+		}
+	}
+
 	// ==================================================================== public
 	void OnDataLoaded()
 	{
@@ -1571,6 +1623,8 @@ namespace Game
 		// what the dialogue sees, each time a conversation starts (to tell why the topic shows or doesn't)
 		{
 			static bool s_talking = false;
+			static bool s_logged = true;
+			static auto s_openedAt = std::chrono::steady_clock::now();
 			const bool  talking = ui->IsMenuOpen(RE::DialogueMenu::MENU_NAME);
 			if (talking && !s_talking) {
 				auto* mtm = RE::MenuTopicManager::GetSingleton();
@@ -1583,7 +1637,17 @@ namespace Game
 						a->GetDisplayFullName(), a->GetFormID(), g_faction && a->IsInFaction(g_faction),
 						st ? static_cast<int>(st->GetSitSleepState()) : -1, g_tagged.contains(a->GetFormID()), g_canAfford ? g_canAfford->value : -1.0f,
 						quest && quest->IsRunning());
+					LogDialogue(a);
 				}
+				s_openedAt = std::chrono::steady_clock::now();
+				s_logged = false;
+			}
+			// once more after the menu has settled, in case the topic list fills in late
+			if (talking && !s_logged && std::chrono::steady_clock::now() - s_openedAt > 700ms) {
+				s_logged = true;
+				auto* mtm = RE::MenuTopicManager::GetSingleton();
+				auto  ref = mtm ? mtm->speaker.get() : nullptr;
+				LogDialogue(ref ? ref->As<RE::Actor>() : nullptr);
 			}
 			s_talking = talking;
 		}
