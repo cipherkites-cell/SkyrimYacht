@@ -1,4 +1,4 @@
-SkyrimYacht 0.3.1
+SkyrimYacht 0.3.2
 =================
 
 A game of Yacht (Yahtzee) you play against Skyrim's NPCs, with a cup you shake and dice that tumble.

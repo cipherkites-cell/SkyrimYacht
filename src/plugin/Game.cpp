@@ -1162,6 +1162,7 @@ namespace Game
 						g_betHeld = bet;
 						Sound("ITMGoldDown");
 						spdlog::info("Wager {} against {}", bet, g_oppName);
+						Scene::Reveal();
 						NewGame();
 					}
 					break;

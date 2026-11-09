@@ -73,7 +73,10 @@ namespace Scene
 		RE::NiAVObject*          g_model = nullptr;
 		RE::NiPointer<RE::NiAVObject> g_worldTray;  // world mode: our own tray, hung under the world's scene node
 		bool                     g_world = false;   // this table is in the world (not the item view)
-		bool                     g_withTable = true;  // false: the menu is only a window (the dice shop)
+		bool                     g_withTable = true;
+		bool                     g_entering = false;  // still rising into place
+		bool                     g_hiddenUntilBet = false;  // the table waits out of sight until the wager is placed
+		std::chrono::steady_clock::time_point g_openAt{};  // false: the menu is only a window (the dice shop)
 
 		// The table's placement this frame (in the inventory scene's camera space: y away from the camera, z up).
 		RE::NiMatrix3 g_rot;
@@ -375,6 +378,14 @@ namespace Scene
 				g_loadedCup[a_which] = g_cupId[a_which];
 				return;
 			}
+			// the game's cups carry their own physics body: in the running world it would pull the mesh to wherever that
+			// (unplaced) body is. Ours moves by hand, so take it off.
+			RE::BSVisit::TraverseScenegraphObjects(mesh.get(), [](RE::NiAVObject* a_obj) {
+				if (a_obj) {
+					a_obj->collisionObject.reset();
+				}
+				return RE::BSVisit::BSVisitControl::kContinue;
+			});
 			// a holder: the cup's origin is the physics cup's (the centre of its inside floor)
 			auto holder = RE::NiPointer<RE::NiNode>(RE::NiNode::Create(1));
 			const float s = kCupRadius / c.inner * c.room;
@@ -589,6 +600,10 @@ namespace Scene
 				}
 				g_world = true;
 				g_worldTray = tray;
+				g_openAt = std::chrono::steady_clock::now();
+				g_entering = true;
+				g_hiddenUntilBet = true;
+				tray->CullNode(true);
 				g_scene = true;
 				g_attached = false;
 				g_placed = false;
@@ -646,6 +661,18 @@ namespace Scene
 
 	bool IsOpen() { return g_open; }
 	bool Ready() { return g_withTable && g_scene && g_attached && g_placed; }
+
+	void Reveal()
+	{
+		if (!g_hiddenUntilBet) {
+			return;
+		}
+		g_hiddenUntilBet = false;
+		g_openAt = std::chrono::steady_clock::now();
+		if (g_worldTray) {
+			g_worldTray->CullNode(false);
+		}
+	}
 
 	void UseDice(const std::string& a_set)
 	{
@@ -764,6 +791,14 @@ namespace Scene
 		const float rx = (g_frustum.fLeft - g_frustum.fRight) * d / g_screenW;
 		const float rz = (g_frustum.fTop - g_frustum.fBottom) * d / g_screenH;
 		g_pos = { -(cfg.centerX * g_screenW) * rx + g_frustum.fLeft * d, d, g_frustum.fTop * d - (cfg.centerY * g_screenH) * rz };
+		if (g_world) {
+			// it rises into place as you sit down, rather than appearing at once
+			const float t = g_hiddenUntilBet ? 0.0f : std::clamp(std::chrono::duration<float>(std::chrono::steady_clock::now() - g_openAt).count() / 0.9f, 0.0f, 1.0f);
+			const float e = 1.0f - std::pow(1.0f - t, 3.0f);
+			g_pos.z -= (1.0f - e) * d * 0.45f;
+			g_pos.y += (1.0f - e) * d * 0.15f;
+			g_entering = t < 1.0f;
+		}
 		// camera space (x right, y ahead, z up) -> world -> the model's parent
 		{
 			RE::NiMatrix3 basis;  // columns: right, ahead, up

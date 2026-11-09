@@ -15,7 +15,8 @@ namespace Scene
 	void Open(bool a_table = true);  // shows the menu (pauses the game) and, unless it's just a window, the table
 	void Close();
 	bool IsOpen();
-	bool Ready();  // the tray has loaded and the dice and cups are attached
+	bool Ready();
+	void Reveal();  // the wager is placed: the table rises into view  // the tray has loaded and the dice and cups are attached
 
 	void SetDie(int a_index, const yacht::Vec3& a_pos, const yacht::Quat& a_rot, bool a_visible);
 	void SetCup(int a_which, const yacht::Vec3& a_pos, const yacht::Quat& a_rot);  // 0 yours, 1 the opponent's
