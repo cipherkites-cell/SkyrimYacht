@@ -329,27 +329,38 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     }, [1, 1]);
   }
 
-  // Tanned hide for the pad: mottled brown leather, pores and creases, darker at the edges, stitched border.
-  function hideTex(seed) {
-    const N = makeNoise(seed), W = 1024, H = 700;
-    const deep = [40, 27, 17], tan = [84, 60, 40], pale = [108, 82, 58];
+  // Linen wrap for the pad: an undyed plain weave, warp and weft threads crossing over and under, uneven threads
+  // (slubs), a little grime and faint old stains. No stitching.
+  function linenTex(seed) {
+    const N = makeNoise(seed), W = 1536, H = 1050, P = 6;  // P: pixels per thread
+    const base = [150, 140, 116], dark = [94, 84, 66], light = [176, 166, 140];
+    // Each thread gets its own thickness and tone, so the weave isn't machine-perfect.
+    const warp = Array.from({ length: Math.ceil(W / P) + 1 }, () => [0.75 + N.rnd() * 0.35, (N.rnd() - 0.5) * 0.12]);
+    const weft = Array.from({ length: Math.ceil(H / P) + 1 }, () => [0.75 + N.rnd() * 0.35, (N.rnd() - 0.5) * 0.12]);
     return texPair(W, H, (x, y) => {
-      const m = N.fbm(x / 160, y / 160, 5);
-      const crease = Math.abs(N.fbm(x / 40 + 20, y / 55, 3) - 0.5);
-      const pore = N.fbm(x / 2.2, y / 2.2, 1);
-      let col = mixRGB(deep, tan, Math.min(1, m * 1.35));
-      col = mixRGB(col, pale, Math.max(0, m - 0.62) * 1.6);
-      col = mixRGB(col, deep, Math.min(0.22, Math.max(0, 0.04 - crease) * 6));
-      col = mixRGB(col, deep, Math.max(0, pore - 0.7) * 0.8);
-      let height = 0.5 + m * 0.2 - Math.max(0, 0.04 - crease) * 3 + (pore - 0.5) * 0.15;
-      // Darker, oilier toward the edges
-      const edge = Math.min(x, y, W - 1 - x, H - 1 - y);
-      if (edge < 60) col = mixRGB(col, deep, (1 - edge / 60) * 0.45);
-      // Stitching: pale thread dashes in a row of holes, inset from the edge
-      const inset = 20, onRow = Math.abs(edge - inset) < 1.6;
-      const along = (x < inset + 3 || x > W - inset - 4) ? y : x;
-      if (onRow && (along % 16) < 8) { col = mixRGB([122, 100, 72], col, N.fbm(x / 3, y / 3, 1) * 0.5); height = 0.75; }
-      else if (Math.abs(edge - inset) < 2.6 && (along % 16) >= 10 && (along % 16) < 13) { col = mixRGB(col, [10, 6, 3], 0.7); height = 0.15; }
+      const i = Math.floor(x / P), j = Math.floor(y / P);
+      const fx = x / P - i, fy = y / P - j;
+      const [tw, cw] = warp[i], [tf, cf] = weft[j];
+      // Slubs: a thread swells for a stretch
+      const slubW = Math.max(0, N.fbm(i * 3.1, y / 40, 2) - 0.66) * 1.4;
+      const slubF = Math.max(0, N.fbm(x / 40, j * 3.1 + 50, 2) - 0.66) * 1.4;
+      const wProf = Math.max(0, 1 - Math.pow(Math.abs(fx - 0.5) * 2 / (tw + slubW), 2));  // across the warp thread
+      const fProf = Math.max(0, 1 - Math.pow(Math.abs(fy - 0.5) * 2 / (tf + slubF), 2));  // across the weft thread
+      const warpTop = (i + j) % 2 === 0;
+      // Whichever thread is on top shows; along it the height rises and dips as it goes over and under.
+      const along = warpTop ? Math.sin(fy * Math.PI) : Math.sin(fx * Math.PI);
+      const prof = warpTop ? wProf : fProf;
+      let height = 0.25 + prof * (0.45 + 0.3 * along);
+      const tone = warpTop ? cw : cf;
+      let col = mixRGB(dark, base, Math.min(1, 0.35 + prof * 0.75));
+      col = mixRGB(col, light, Math.max(0, tone) * 2 + (warpTop ? 0.05 : 0));
+      col = mixRGB(col, dark, Math.max(0, -tone) * 2);
+      if (prof < 0.05) { col = mixRGB(col, [70, 60, 44], 0.6); height = 0.1; }  // gaps between threads
+      // Faint grime and old stains across the cloth
+      const g = N.fbm(x / 260, y / 260, 4);
+      col = mixRGB(col, dark, Math.max(0, 0.5 - g) * 1.1);
+      const stain = N.fbm(x / 120 + 9, y / 120, 3);
+      if (stain > 0.68) col = mixRGB(col, [128, 104, 72], (stain - 0.68) * 1.6);
       return [col, height];
     });
   }
@@ -367,15 +378,15 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
 
   // One plank per texture, stretched once over a whole board: every board reads as a single solid piece.
   const wood = woodTex(11, 1, 1024, 512), woodLong = woodTex(23, 1, 2048, 192), rackWood = woodTex(37, 1, 1024, 256);
-  const hide = hideTex(5), iron = ironTex(9);
+  const linen = linenTex(5), iron = ironTex(9);
   const woodMat = new THREE.MeshStandardMaterial({ map: wood.map, bumpMap: wood.bump, bumpScale: 0.035, roughness: 0.82 });
   const woodLongMat = new THREE.MeshStandardMaterial({ map: woodLong.map, bumpMap: woodLong.bump, bumpScale: 0.035, roughness: 0.82 });
   const rackMat = new THREE.MeshStandardMaterial({ map: rackWood.map, bumpMap: rackWood.bump, bumpScale: 0.03, roughness: 0.8 });
-  const feltMat = new THREE.MeshStandardMaterial({ map: hide.map, bumpMap: hide.bump, bumpScale: 0.02, roughness: 0.9 });
+  const feltMat = new THREE.MeshStandardMaterial({ map: linen.map, bumpMap: linen.bump, bumpScale: 0.012, roughness: 0.96 });
   const ironMat = new THREE.MeshStandardMaterial({ map: iron.map, bumpMap: iron.bump, bumpScale: 0.02, roughness: 0.62, metalness: 0.75 });
   const brassMat = ironMat;  // fittings are iron now
 
-  // The tray: a hide pad inside four plank walls on a plank base, held at the corners by iron straps.
+  // The tray: a linen pad inside four plank walls on a plank base, held at the corners by iron straps.
   const wallH = 1.7, wallT = 0.8;
   const felt = new THREE.Mesh(new THREE.PlaneGeometry(S.X * 2, S.Yh * 2), feltMat);
   felt.receiveShadow = true;
