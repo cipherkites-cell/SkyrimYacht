@@ -19,6 +19,7 @@ every frame, so dice can't be flung off the table or wedge in level geometry.
 - **Table:** 25.3 x 17.2 inside, invisible walls on all four sides (dice in the cup pass over them; `barrierLeft` and friends can open a side, and `OffTable` reports a die that fell off).
 - **Keepers:** dice left on the pad are frozen (`SetFrozen`) while the rest roll, so a throw can't knock them over. Fairness is checked with a chi-square test over 400 throws.
   (`SetLid`), so dice can't jump out; tipping it pours them onto the tray.
+- **Opponent:** `src/sim/Ai` picks which dice to keep (every keep choice tried against simulated rerolls) and which box to score; it averages about 233 a game in `tests/ai_test.cpp`. In the preview it plays its turns on the table: its cup on the left, its rack across the far side.
 - **Scoring:** `src/sim/Yacht` has the thirteen boxes, the 35-point upper bonus at 63, 100-point bonuses for extra
   five-of-a-kinds and the joker rule.
 

@@ -33,8 +33,8 @@ canvas#view.shaking { cursor: grabbing; }
 canvas#view.over-die { cursor: pointer; }
 
 .hud {
-  position: absolute; top: 14px; left: max(16px, env(safe-area-inset-left, 0px)); right: 16px;
-  display: flex; align-items: center; gap: 14px; pointer-events: none; flex-wrap: wrap;
+  position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; justify-content: center; gap: 12px; pointer-events: none; white-space: nowrap;
 }
 .hud h1 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 30px; letter-spacing: 0.02em; color: var(--brass); }
 .rolls { display: flex; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; }
@@ -72,6 +72,10 @@ canvas#view.over-die { cursor: pointer; }
   text-shadow: 0 0 24px rgba(160, 200, 255, 0.55), 0 2px 18px rgba(0, 0, 0, 0.9); }
 .icon-btn:focus-visible, .row:focus-visible, .newgame:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
 
+.ledger.npc { right: auto; left: max(14px, env(safe-area-inset-left, 0px)); }
+.ledger.turn { border-color: var(--brass); box-shadow: 0 0 0 1px var(--brass), 0 6px 24px rgba(0, 0, 0, 0.45); }
+.row.flash { background: rgba(202, 164, 87, 0.35); }
+.turn-label { font-family: var(--display); font-size: 18px; color: var(--parchment); padding: 2px 10px; border-left: 1px solid var(--oak-edge); }
 .ledger {
   position: absolute; top: 12px; right: max(14px, env(safe-area-inset-right, 0px)); width: min(370px, calc(100% - 28px));
   max-height: calc(100% - 24px); overflow-y: auto; padding: 10px 14px 12px;
@@ -83,7 +87,7 @@ canvas#view.over-die { cursor: pointer; }
   padding: 10px 12px 10px;
 }
 .help.panel {
-  position: absolute; top: 58px; left: max(14px, env(safe-area-inset-left, 0px)); width: min(340px, calc(100% - 28px));
+  position: absolute; top: 62px; left: 50%; transform: translateX(-50%); width: min(380px, calc(100% - 28px));
   padding: 12px 14px; z-index: 3;
 }
 .ledger h2 { margin: 0 0 2px; font-family: var(--display); font-weight: 400; font-size: 21px; color: var(--brass); display: flex; justify-content: space-between; align-items: baseline; }
@@ -130,6 +134,8 @@ canvas#view.over-die { cursor: pointer; }
 .help b { color: var(--parchment); font-weight: 500; }
 .loading { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 15px; }
 
+/* Overlay UI is laid out at 1080p sizes and zoomed with the window (see resize()). */
+.hud, .ledger, .dock, .hint, .help.panel, .toast { zoom: var(--ui, 1); }
 @media (max-width: 1060px) {
   .hint { left: auto; right: 14px; transform: none; max-width: min(360px, calc(100% - 340px)); }
 }
@@ -149,7 +155,8 @@ canvas#view.over-die { cursor: pointer; }
     <canvas id="view" aria-label="Dice tray. Hold the left mouse button and move to pick up and shake the cup, release to throw."></canvas>
     <div class="hud">
       <h1>Yacht</h1>
-      <div class="rolls" id="rolls" aria-live="polite"><span>Roll</span><i></i><i></i><i></i></div>
+      <span class="turn-label" id="turnLabel" aria-live="polite">Your turn</span>
+      <div class="rolls" id="rolls"><span>Roll</span><i></i><i></i><i></i></div>
       <button class="icon-btn" id="sound" type="button" aria-pressed="true">Sound on</button>
       <button class="shout-btn" id="shout" type="button" title="Shout the dice on the pad back into the cup">Fus Ro Dah<span class="cool" id="shoutCool"></span></button>
       <button class="icon-btn" id="helpBtn" type="button" aria-expanded="false" aria-controls="help">How to play</button>
@@ -166,8 +173,16 @@ canvas#view.over-die { cursor: pointer; }
     <div class="loading" id="loading">Setting up the table…</div>
 
   </div>
-  <aside class="ledger panel" aria-label="Scorecard">
-    <h2>Scorecard <span id="total">0</span></h2>
+  <aside class="ledger npc panel" aria-label="Opponent's scorecard">
+    <h2>Opponent <span id="ntotal">0</span></h2>
+    <div class="cols">
+      <div class="col" id="ncolUpper"></div>
+      <div class="col" id="ncolLower"></div>
+    </div>
+  </aside>
+
+  <aside class="ledger you panel" aria-label="Your scorecard">
+    <h2>You <span id="total">0</span></h2>
     <div class="cols">
       <div class="col" id="colUpper"></div>
       <div class="col" id="colLower"></div>
@@ -472,6 +487,12 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   box(13.6, 0.08, 0.18, 0, rackY - 1.3, rackTop + 0.32, ironMat);
   for (const x of [-6.2, 0, 6.2]) rivet(x, rackY - 1.34, rackTop + 0.32, 0, -1, 0);
   const rackX = (slot) => (slot - 2) * 2.4;
+  // The opponent's rack, mirrored on the far side of the tray.
+  const npcRackY = -rackY;
+  box(13.5, 2.4, 0.5, 0, npcRackY, rackTop - 0.25, rackMat);
+  box(13.5, 0.25, 0.7, 0, npcRackY + 1.15, rackTop + 0.1, rackMat);
+  box(13.6, 0.08, 0.18, 0, npcRackY + 1.3, rackTop + 0.32, ironMat);
+  for (const x of [-6.2, 0, 6.2]) rivet(x, npcRackY + 1.34, rackTop + 0.32, 0, 1, 0);
 
   // ------------------------------------------------------------------ dice
   // Hand-carved bone: yellowed and grimy, scratched, uneven drilled pips with dirt in them, darker worn edges.
@@ -576,10 +597,12 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     { id: "silver", name: "Silver Goblet", rank: "Expert", need: 250 },
     { id: "golden", name: "Golden Goblet", rank: "Master", need: 300 },
   ];
-  const cupGroup = new THREE.Group();
-  world.add(cupGroup);
+  let cupGroup = new THREE.Group();
+  const playerCupGroup = cupGroup, npcCupGroup = new THREE.Group();
+  world.add(cupGroup, npcCupGroup);
   let glowMats = [];
-  let cupH = S.H;  // inside depth of the cup in use
+  let cupH = S.H;  // inside depth of the player's cup
+  let npcCupH = S.H;
   const texLoader = new THREE.TextureLoader();
   function gameTex(uri, srgb) {
     const t = texLoader.load(uri);
@@ -641,11 +664,20 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     return m;
   }
 
-  function buildCup(id) {
+  // The opponent always drinks from a tankard. Built with the same code by pointing it at the opponent's group.
+  function buildNpcCup() {
+    const g = cupGroup, glow = glowMats, h = cupH;
+    cupGroup = npcCupGroup;
+    buildCup("tankard", true);
+    npcCupH = cupH;
+    cupGroup = g; glowMats = glow; cupH = h;
+  }
+
+  function buildCup(id, forNpc) {
     while (cupGroup.children.length) cupGroup.remove(cupGroup.children[0]);
     const game = window.LOCAL_CUPS && window.LOCAL_CUPS[id];
     cupH = game ? game.height : S.H;
-    Y.y_set_cup_height(cupH);
+    if (!forNpc && typeof turn !== "undefined" && turn === "player") Y.y_set_cup_height(cupH);
     if (game) { buildGameCup(game); return; }
     const R = S.R, W = S.W, H = S.H, O = R + W;
     const metal = (color, rough, metalness) => new THREE.MeshStandardMaterial({ color, roughness: rough, metalness, side: THREE.DoubleSide });
@@ -708,11 +740,15 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   // ------------------------------------------------------------------ camera fit
   function resize() {
     const r = canvas.parentElement.getBoundingClientRect();
+    // The HUD and panels are sized for 1080p and scale with the window, so every screen keeps the same proportions.
+    const ui = Math.max(0.6, Math.min(r.width / 1920, r.height / 1080) * 1.3);
+    document.documentElement.style.setProperty("--ui", ui.toFixed(3));
     renderer.setSize(r.width, r.height, false);
     camera.aspect = r.width / Math.max(1, r.height);
     // Keep the tray and the cup beside it in view at any aspect.
     // Centre on the tray; wide enough for the cup on its right (and the same space on its left, so it stays centred).
-    const needW = 2 * (S.X + wallT + 3.6 + S.R + 3) * 1.2, needD = 40, cx = 0, zc = 1.8;
+    // Laid out for a 1920x1080 screen; other sizes keep the same composition.
+    const needW = 2 * (S.X + wallT + 3.6 + S.R + 3) * 1.0, needD = 31, cx = 0, zc = 1.8;
     const vFov = 38 * Math.PI / 180;
     const distForH = (needD / 2) / Math.tan(vFov / 2);
     const distForW = (needW / 2) / (Math.tan(vFov / 2) * camera.aspect);
@@ -721,7 +757,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     camera.position.set(cx, Math.sin(tilt) * dist, Math.cos(tilt) * dist + zc);
     camera.lookAt(cx, 0, zc);
     // On wide screens the scorecard floats top right: draw the table a little lower so it clears the panel.
-    if (r.width > 760) camera.setViewOffset(r.width, r.height, 0, -r.height * 0.06, r.width, r.height);
+    if (r.width > 760) camera.setViewOffset(r.width, r.height, 0, -r.height * 0.045, r.width, r.height);
     else camera.clearViewOffset();
     camera.updateProjectionMatrix();
   }
@@ -765,11 +801,20 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   });
 
   // ------------------------------------------------------------------ game state
-  const REST = { x: S.X + wallT + 3.6, y: -3.5, z: 3.0 };  // to the right of the tray, toward the front, held still
+  // Your cup rests to the right of the tray toward you; the opponent's to the left, toward them.
+  const REST = { x: S.X + wallT + 3.6, y: -3.5, z: 3.0 };
+  const NPC_REST = { x: -REST.x, y: 0.5, z: REST.z };  // low enough on the left to sit clear of its scorecard
   const SHAKE_Z = 5.6, CARRY_Z = 3.2;
-  const cup = { x: REST.x, y: REST.y, z: REST.z, vx: 0, vy: 0, vz: 0, q: new THREE.Quaternion() };
+  const cups = {
+    player: { x: REST.x, y: REST.y, z: REST.z, vx: 0, vy: 0, vz: 0, q: new THREE.Quaternion(), rest: REST },
+    npc: { x: NPC_REST.x, y: NPC_REST.y, z: NPC_REST.z, vx: 0, vy: 0, vz: 0, q: new THREE.Quaternion(), rest: NPC_REST },
+  };
+  let turn = "player";      // whose turn: "player" or "npc"
+  let cup = cups.player;    // the cup in play (the physics drives this one)
   const cupTarget = { x: REST.x, y: REST.y };
   Y.y_place_cup(cup.x, cup.y, cup.z, 1, 0, 0, 0);
+  const activeCupH = () => (turn === "npc" ? npcCupH : cupH);
+  let npc = null;           // the opponent's turn: { step, t, queue }
 
   let phase = "ready";      // ready, shaking, pouring, rolling, choose, over
   let rollsUsed = 0;
@@ -794,7 +839,14 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   function tweenFrom(i, dur) { anim[i] = { from: dice[i].position.clone(), fromQ: dice[i].quaternion.clone(), t: 0, dur: dur || 0.25 }; }
   function freeSlot() { const used = new Set(rackSlot.filter((v) => v >= 0)); let k = 0; while (used.has(k)) k++; return k; }
 
-  function startTurn(animate) {
+  function startTurn(owner, animate) {
+    turn = owner;
+    cup = cups[owner];
+    cup.x = cup.rest.x; cup.y = cup.rest.y; cup.z = cup.rest.z; cup.vx = cup.vy = cup.vz = 0; cup.q.identity();
+    tilt = null;
+    Y.y_place_cup(cup.x, cup.y, cup.z, 1, 0, 0, 0);
+    Y.y_set_cup_height(activeCupH());
+    npc = owner === "npc" ? { step: "start", t: 0, queue: [] } : null;
     for (let i = 0; i < 5; i++) {
       Y.y_set_frozen(i, 0);
       if (animate) tweenFrom(i, 0.3);
@@ -808,6 +860,72 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     rollsUsed = 0;
     phase = "ready";
     updateUI();
+  }
+
+  // ---- The opponent's turn, played out on the table: shake, throw, keep dice on its rack, put the rest back, again.
+  const NPC_SHAKE = { x: -S.X * 0.4, y: S.Yh * 0.25 };
+  function npcTick(dt) {
+    if (!npc || turn !== "npc" || phase === "over") return;
+    npc.t += dt;
+    if (npc.step === "start" && npc.t > 0.9) {
+      if (beginShake()) { npc.step = "shake"; npc.t = 0; npc.shakeFor = 1.0 + Math.random() * 0.6; }
+    } else if (npc.step === "shake") {
+      // A hand shaking the cup over its side of the pad.
+      const a = npc.t * 17;
+      cupTarget.x = NPC_SHAKE.x + Math.cos(a) * 1.5 + Math.sin(a * 0.37) * 0.8;
+      cupTarget.y = NPC_SHAKE.y + Math.sin(a * 1.3) * 1.2;
+      if (npc.t > npc.shakeFor) {
+        // Throw across the pad toward the player's side.
+        const d = Math.hypot(1, -0.35); aim.x = 1 / d; aim.y = -0.35 / d;
+        pourPending = true;
+        npc.step = "throw";
+      }
+    } else if (npc.step === "throw" && phase === "choose") {
+      npc.step = "think"; npc.t = 0;
+    } else if (npc.step === "think" && npc.t > 0.8) {
+      Y.y_dice(faces[0], faces[1], faces[2], faces[3], faces[4]);
+      const mask = rollsUsed >= 3 ? 0x1f : Y.y_ai_keep(3 - rollsUsed);
+      if (mask === 0x1f) { npc.step = "score"; npc.t = 0; return; }
+      // Keepers onto its rack, everything else back into its cup, one die at a time.
+      const st = state();
+      for (let i = 0; i < 5; i++) {
+        const keepIt = (mask & (1 << i)) !== 0;
+        if (keepIt && !kept[i]) npc.queue.push(() => keep(i));
+        if (!keepIt && (kept[i] || (active(st, i) && !inCup(st, i)))) npc.queue.push(() => putInCup(i));
+      }
+      npc.step = "move"; npc.t = 0;
+    } else if (npc.step === "move" && npc.t > 0.3) {
+      npc.t = 0;
+      const action = npc.queue.shift();
+      if (action) action();
+      else { npc.step = "start"; npc.t = 0.3; }
+    } else if (npc.step === "score" && npc.t > 0.5) {
+      Y.y_dice(faces[0], faces[1], faces[2], faces[3], faces[4]);
+      const cat = Y.y_ai_category();
+      const pts = Y.y_card_fill(1, cat);
+      flashRow("nrow-" + cat);
+      toast(`They score ${CATS[cat]}: ${pts}`);
+      npc.step = "done"; npc.t = 0;
+      phase = "scored";
+      updateUI();
+    } else if (npc.step === "done" && npc.t > 1.6) {
+      npc = null;
+      if (gameFinished()) endGame(); else startTurn("player", true);
+    }
+  }
+  function gameFinished() { return Y.y_card_full(0) && Y.y_card_full(1); }
+  function flashRow(id) {
+    const el = $(id);
+    if (!el) return;
+    el.classList.add("flash");
+    setTimeout(() => el.classList.remove("flash"), 1800);
+  }
+  function endGame() {
+    phase = "over";
+    const mine = Y.y_card_total(0), theirs = Y.y_card_total(1);
+    updateUI();
+    setTimeout(() => toast(mine > theirs ? `You win, ${mine} to ${theirs}` : mine < theirs ? `They win, ${theirs} to ${mine}` : `A draw at ${mine}`), 600);
+    finishGame(mine);
   }
 
   // Dice still lying on the pad have to go back in the cup or onto the rack before the cup can be picked up.
@@ -841,7 +959,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     // Tip the way the cup was last moving, from a spot where the mouth stays over the felt.
     const len = Math.hypot(aim.x, aim.y) || 1;
     const dx = aim.x / len, dy = aim.y / len;
-    const reach = cupH * 0.85;
+    const reach = activeCupH() * 0.85;
     const px = THREE.MathUtils.clamp(cup.x, -S.X + 2, S.X - 2), py = THREE.MathUtils.clamp(cup.y, -S.Yh + 2, S.Yh - 2);
     const tipX = THREE.MathUtils.clamp(px + dx * reach, -S.X + 2.6, S.X - 2.6) - dx * reach;
     const tipY = THREE.MathUtils.clamp(py + dy * reach, -S.Yh + 2.6, S.Yh - 2.6) - dy * reach;
@@ -937,7 +1055,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   function shout() {
     initAudio();
     if (audio && audio.state === "suspended") audio.resume();
-    if (shouting || performance.now() / 1000 < shoutReady) return;
+    if (shouting || performance.now() / 1000 < shoutReady || turn !== "player") return;
     if (phase !== "choose" || carry) { toast("Nothing to shout at yet"); return; }
     if (rollsUsed >= 3) { toast("No rolls left"); return; }
     const st = state(), targets = [];
@@ -1027,19 +1145,15 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   updateRanks();
 
   function score(cat) {
-    if (phase !== "choose" || carry) return;
+    if (phase !== "choose" || carry || turn !== "player") return;
     Y.y_dice(faces[0], faces[1], faces[2], faces[3], faces[4]);
-    const pts = Y.y_card_fill(cat);
+    const pts = Y.y_card_fill(0, cat);
     if (pts < 0) return;
     toast(pts > 0 ? `+${pts}` : "Scratched");
-    if (Y.y_card_full()) {
-      phase = "over"; updateUI();
-      const total = Y.y_card_total();
-      setTimeout(() => toast(`Final score ${total}`), 900);
-      finishGame(total);
-      return;
-    }
-    startTurn(true);
+    phase = "scored";
+    updateUI();
+    // The opponent's turn next (the dice fly over to its cup).
+    setTimeout(() => { if (gameFinished()) endGame(); else startTurn("npc", true); }, 900);
   }
 
   let toastTimer = 0;
@@ -1054,53 +1168,75 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   }
 
   // ------------------------------------------------------------------ scorecard UI
-  // Two columns: the upper section with its bonus on the left, the lower section with yacht bonuses on the right.
-  const rowEls = [];
+  // Two cards, each in two columns: the upper section with its bonus, the lower section with yacht bonuses.
+  // Yours (top right) takes clicks; the opponent's (top left) only shows its boxes.
   const addLabel = (col, text) => { const l = document.createElement("div"); l.className = "section-label"; l.textContent = text; col.appendChild(l); };
   const addSub = (col, label, id, value) => {
     const d = document.createElement("div"); d.className = "sub";
     d.innerHTML = `<span>${label}</span><span id="${id}">${value}</span>`;
     col.appendChild(d);
   };
-  addLabel($("colUpper"), "Upper");
-  addLabel($("colLower"), "Lower");
-  CATS.forEach((name, c) => {
-    const b = document.createElement("button");
-    b.type = "button"; b.className = "row"; b.id = "row-" + c;
-    b.innerHTML = `<span class="name">${name}</span><span class="val"></span>`;
-    b.addEventListener("click", () => score(c));
-    $(c < 6 ? "colUpper" : "colLower").appendChild(b);
-    rowEls.push(b);
-  });
-  addSub($("colUpper"), "Bonus 35 at 63", "upper", "0 / 63");
-  addSub($("colLower"), "Yacht bonuses", "ybonus", "0");
+  function buildCard(prefix, upper, lower, onPick) {
+    addLabel($(upper), "Upper");
+    addLabel($(lower), "Lower");
+    const els = CATS.map((name, c) => {
+      const b = document.createElement(onPick ? "button" : "div");
+      if (onPick) { b.type = "button"; b.addEventListener("click", () => onPick(c)); }
+      b.className = "row"; b.id = prefix + "row-" + c;
+      b.innerHTML = `<span class="name">${name}</span><span class="val"></span>`;
+      $(c < 6 ? upper : lower).appendChild(b);
+      return b;
+    });
+    addSub($(upper), "Bonus 35 at 63", prefix + "upper", "0 / 63");
+    addSub($(lower), "Yacht bonuses", prefix + "ybonus", "0");
+    return els;
+  }
+  const rowEls = buildCard("", "colUpper", "colLower", score);
+  const npcRowEls = buildCard("n", "ncolUpper", "ncolLower", null);
   $("helpBtn").addEventListener("click", () => {
     const h = $("help"); h.hidden = !h.hidden;
     $("helpBtn").setAttribute("aria-expanded", String(!h.hidden));
   });
-  $("newgame").addEventListener("click", () => { Y.y_card_reset(); $("newgame").hidden = true; startTurn(true); });
+  $("newgame").addEventListener("click", () => {
+    Y.y_card_reset(0); Y.y_card_reset(1); $("newgame").hidden = true; startTurn("player", true);
+  });
 
   function updateUI() {
-    const rolledOnce = phase === "choose";
+    const mine = turn === "player";
+    const rolledOnce = phase === "choose" && mine;
     Y.y_dice(faces[0], faces[1], faces[2], faces[3], faces[4]);
     rowEls.forEach((el, c) => {
-      const box = Y.y_card_box(c);
+      const box = Y.y_card_box(0, c);
       const v = el.querySelector(".val");
       el.className = "row";
       if (box >= 0) { el.classList.add("filled"); v.textContent = box; el.disabled = true; return; }
-      const p = rolledOnce ? Y.y_card_preview(c) : -1;
+      const p = rolledOnce ? Y.y_card_preview(0, c) : -1;
       el.classList.add("open");
       if (p >= 0) { el.classList.add("pickable"); if (p === 0) el.classList.add("zero"); v.textContent = p; el.disabled = false; }
       else { el.classList.add("locked"); v.textContent = "–"; el.disabled = true; }
     });
-    $("total").textContent = Y.y_card_total();
-    $("upper").textContent = Y.y_card_bonus() ? "+35" : `${Y.y_card_upper()} / 63`;
-    $("ybonus").textContent = Y.y_card_yacht_bonus();
+    npcRowEls.forEach((el, c) => {
+      const box = Y.y_card_box(1, c);
+      const keepFlash = el.classList.contains("flash");
+      el.className = "row" + (keepFlash ? " flash" : "");
+      el.classList.add(box >= 0 ? "filled" : "open");
+      el.querySelector(".val").textContent = box >= 0 ? box : "";
+    });
+    for (const [k, card] of [["", 0], ["n", 1]]) {
+      $(k + "total").textContent = Y.y_card_total(card);
+      $(k + "upper").textContent = Y.y_card_bonus(card) ? "+35" : `${Y.y_card_upper(card)} / 63`;
+      $(k + "ybonus").textContent = Y.y_card_yacht_bonus(card);
+    }
     $("newgame").hidden = phase !== "over";
+    document.querySelector(".ledger.you").classList.toggle("turn", mine && phase !== "over");
+    document.querySelector(".ledger.npc").classList.toggle("turn", !mine && phase !== "over");
+    $("turnLabel").textContent = phase === "over" ? "Game over" : mine ? "Your turn" : "Their turn";
     document.querySelectorAll("#rolls i").forEach((dot, k) => dot.classList.toggle("used", k < rollsUsed));
-
     const hint = $("hint");
-    if (phase === "ready") hint.textContent = "Hold the left button and move to pick up the cup.";
+    if (phase === "over") hint.textContent = "Game over. Start a new game from your scorecard.";
+    else if (phase === "scored") hint.textContent = mine ? "Scored. Their turn next." : "Your turn next.";
+    else if (!mine) hint.textContent = phase === "shaking" ? "They're shaking the cup…" : phase === "pouring" || phase === "rolling" ? "Their dice are rolling…" : "They're deciding what to keep…";
+    else if (phase === "ready") hint.textContent = "Hold the left button and move to pick up the cup.";
     else if (phase === "shaking") hint.textContent = "Shake it, then let go: it tips the way you last moved.";
     else if (phase === "pouring" || phase === "rolling") hint.textContent = "Rolling…";
     else if (phase === "redo") hint.textContent = "That one doesn't count.";
@@ -1171,7 +1307,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   // Press a die: click it to send it to the rack (or back), or drag it to lift it and carry it anywhere, such as
   // into the cup. Press anywhere else: the cup only lifts once the pointer moves while the button is held.
   canvas.addEventListener("pointerdown", (e) => {
-    if (e.button !== 0 || press) return;
+    if (e.button !== 0 || press || turn !== "player") return;
     initAudio();
     if (audio && audio.state === "suspended") audio.resume();
     setRay(e);
@@ -1308,6 +1444,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     recent = Math.max(0, recent - dt * 120);
     const t = now / 1000;
 
+    npcTick(dt);
     if (phase === "shaking") {
       shakeTime += dt;
       springCup(cupTarget.x, cupTarget.y, SHAKE_Z, dt, 22);
@@ -1338,7 +1475,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
       applyTilt(1 - Math.exp(-dt * 6));
     } else {
       // Back to its spot beside the tray, where it stays still.
-      springCup(REST.x, REST.y, REST.z, dt, 6, tilt ? 0.5 : 0.8);
+      springCup(cup.rest.x, cup.rest.y, cup.rest.z, dt, 6, tilt ? 0.5 : 0.8);
       if (tilt) {
         // Swing back upright on a loose spring.
         springTilt(0, dt, 7, 0.38);
@@ -1392,8 +1529,11 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
           continue;
         }
       } else if (kept[i]) {
-        target = new THREE.Vector3(rackX(rackSlot[i]), rackY, rackTop + half);
+        // On the rack of whoever's turn it is; the opponent's dice face it.
+        const theirs = turn === "npc";
+        target = new THREE.Vector3(theirs ? -rackX(rackSlot[i]) : rackX(rackSlot[i]), theirs ? npcRackY : rackY, rackTop + half);
         targetQ = faceUpQuat(faces[i] || 1, new THREE.Quaternion());
+        if (theirs) targetQ.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI));
       } else {
         target = posOf(st, i);
         targetQ = quatOf(st, i);
@@ -1412,8 +1552,10 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
         m.quaternion.copy(targetQ);
       }
     }
-    cupGroup.position.set(cup.x, cup.y, cup.z);
-    cupGroup.quaternion.copy(cup.q);
+    playerCupGroup.position.set(cups.player.x, cups.player.y, cups.player.z);
+    playerCupGroup.quaternion.copy(cups.player.q);
+    npcCupGroup.position.set(cups.npc.x, cups.npc.y, cups.npc.z);
+    npcCupGroup.quaternion.copy(cups.npc.q);
 
     candle.intensity = 0.95 + Math.sin(t * 7.3) * 0.04 + Math.sin(t * 13.1) * 0.03 + Math.sin(t * 2.1) * 0.05;
     if (waveT >= 0) {
@@ -1429,7 +1571,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     camera.position.y += (Math.random() - 0.5) * shakeAmt;
     const left = shoutReady - now / 1000;
     $("shoutCool").style.width = left > 0 ? `${(left / SHOUT_COOLDOWN) * 100}%` : "0";
-    $("shout").disabled = left > 0;
+    $("shout").disabled = left > 0 || turn !== "player";
 
     renderer.render(scene, camera);
     if (shakeAmt) resize();
@@ -1450,7 +1592,8 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     },
   };
 
-  startTurn(false);
+  buildNpcCup();
+  startTurn("player", false);
   $("loading").remove();
   requestAnimationFrame(frame);
 })().catch((err) => {

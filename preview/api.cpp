@@ -1,6 +1,7 @@
 // WebAssembly entry points for the browser preview. Wraps the same DiceSim and Scorecard the SKSE plugin uses.
 #include "../src/sim/Dice.h"
 #include "../src/sim/Yacht.h"
+#include "../src/sim/Ai.h"
 
 using namespace yacht;
 
@@ -46,7 +47,8 @@ extern "C"
 namespace
 {
 	DiceSim   g_sim;
-	Scorecard g_card;
+	Scorecard g_cards[2];  // 0 = the player, 1 = the NPC
+	Opponent  g_ai;
 
 	// Per die: pos xyz, rot wxyz, active, inCup, settled, face. Then the cup: pos xyz, rot wxyz.
 	constexpr int kPerDie = 11;
@@ -62,7 +64,9 @@ namespace
 EXPORT void y_init(unsigned int a_seed)
 {
 	g_sim = DiceSim(DiceSpec{}, a_seed);
-	g_card.Clear();
+	g_cards[0].Clear();
+	g_cards[1].Clear();
+	g_ai = Opponent(a_seed * 2654435761u + 7u);
 }
 
 EXPORT double* y_spec()
@@ -150,12 +154,18 @@ EXPORT void y_dice(int a, int b, int c, int d, int e)
 	g_dice[4] = e;
 }
 
-EXPORT void y_card_reset() { g_card.Clear(); }
-EXPORT int  y_card_preview(int a_category) { return g_card.Preview(a_category, g_dice); }
-EXPORT int  y_card_fill(int a_category) { return g_card.Fill(a_category, g_dice); }
-EXPORT int  y_card_box(int a_category) { return g_card.boxes[a_category]; }
-EXPORT int  y_card_upper() { return g_card.UpperSum(); }
-EXPORT int  y_card_bonus() { return g_card.UpperBonus(); }
-EXPORT int  y_card_yacht_bonus() { return g_card.yachtBonuses * kYachtBonus; }
-EXPORT int  y_card_total() { return g_card.Total(); }
-EXPORT int  y_card_full() { return g_card.Full() ? 1 : 0; }
+Scorecard& Card(int a_card) { return g_cards[a_card == 1 ? 1 : 0]; }
+
+EXPORT void y_card_reset(int a_card) { Card(a_card).Clear(); }
+EXPORT int  y_card_preview(int a_card, int a_category) { return Card(a_card).Preview(a_category, g_dice); }
+EXPORT int  y_card_fill(int a_card, int a_category) { return Card(a_card).Fill(a_category, g_dice); }
+EXPORT int  y_card_box(int a_card, int a_category) { return Card(a_card).boxes[a_category]; }
+EXPORT int  y_card_upper(int a_card) { return Card(a_card).UpperSum(); }
+EXPORT int  y_card_bonus(int a_card) { return Card(a_card).UpperBonus(); }
+EXPORT int  y_card_yacht_bonus(int a_card) { return Card(a_card).yachtBonuses * kYachtBonus; }
+EXPORT int  y_card_total(int a_card) { return Card(a_card).Total(); }
+EXPORT int  y_card_full(int a_card) { return Card(a_card).Full() ? 1 : 0; }
+
+// The NPC's decisions for the dice set with y_dice, on its own card (1).
+EXPORT unsigned int y_ai_keep(int a_rollsLeft) { return g_ai.ChooseKeep(g_dice, a_rollsLeft, g_cards[1]); }
+EXPORT int          y_ai_category() { return g_ai.ChooseCategory(g_dice, g_cards[1]); }

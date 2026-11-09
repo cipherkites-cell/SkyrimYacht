@@ -6,7 +6,7 @@ cd "$(dirname "$0")/.."
 mkdir -p build
 clang++ --target=wasm32 -std=c++20 -O2 -nostdlib -ffreestanding -fno-exceptions -fno-rtti -fno-threadsafe-statics \
   -fvisibility=hidden -Wall -Wextra -Wl,--no-entry -Wl,--export-dynamic -Wl,--export=__wasm_call_ctors \
-  -o build/yacht.wasm preview/api.cpp src/sim/Dice.cpp src/sim/Yacht.cpp
+  -o build/yacht.wasm preview/api.cpp src/sim/Dice.cpp src/sim/Yacht.cpp src/sim/Ai.cpp
 python3 - <<'PY'
 import base64
 wasm = base64.b64encode(open("build/yacht.wasm", "rb").read()).decode()
