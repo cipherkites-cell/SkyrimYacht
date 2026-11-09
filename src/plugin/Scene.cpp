@@ -905,8 +905,16 @@ namespace Scene
 					it.vb = reinterpret_cast<::ID3D11Buffer*>(rd->vertexBuffer);
 					it.ib = reinterpret_cast<::ID3D11Buffer*>(rd->indexBuffer);
 					static_assert(sizeof(gd.vertexDesc) == sizeof(std::uint64_t));
-					std::memcpy(&it.desc, &gd.vertexDesc, sizeof(it.desc));
+					// the renderer's own record of the layout (what the vertex buffer really holds)
+					std::memcpy(&it.desc, &rd->vertexDesc, sizeof(it.desc));
 					it.indexCount = static_cast<std::uint32_t>(tri->GetTrishapeRuntimeData().triangleCount) * 3;
+					it.vertexCount = tri->GetTrishapeRuntimeData().vertexCount;
+					{
+						std::uint64_t geoDesc = 0;
+						std::memcpy(&geoDesc, &gd.vertexDesc, sizeof(geoDesc));
+						it.geoDesc = geoDesc;
+					}
+					it.name = a_geo->name.c_str();
 					const auto& w = a_geo->world;
 					for (int rr = 0; rr < 3; ++rr) {
 						for (int cc = 0; cc < 3; ++cc) {

@@ -19,6 +19,9 @@ namespace Render3D
 		ID3D11Buffer*             ib = nullptr;
 		std::uint64_t             desc = 0;  // BSGraphics::VertexDesc
 		std::uint32_t             indexCount = 0;
+		std::uint32_t             vertexCount = 0;
+		std::uint64_t             geoDesc = 0;  // the geometry's copy, for the log
+		std::string               name;
 		float                     rot[9]{};  // world rotation (row-major), translation, uniform scale
 		float                     pos[3]{};
 		float                     scale = 1.0f;

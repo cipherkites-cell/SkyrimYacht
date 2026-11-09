@@ -815,6 +815,26 @@ float4 PSComposite(FSOut i) : SV_Target
 		c->VSSetConstantBuffers(0, 2, cbs);
 		c->PSSetConstantBuffers(0, 2, cbs);
 
+		// once per table: what each mesh's buffers really hold, against what its layout says
+		static bool s_checked = false;
+		if (!s_checked && !g_frame.items.empty()) {
+			s_checked = true;
+			for (const auto& it : g_frame.items) {
+				D3D11_BUFFER_DESC vd{}, id{};
+				if (it.vb) {
+					it.vb->GetDesc(&vd);
+				}
+				if (it.ib) {
+					it.ib->GetDesc(&id);
+				}
+				const UINT stride = static_cast<UINT>(it.desc & 0xF) * 4;
+				spdlog::info("  mesh '{}': layout {:016X} (geometry says {:016X}), flags {:04X}, stride {}, {} verts -> {} bytes (buffer {}), {} indices (buffer {}), pos at {}, uv at {}, normal at {}, tangent at {}, diffuse {}, normal map {}",
+					it.name, it.desc, it.geoDesc, static_cast<unsigned>(it.desc >> 44), stride, it.vertexCount, it.vertexCount * stride, vd.ByteWidth,
+					it.indexCount, id.ByteWidth / 2, (it.desc >> 2) & 0x3C, (it.desc >> 6) & 0x3C, (it.desc >> 14) & 0x3C, (it.desc >> 18) & 0x3C,
+					it.diffuse != nullptr, it.normal != nullptr);
+			}
+		}
+
 		auto bindMesh = [&](const Item& it) -> bool {
 			auto* il = Layout(it.desc);
 			if (!il || !it.vb || !it.ib) {
