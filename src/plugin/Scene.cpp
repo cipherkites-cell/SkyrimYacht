@@ -67,6 +67,7 @@ namespace Scene
 		RE::NiPointer<RE::NiNode> g_root;           // ours, under the tray
 		RE::NiPointer<RE::NiAVObject> g_dice[2][5];  // [0] the player's set, [1] bone (the opponent's)
 		RE::NiPointer<RE::NiAVObject> g_cupNode[2];
+		bool                          g_cupWaiting[2]{};  // a new cup, hidden until it's first put in its place
 		std::string              g_diceSet = "bone", g_loadedSet;
 		std::string              g_cupId[2] = { "tankard", "tankard" }, g_loadedCup[2];
 		int                      g_diceSide = 0;    // which set is showing
@@ -435,6 +436,9 @@ namespace Scene
 			mesh->local.scale = s;
 			mesh->local.translate = { 0.0f, 0.0f, -c.floor * s };
 			holder->AttachChild(mesh.get(), true);
+			// hidden until the game puts it where the old one stood (else it shows a frame at the table's middle)
+			holder->CullNode(true);
+			g_cupWaiting[a_which] = true;
 			g_cupNode[a_which] = RE::NiPointer<RE::NiAVObject>(holder.get());
 			g_root->AttachChild(holder.get(), true);
 			g_loadedCup[a_which] = g_cupId[a_which];
@@ -808,6 +812,10 @@ namespace Scene
 		}
 		c->local.translate = { static_cast<float>(a_pos.x), static_cast<float>(a_pos.y), static_cast<float>(a_pos.z) };
 		c->local.rotate = FromQuat(a_rot);
+		if (g_cupWaiting[std::clamp(a_which, 0, 1)]) {
+			g_cupWaiting[std::clamp(a_which, 0, 1)] = false;
+			c->CullNode(false);
+		}
 	}
 
 	namespace

@@ -93,6 +93,7 @@ player's own game.
 
 ## Credits
 
-- Music: none bundled yet. Tracks go in `Music/` and are assigned to inns in `Music/Music.ini`.
+- Music: the five tavern tracks from "Around the Fire" (Nexus Mods, Skyrim SE mod 36144). Which tracks play where is set in
+  `Music/Music.ini`.
 - Ogg decoding: stb_vorbis by Sean Barrett (public domain / MIT).
 - Settings page: SKSE Menu Framework header (MIT).
