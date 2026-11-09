@@ -7,14 +7,14 @@ namespace Config
 {
 	struct Values
 	{
-		// The table: drawn in the world in front of the camera (0), or in the game's 3D item view (1)
+		// The table: drawn by the mod over the paused game (0), in the game's 3D item view (1), or in the room (2)
 		int   mode = 0;
 		float distance = 110.0f;    // world mode: how far in front of the camera (game units)
 		float brightness = 1.0f;    // world mode: lifts the table out of a dark room (1 = as the room lights it)
-		float tiltDeg = 55.0f;      // how far you look down on the tray
-		float fitWidth = 0.72f;     // the whole table (both cups) across this much of the screen width
+		float tiltDeg = 52.0f;      // how far you look down on the tray
+		float fitWidth = 0.95f;     // the whole table (both cups) across this much of the screen width
 		float centerX = 0.50f;      // where its middle sits on screen, 0..1
-		float centerY = 0.56f;
+		float centerY = 0.545f;
 		float depth = 0.0f;         // > 0: distance from the camera instead of the game's own
 		bool  flipTilt = false;     // if the tray shows from underneath, turn this on
 

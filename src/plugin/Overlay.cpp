@@ -1,5 +1,6 @@
 // SkyrimYacht - a dice game for Skyrim Special Edition.
 // Copyright (C) 2026 evodube. GPL-3.0 (LICENSE.txt).
+#include "Render3D.h"
 #include "Overlay.h"
 
 #include "Config.h"
@@ -388,6 +389,7 @@ namespace Overlay
 		g_uiHover = io.WantCaptureMouse;
 		ImGui::Render();
 
+		Render3D::Draw(sc, g_dev, g_ctx);  // the table, under the interface
 		ID3D11RenderTargetView* rtv = nullptr;
 		g_dev->CreateRenderTargetView(back, nullptr, &rtv);
 		back->Release();

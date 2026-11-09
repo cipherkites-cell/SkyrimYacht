@@ -48,7 +48,7 @@ namespace Menu
 			UI::SeparatorText("Where the table sits");
 			Hint("Changes show at once if a game is open.");
 			Changed(UI::SliderFloat("Distance", &v.distance, 40.0f, 300.0f, "%.0f units"));
-			Hint("How far in front of the camera. Further away looks flatter and less zoomed in.");
+			Hint("In the room only: how far in front of the camera.");
 			Changed(UI::SliderFloat("Size on screen", &v.fitWidth, 0.3f, 1.2f, "%.2f"));
 			Hint("How much of the screen's width the tray and both cups take.");
 			Changed(UI::SliderFloat("Tilt", &v.tiltDeg, 20.0f, 85.0f, "%.0f degrees"));
@@ -60,10 +60,10 @@ namespace Menu
 			Hint("Turn this on if you see the tray from underneath.");
 			UI::SeparatorText("Look");
 			Changed(UI::SliderFloat("Brightness", &v.brightness, 1.0f, 4.0f, "%.1f"));
-			Hint("Lifts the table out of a dark room. 1 is as the room lights it. Applies to the next table.");
+			Hint("In the room only: lifts the table out of a dark room. Applies to the next table.");
 			int mode = v.mode;
-			const char* modes[] = { "In the room (recommended)", "Item view (pauses the game)" };
-			if (UI::Combo("Drawn", &mode, modes, 2)) {
+			const char* modes[] = { "By the mod, over the game (recommended)", "In the game's item view", "In the room" };
+			if (UI::Combo("Drawn", &mode, modes, 3)) {
 				v.mode = mode;
 				g_dirty = true;
 			}
@@ -93,7 +93,7 @@ namespace Menu
 			Changed(UI::SliderFloat("Interface size", &v.uiScale, 0.6f, 1.6f, "%.2f"));
 			Hint("Takes effect the next time the game starts.");
 			Changed(UI::Checkbox("Pause the world while playing", &v.pauseGame));
-			Hint("Only with the item view: the table in the room needs the world running.");
+			Hint("In the room only (the other ways always pause).");
 			SaveRow();
 		}
 

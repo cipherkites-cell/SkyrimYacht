@@ -2307,7 +2307,7 @@ namespace Game
 			const auto& io = ImGui::GetIO();
 			const float W = io.DisplaySize.x, H = io.DisplaySize.y, cx = W * 0.5f;
 			auto*       bg = ImGui::GetBackgroundDrawList();
-			Vignette(bg, W, H, 1.0f);
+			Vignette(bg, W, H, 0.5f);
 			const float w = S(720), h = S(560), x = cx - w * 0.5f, y = H * 0.44f - h * 0.5f;
 			BeginArea("##wager", ImVec2(x, y), ImVec2(w, h));
 			auto*       dl = ImGui::GetWindowDrawList();
@@ -2399,7 +2399,7 @@ namespace Game
 			const auto& io = ImGui::GetIO();
 			const float W = io.DisplaySize.x, H = io.DisplaySize.y, cx = W * 0.5f;
 			auto*       bg = ImGui::GetBackgroundDrawList();
-			Vignette(bg, W, H, 1.0f);
+			Vignette(bg, W, H, 0.5f);
 			const float w = S(860), h = S(700), x = cx - w * 0.5f, y = H * 0.48f - h * 0.5f;
 			BeginArea("##shop", ImVec2(x, y), ImVec2(w, h));
 			auto* dl = ImGui::GetWindowDrawList();
@@ -2498,7 +2498,7 @@ namespace Game
 			const auto& io = ImGui::GetIO();
 			const float W = io.DisplaySize.x, H = io.DisplaySize.y, cx = W * 0.5f;
 			auto*       bg = ImGui::GetBackgroundDrawList();
-			Vignette(bg, W, H, 1.0f);
+			Vignette(bg, W, H, 0.5f);
 			const float w = S(820), h = S(440), x = cx - w * 0.5f, y = H * 0.42f - h * 0.5f;
 			BeginArea("##over", ImVec2(x, y), ImVec2(w, h));
 			auto*       dl = ImGui::GetWindowDrawList();

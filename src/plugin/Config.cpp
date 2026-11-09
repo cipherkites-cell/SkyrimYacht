@@ -76,7 +76,7 @@ namespace Config
 	void Load()
 	{
 		Values v;
-		v.mode = static_cast<int>(Float("Table", "Mode", 0.0f)) == 1 ? 1 : 0;
+		v.mode = std::clamp(static_cast<int>(Float("Table", "Mode", 0.0f)), 0, 2);
 		v.distance = std::clamp(Float("Table", "Distance", v.distance), 20.0f, 400.0f);
 		v.brightness = std::clamp(Float("Table", "Brightness", v.brightness), 0.0f, 4.0f);
 		v.tiltDeg = Float("Table", "TiltDegrees", v.tiltDeg);
@@ -95,7 +95,7 @@ namespace Config
 		v.debugOverlay = Bool("Debug", "Overlay", v.debugOverlay);
 		v.logInput = Bool("Debug", "LogInput", v.logInput);
 		g_values = v;
-		spdlog::info("Settings: {} table, tilt {} fit {} centre {},{} bets {}-{} reach {}", v.mode == 0 ? "world" : "item view", v.tiltDeg, v.fitWidth, v.centerX, v.centerY, v.minBet,
+		spdlog::info("Settings: {} table, tilt {} fit {} centre {},{} bets {}-{} reach {}", v.mode == 0 ? "drawn by the mod" : v.mode == 1 ? "item view" : "in the room", v.tiltDeg, v.fitWidth, v.centerX, v.centerY, v.minBet,
 			v.maxBet, v.tableReach);
 	}
 }

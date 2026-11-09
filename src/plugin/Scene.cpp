@@ -3,6 +3,7 @@
 #include "Scene.h"
 
 #include "Config.h"
+#include "Render3D.h"
 #include "EspIds.h"
 #include "Game.h"
 #include "Overlay.h"
@@ -73,9 +74,15 @@ namespace Scene
 		RE::NiAVObject*          g_model = nullptr;
 		RE::NiPointer<RE::NiAVObject> g_worldTray;  // world mode: our own tray, hung under the world's scene node
 		bool                     g_world = false;   // this table is in the world (not the item view)
+		bool                     g_overlay = false;  // this table is drawn by us, over the game (Render3D)
+		RE::NiPointer<RE::NiNode> g_ovRoot;          // overlay: the table's own little scene (not in the world)
+		float                    g_vp[16]{};          // overlay: our camera, table space -> clip
+		float                    g_camPos[3]{};
+		std::unordered_map<std::string, RE::NiPointer<RE::NiTexture>> g_texCache;  // textures we loaded ourselves
 		bool                     g_withTable = true;
 		bool                     g_entering = false;  // still rising into place
-		bool                     g_hiddenUntilBet = false;  // the table waits out of sight until the wager is placed
+		bool                     g_hiddenUntilBet = false;
+		std::chrono::steady_clock::time_point g_shownAt{};  // the menu opened (the world blurs in)  // the table waits out of sight until the wager is placed
 		std::chrono::steady_clock::time_point g_openAt{};  // false: the menu is only a window (the dice shop)
 
 		// The table's placement this frame (in the inventory scene's camera space: y away from the camera, z up).
@@ -292,7 +299,15 @@ namespace Scene
 				return nullptr;
 			}
 			// each die and cup needs its own copy: the database hands out one shared node per file
-			return RE::NiPointer<RE::NiAVObject>(base->Clone());
+			RE::NiPointer<RE::NiAVObject> copy(base->Clone());
+			// the game's meshes carry physics bodies; ours are moved by hand
+			RE::BSVisit::TraverseScenegraphObjects(copy.get(), [](RE::NiAVObject* a_obj) {
+				if (a_obj) {
+					a_obj->collisionObject.reset();
+				}
+				return RE::BSVisit::BSVisitControl::kContinue;
+			});
+			return copy;
 		}
 
 		void FindCupPaths()
@@ -413,7 +428,7 @@ namespace Scene
 
 		RE::NiAVObject* TrayModel(RE::Inventory3DManager* a_mgr)
 		{
-			if (g_world) {
+			if (g_world || g_overlay) {
 				return g_worldTray.get();
 			}
 			auto& rt = a_mgr->GetRuntimeData();
@@ -430,6 +445,24 @@ namespace Scene
 
 		bool TryTeardown()
 		{
+			if (g_overlay) {
+				Render3D::Clear();
+				if (g_root && g_worldTray) {
+					if (auto* node = g_worldTray->AsNode()) {
+						node->DetachChild2(g_root.get());
+					}
+				}
+				if (g_ovRoot && g_worldTray) {
+					g_ovRoot->DetachChild2(g_worldTray.get());
+				}
+				g_worldTray.reset();
+				g_ovRoot.reset();
+				g_scene = false;
+				g_model = nullptr;
+				g_overlay = false;
+				spdlog::info("Table put away");
+				return true;
+			}
 			if (g_world) {
 				if (g_root && g_worldTray) {
 					if (auto* node = g_worldTray->AsNode()) {
@@ -476,7 +509,7 @@ namespace Scene
 				m->menuFlags.set(Flag::kDisablePauseMenu, Flag::kUsesMenuContext, Flag::kCustomRendering, Flag::kRequiresUpdate);
 				// Paused, the world stops drawing new things; the table (in the world) needs it running. Your controls are
 				// held by the table either way, and the opponent stays in their seat.
-				if (Config::Get().pauseGame || Config::Get().mode == 1) {
+				if (Config::Get().pauseGame || Config::Get().mode != 2) {
 					m->menuFlags.set(Flag::kPausesGame);
 				}
 				m->depthPriority = 10;
@@ -535,10 +568,15 @@ namespace Scene
 				if (auto* subs = RE::SubtitleManager::GetSingleton()) {
 					subs->KillSubtitles();
 				}
+				g_shownAt = std::chrono::steady_clock::now();
 				if (!g_withTable) {
 					return;
 				}
 				if (Config::Get().mode == 0) {
+					OpenOverlay();
+					return;
+				}
+				if (Config::Get().mode == 2) {
 					OpenWorld();
 					return;
 				}
@@ -570,6 +608,7 @@ namespace Scene
 					return;
 				}
 				g_shown = false;
+				Render3D::Clear();
 				if (g_hidHud) {
 					g_hidHud = false;
 					if (auto* ui = RE::UI::GetSingleton()) {
@@ -613,6 +652,30 @@ namespace Scene
 				RE::NiUpdateData ud;
 				tray->Update(ud);
 				spdlog::info("Table: tray placed in the world");
+			}
+
+			// The table as the preview draws it: its own little scene, lit and drawn by us over the paused, blurred game.
+			static void OpenOverlay()
+			{
+				if (g_scene && !TryTeardown()) {
+					g_scene = false;
+				}
+				auto tray = Instance("SkyrimYacht\\Tray.nif");
+				if (!tray) {
+					spdlog::error("Table: couldn't load the tray mesh");
+					return;
+				}
+				g_overlay = true;
+				g_ovRoot = RE::NiPointer<RE::NiNode>(RE::NiNode::Create(1));
+				g_ovRoot->AttachChild(tray.get(), true);
+				g_worldTray = tray;
+				g_hiddenUntilBet = true;
+				g_openAt = std::chrono::steady_clock::now();
+				g_scene = true;
+				g_attached = false;
+				g_placed = false;
+				g_model = nullptr;
+				spdlog::info("Table: drawn by the mod over the game");
 			}
 
 			static inline bool g_failed = false;
@@ -710,14 +773,211 @@ namespace Scene
 		c->local.rotate = FromQuat(a_rot);
 	}
 
+	namespace
+	{
+		ID3D11ShaderResourceView* SrvOf(RE::NiSourceTexture* a_tex)
+		{
+			// the renderer's texture record is laid out as NiTexture::RendererData (texture, -, view)
+			auto* rt = a_tex ? reinterpret_cast<RE::NiTexture::RendererData*>(a_tex->rendererTexture) : nullptr;
+			return rt ? rt->resourceView : nullptr;
+		}
+		// A texture the material hasn't loaded yet: ask the game for it by path (and keep it)
+		ID3D11ShaderResourceView* SrvOfPath(const char* a_path)
+		{
+			if (!a_path || !*a_path) {
+				return nullptr;
+			}
+			auto it = g_texCache.find(a_path);
+			if (it == g_texCache.end()) {
+				RE::NiPointer<RE::NiTexture> tex;
+				RE::BSShaderManager::GetTexture(a_path, true, tex, false);
+				it = g_texCache.emplace(a_path, tex).first;
+			}
+			auto* src = it->second ? netimmerse_cast<RE::NiSourceTexture*>(it->second.get()) : nullptr;
+			return SrvOf(src);
+		}
+
+		bool Visible(RE::NiAVObject* a_obj)
+		{
+			for (auto* o = a_obj; o; o = o->parent) {
+				if (o->GetFlags().any(RE::NiAVObject::Flag::kHidden)) {
+					return false;
+				}
+			}
+			return true;
+		}
+
+		// Our camera, as the preview's: 38 degrees tall, looking down on the tray at the set tilt, far enough back to fit
+		// the tray and both cups across the set share of the screen.
+		void Camera(float a_reveal)
+		{
+			(void)a_reveal;
+			const auto& cfg = Config::Get();
+			const float aspect = g_screenW / (std::max)(1.0f, g_screenH);
+			const float vfov = 38.0f * 0.0174533f, th = std::tan(vfov * 0.5f);
+			const float needW = 2.0f * (12.65f + 0.8f + 3.6f + 1.9f + 3.0f), needD = 31.0f, zc = 1.8f;
+			const float fit = (std::max)(0.3f, cfg.fitWidth);
+			const float dist = (std::max)((needD * 0.5f) / th, (needW * 0.5f) / (th * aspect)) * 0.95f / fit;
+			const float tilt = std::clamp(cfg.tiltDeg, 15.0f, 89.0f) * 0.0174533f;
+			const float eye[3] = { 0.0f, -(std::cos(tilt) * dist + zc), std::sin(tilt) * dist };
+			const float at[3] = { 0.0f, -zc, 0.0f };
+			float f[3] = { at[0] - eye[0], at[1] - eye[1], at[2] - eye[2] };
+			const float fl = std::sqrt(f[0] * f[0] + f[1] * f[1] + f[2] * f[2]);
+			for (auto& v : f) {
+				v /= fl;
+			}
+			const float up[3] = { 0, 0, 1 };
+			float r[3] = { f[1] * up[2] - f[2] * up[1], f[2] * up[0] - f[0] * up[2], f[0] * up[1] - f[1] * up[0] };
+			const float rl = std::sqrt(r[0] * r[0] + r[1] * r[1] + r[2] * r[2]);
+			for (auto& v : r) {
+				v /= rl;
+			}
+			const float u[3] = { r[1] * f[2] - r[2] * f[1], r[2] * f[0] - r[0] * f[2], r[0] * f[1] - r[1] * f[0] };
+			auto dot = [](const float* a, const float* b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; };
+			const float view[16] = { r[0], r[1], r[2], -dot(r, eye), u[0], u[1], u[2], -dot(u, eye), -f[0], -f[1], -f[2], dot(f, eye), 0, 0, 0, 1 };
+			const float n = 0.5f, fa = 400.0f;
+			float proj[16] = { 1.0f / (th * aspect), 0, 0, 0, 0, 1.0f / th, 0, 0, 0, 0, fa / (n - fa), n * fa / (n - fa), 0, 0, -1, 0 };
+			// where its middle sits on screen (the preview draws it a little low, clear of the scorecards)
+			const float ox = (cfg.centerX - 0.5f) * 2.0f, oy = -(cfg.centerY - 0.5f) * 2.0f;
+			for (int k = 0; k < 4; ++k) {
+				proj[0 + k] += ox * proj[12 + k];
+				proj[4 + k] += oy * proj[12 + k];
+			}
+			for (int i = 0; i < 4; ++i) {
+				for (int j = 0; j < 4; ++j) {
+					float sum = 0;
+					for (int k = 0; k < 4; ++k) {
+						sum += proj[i * 4 + k] * view[k * 4 + j];
+					}
+					g_vp[i * 4 + j] = sum;
+				}
+			}
+			std::memcpy(g_camPos, eye, sizeof(eye));
+		}
+
+		void UpdateOverlay(float a_sinceShown)
+		{
+			if (auto* r = RE::BSGraphics::Renderer::GetSingleton()) {
+				const auto& win = r->data.renderWindows[0];
+				g_screenW = static_cast<float>(win.windowWidth > 0 ? win.windowWidth : 1920);
+				g_screenH = static_cast<float>(win.windowHeight > 0 ? win.windowHeight : 1080);
+			}
+			auto* model = g_worldTray.get();
+			if (!g_ovRoot || !model) {
+				return;
+			}
+			model->local = RE::NiTransform();
+			// it rises into place once the wager is placed
+			const float t = g_hiddenUntilBet ? 0.0f : std::clamp(std::chrono::duration<float>(std::chrono::steady_clock::now() - g_openAt).count() / 0.9f, 0.0f, 1.0f);
+			const float e = 1.0f - std::pow(1.0f - t, 3.0f);
+			g_ovRoot->local.translate = { 0.0f, 0.0f, -(1.0f - e) * 7.0f };
+			RE::NiUpdateData ud;
+			g_ovRoot->Update(ud);
+			Camera(e);
+			if (!g_placed) {
+				spdlog::info("Table: overlay camera at ({:.1f}, {:.1f}, {:.1f}) for {}x{}", g_camPos[0], g_camPos[1], g_camPos[2], g_screenW, g_screenH);
+			}
+			g_placed = true;
+
+			Render3D::Frame f;
+			f.show = true;
+			f.reveal = g_hiddenUntilBet ? 0.0f : e;
+			f.blur = std::clamp(a_sinceShown / 0.4f, 0.0f, 1.0f);
+			std::memcpy(f.viewProj, g_vp, sizeof(g_vp));
+			std::memcpy(f.camPos, g_camPos, sizeof(g_camPos));
+			int skipped = 0;
+			if (!g_hiddenUntilBet) {
+				RE::BSVisit::TraverseScenegraphGeometries(g_ovRoot.get(), [&](RE::BSGeometry* a_geo) {
+					auto* tri = a_geo ? a_geo->AsTriShape() : nullptr;
+					if (!tri || !Visible(a_geo)) {
+						return RE::BSVisit::BSVisitControl::kContinue;
+					}
+					auto&       gd = a_geo->GetGeometryRuntimeData();
+					auto*       rd = gd.rendererData;
+					auto*       prop = gd.properties[RE::BSGeometry::States::kEffect].get();
+					auto*       lit = prop ? netimmerse_cast<RE::BSLightingShaderProperty*>(prop) : nullptr;
+					auto*       mat = lit ? static_cast<RE::BSLightingShaderMaterialBase*>(lit->material) : nullptr;
+					if (!rd || !rd->vertexBuffer || !rd->indexBuffer || !mat) {
+						++skipped;
+						return RE::BSVisit::BSVisitControl::kContinue;
+					}
+					Render3D::Item it;
+					it.vb = rd->vertexBuffer;
+					it.ib = rd->indexBuffer;
+					it.desc = gd.vertexDesc.desc;
+					it.indexCount = static_cast<std::uint32_t>(tri->GetTrishapeRuntimeData().triangleCount) * 3;
+					const auto& w = a_geo->world;
+					for (int rr = 0; rr < 3; ++rr) {
+						for (int cc = 0; cc < 3; ++cc) {
+							it.rot[rr * 3 + cc] = w.rotate.entry[rr][cc];
+						}
+					}
+					it.pos[0] = w.translate.x;
+					it.pos[1] = w.translate.y;
+					it.pos[2] = w.translate.z;
+					it.scale = w.scale;
+					auto* set = mat->textureSet.get();
+					it.diffuse = SrvOf(mat->diffuseTexture.get());
+					if (!it.diffuse && set) {
+						it.diffuse = SrvOfPath(set->GetTexturePath(RE::BSTextureSet::Texture::kDiffuse));
+					}
+					it.normal = SrvOf(mat->normalTexture.get());
+					if (!it.normal && set) {
+						it.normal = SrvOfPath(set->GetTexturePath(RE::BSTextureSet::Texture::kNormal));
+					}
+					if (mat->GetFeature() == RE::BSShaderMaterial::Feature::kEnvironmentMap) {
+						auto* env = static_cast<RE::BSLightingShaderMaterialEnvmap*>(mat);
+						it.env = SrvOf(env->envTexture.get());
+						it.envMask = SrvOf(env->envMaskTexture.get());
+						it.envScale = env->envMapScale;
+					}
+					const bool specular = lit->flags.any(RE::BSShaderProperty::EShaderPropertyFlag::kSpecular);
+					it.specColor[0] = mat->specularColor.red;
+					it.specColor[1] = mat->specularColor.green;
+					it.specColor[2] = mat->specularColor.blue;
+					it.specScale = specular ? mat->specularColorScale : 0.0f;
+					it.gloss = mat->specularPower;
+					it.alpha = mat->materialAlpha;
+					if (auto* ap = gd.properties[RE::BSGeometry::States::kProperty].get()) {
+						if (auto* alpha = netimmerse_cast<RE::NiAlphaProperty*>(ap)) {
+							it.blend = alpha->GetAlphaBlending();
+							it.test = alpha->GetAlphaTesting();
+							it.alphaRef = alpha->alphaThreshold / 255.0f;
+						}
+					}
+					f.items.push_back(it);
+					return RE::BSVisit::BSVisitControl::kContinue;
+				});
+			}
+			static bool s_logged = false;
+			if (!s_logged && !f.items.empty()) {
+				s_logged = true;
+				int tex = 0;
+				for (const auto& it : f.items) {
+					tex += it.diffuse != nullptr;
+				}
+				spdlog::info("Table: {} meshes to draw ({} with their textures), {} skipped", f.items.size(), tex, skipped);
+			}
+			Render3D::Submit(std::move(f));
+		}
+	}
+
 	void Update()
 	{
+		const float sinceShown = std::chrono::duration<float>(std::chrono::steady_clock::now() - g_shownAt).count();
+		if (g_open && !g_withTable) {  // the dice shop: just the world blurred behind it
+			Render3D::Frame f;
+			f.show = true;
+			f.blur = std::clamp(sinceShown / 0.4f, 0.0f, 1.0f);
+			Render3D::Submit(std::move(f));
+			return;
+		}
 		auto* mgr = RE::Inventory3DManager::GetSingleton();
 		if (!mgr || !g_scene) {
 			return;
 		}
 		auto* model = TrayModel(mgr);
-		if (!model || (!g_world && model->worldBound.radius <= 0.0f)) {
+		if (!model || (!g_world && !g_overlay && model->worldBound.radius <= 0.0f)) {
 			return;
 		}
 		if (model != g_model) {
@@ -748,6 +1008,10 @@ namespace Scene
 		LoadCup(0);
 		LoadCup(1);
 
+		if (g_overlay) {
+			UpdateOverlay(sinceShown);
+			return;
+		}
 		// Place the table: tilted toward you, scaled to fit the screen, centred where the settings say.
 		if (g_world) {
 			if (auto* cam = RE::Main::WorldRootCamera()) {
@@ -848,6 +1112,18 @@ namespace Scene
 	{
 		if (!g_placed) {
 			return false;
+		}
+		if (g_overlay) {
+			const float x = static_cast<float>(a_p.x), y = static_cast<float>(a_p.y), z = static_cast<float>(a_p.z);
+			const float cx = g_vp[0] * x + g_vp[1] * y + g_vp[2] * z + g_vp[3];
+			const float cy = g_vp[4] * x + g_vp[5] * y + g_vp[6] * z + g_vp[7];
+			const float cw = g_vp[12] * x + g_vp[13] * y + g_vp[14] * z + g_vp[15];
+			if (cw <= 0.01f) {
+				return false;
+			}
+			a_sx = (cx / cw * 0.5f + 0.5f) * g_screenW;
+			a_sy = (0.5f - cy / cw * 0.5f) * g_screenH;
+			return std::isfinite(a_sx) && std::isfinite(a_sy);
 		}
 		const RE::NiPoint3 local{ static_cast<float>(a_p.x) * g_scale, static_cast<float>(a_p.y) * g_scale, static_cast<float>(a_p.z) * g_scale };
 		const RE::NiPoint3 w = Mul(g_rot, local) + g_pos;
