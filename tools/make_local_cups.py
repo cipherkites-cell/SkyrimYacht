@@ -26,7 +26,7 @@ CUPS = {
     "tankard": {"nif": "basictankard01", "floor": 2.9, "top": 12.1, "inner": 4.32, "room": 1.22,
                 "map": "diningset01", "normal": "diningset01_n", "metalness": 0.3, "roughness": 0.5},
     "dwemer": {"nif": "dwecup01", "floor": 0.8, "top": 10.4, "inner": 4.36, "room": 1.22,
-               "map": "dwemetalsheet01small", "normal": "dwemetalsheet01small_n", "metalness": 0.45, "roughness": 0.5},
+               "map": "dwemetalsheet01", "normal": "dwemetalsheet01_n", "metalness": 0.45, "roughness": 0.5},
     "goblet": {"nif": "glazedgoblet01", "floor": 6.6, "top": 15.0, "inner": 4.6, "room": 1.1,
                "map": "glazedpottery01", "normal": "glazedpottery01_n", "metalness": 0.0, "roughness": 0.4},
     "silver": {"nif": "silvergoblet01", "floor": 7.8, "top": 19.3, "inner": 5.2, "room": 1.1,
@@ -51,15 +51,22 @@ def find(folder, stem, ext):
     return None
 
 
-def png_uri(path, size=1024):
+TEX_SIZE = 2048
+
+
+def png_uri(path, size=TEX_SIZE, normal=False):
+    """The texture at size x size (Lanczos; colour maps get a light sharpen), as a high-quality JPEG data URI."""
+    from PIL import ImageFilter
     im = Image.open(path)
     im.load()
-    im = im.convert("RGBA")
-    if max(im.size) > size:
+    im = im.convert("RGB")
+    if im.size != (size, size):
         im = im.resize((size, size), Image.LANCZOS)
+        if not normal:
+            im = im.filter(ImageFilter.UnsharpMask(radius=1.6, percent=55, threshold=2))
     buf = io.BytesIO()
-    im.save(buf, "PNG", optimize=True)
-    return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+    im.save(buf, "JPEG", quality=93, subsampling=0 if normal else 2, optimize=True)
+    return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
 
 
 def main(folder):
@@ -82,7 +89,7 @@ def main(folder):
             if key in c:
                 tex = find(folder, c[key], ".dds")
                 if tex:
-                    entry[key] = png_uri(tex)
+                    entry[key] = png_uri(tex, normal=key == "normal")
                 else:
                     print(f"{cid}: {c[key]}.dds not found, left out")
         if "shape_mats" in c:
@@ -93,7 +100,7 @@ def main(folder):
                     if key in m:
                         tex = find(folder, m[key], ".dds")
                         if tex:
-                            mm[key] = png_uri(tex)
+                            mm[key] = png_uri(tex, normal=key == "normal")
                 mats.append(mm)
             entry["mats"] = mats
         for s in entry["shapes"]:

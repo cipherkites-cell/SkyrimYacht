@@ -967,7 +967,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   function resize() {
     const r = canvas.parentElement.getBoundingClientRect();
     // The HUD and panels are sized for 1080p and scale with the window, so every screen keeps the same proportions.
-    const ui = Math.max(0.5, Math.min(r.width / 1920, r.height / 1080) * 0.94);
+    const ui = Math.max(0.45, Math.min(r.width / 1920, r.height / 1080) * 0.83);
     document.documentElement.style.setProperty("--ui", ui.toFixed(3));
     renderer.setSize(r.width, r.height, false);
     camera.aspect = r.width / Math.max(1, r.height);
