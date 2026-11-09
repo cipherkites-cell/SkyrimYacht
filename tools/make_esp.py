@@ -32,6 +32,7 @@ for _k, (_name, _gold) in enumerate(DICE):
     IDS[f"Dice{_name}"] = 0x80D + _k
 # Shops only show the goods their buy/sell list names: the DLL adds this keyword to the innkeepers' lists
 IDS["VendorItemDice"] = 0x80D + len(DICE)
+VENDOR_CLUTTER = 0x000914E9  # Skyrim.esm VendorItemClutter (the inventory lists them as clutter)
 INNKEEPER = 0x0005091B  # Skyrim.esm JobInnkeeperFaction
 MIN_BET = 25
 
@@ -116,8 +117,8 @@ def main():
     misc = tray
     for name, gold in DICE:
         misc += rec("MISC", f"Dice{name}", sub("EDID", zstr(f"YA_Dice{name}")) + sub("OBND", struct.pack("<6h", -1, -1, -1, 1, 1, 1)) +
-                    sub("FULL", zstr(f"{name} Dice")) + sub("MODL", zstr(f"SkyrimYacht\\Die_{name.lower()}.nif")) +
-                    sub("KSIZ", u32(1)) + sub("KWDA", u32(fid("VendorItemDice"))) + sub("DATA", i32(gold) + f32(0.5)))
+                    sub("FULL", zstr(f"{name} Dice")) + sub("MODL", zstr(f"SkyrimYacht\\DiceSet_{name.lower()}.nif")) +
+                    sub("KSIZ", u32(2)) + sub("KWDA", u32(fid("VendorItemDice")) + u32(VENDOR_CLUTTER)) + sub("DATA", i32(gold) + f32(0.5)))
     kywd = rec("KYWD", "VendorItemDice", sub("EDID", zstr("YA_VendorItemDice")))
 
     body = (group("KYWD", kywd) + group("GLOB", glob) + group("FACT", faction) + group("MISC", misc) + group("DIAL", dial) +
