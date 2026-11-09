@@ -151,11 +151,11 @@ FSOut VSFull(uint id : SV_VertexID)
 	return o;
 }
 SamplerState smpClamp : register(s2);
-cbuffer Pass : register(b2) { float4 pass; };  // xy texel, z amount, w direction/strength
+cbuffer PassCB : register(b2) { float4 passArgs; };  // xy texel, z amount, w direction/strength
 
 float4 PSDown(FSOut i) : SV_Target
 {
-	float2 t = pass.xy;
+	float2 t = passArgs.xy;
 	float3 c = texDiffuse.Sample(smpClamp, i.uv + t * float2(-1, -1)).rgb + texDiffuse.Sample(smpClamp, i.uv + t * float2(1, -1)).rgb +
 	           texDiffuse.Sample(smpClamp, i.uv + t * float2(-1, 1)).rgb + texDiffuse.Sample(smpClamp, i.uv + t * float2(1, 1)).rgb;
 	return float4(c * 0.25, 1);
@@ -163,7 +163,7 @@ float4 PSDown(FSOut i) : SV_Target
 float4 PSBlur(FSOut i) : SV_Target
 {
 	const float w[5] = { 0.227027, 0.1945946, 0.1216216, 0.054054, 0.016216 };
-	float2 d = pass.w > 0.5 ? float2(0, pass.y) : float2(pass.x, 0);
+	float2 d = passArgs.w > 0.5 ? float2(0, passArgs.y) : float2(passArgs.x, 0);
 	float3 c = texDiffuse.Sample(smpClamp, i.uv).rgb * w[0];
 	[unroll] for (int k = 1; k < 5; k++)
 		c += (texDiffuse.Sample(smpClamp, i.uv + d * k * 1.6).rgb + texDiffuse.Sample(smpClamp, i.uv - d * k * 1.6).rgb) * w[k];
@@ -175,7 +175,7 @@ float4 PSBack(FSOut i) : SV_Target
 	float3 c = texDiffuse.Sample(smpClamp, i.uv).rgb;
 	float  l = dot(c, float3(0.299, 0.587, 0.114));
 	c = lerp(float3(l, l, l), c, 0.72) * 0.62;
-	return float4(c, pass.z);
+	return float4(c, passArgs.z);
 }
 float3 ACES(float3 c)
 {
@@ -192,9 +192,9 @@ float4 PSComposite(FSOut i) : SV_Target
 	float4 c = texDiffuse.Sample(smpClamp, i.uv);
 	if (c.a <= 0.0001) return 0;
 	float3 rgb = c.rgb / c.a;
-	rgb = ACES(rgb * pass.w / 0.6);
+	rgb = ACES(rgb * passArgs.w / 0.6);
 	rgb = pow(rgb, 1 / 2.2);
-	float a = c.a * pass.z;
+	float a = c.a * passArgs.z;
 	return float4(rgb * a, a);
 }
 )";
