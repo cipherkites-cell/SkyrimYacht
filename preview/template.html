@@ -104,7 +104,7 @@ canvas#view.over-die { cursor: pointer; }
 .cols { display: grid; grid-template-columns: 1fr 1fr; column-gap: 18px; }
 .col { min-width: 0; }
 .dock {
-  position: absolute; left: max(14px, env(safe-area-inset-left, 0px)); bottom: 14px; width: min(270px, calc(100% - 28px));
+  position: absolute; left: max(14px, env(safe-area-inset-left, 0px)); bottom: 14px; width: min(336px, calc(100% - 28px));
   padding: 10px 12px 10px;
 }
 .help.panel {
@@ -326,13 +326,14 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   candle.position.set(17, 9, -3);
   scene.add(candle);
 
+  const maxAniso = Math.min(16, renderer.capabilities.getMaxAnisotropy() || 8);
   function canvasTex(w, h, draw, repeat, srgb) {
     const c = document.createElement("canvas");
     c.width = w; c.height = h;
     draw(c.getContext("2d"), w, h);
     const t = new THREE.CanvasTexture(c);
     if (srgb !== false) t.encoding = THREE.sRGBEncoding;
-    t.anisotropy = 8;
+    t.anisotropy = maxAniso;
     if (repeat) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(repeat[0], repeat[1]); }
     return t;
   }
@@ -373,7 +374,11 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   const lerp = (a, b, t) => a + (b - a) * t;
   const mixRGB = (c1, c2, t) => [lerp(c1[0], c2[0], t), lerp(c1[1], c2[1], t), lerp(c1[2], c2[2], t)];
   // Draws a texture and its bump map together from one height/colour function.
-  function texPair(w, h, fn, repeat) {
+  // fn is called in design units (0..w, 0..h); the texture itself is TEX_SCALE times that, for crisper detail.
+  const TEX_SCALE = 2;
+  function texPair(w0, h0, fn0, repeat, scale) {
+    const sc = scale || TEX_SCALE, w = Math.round(w0 * sc), h = Math.round(h0 * sc);
+    const fn = (x, y) => fn0(x / sc, y / sc);
     const cv = document.createElement("canvas"), bv = document.createElement("canvas");
     cv.width = bv.width = w; cv.height = bv.height = h;
     const cg = cv.getContext("2d"), bg = bv.getContext("2d");
@@ -389,7 +394,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     const wrap = (c, srgb) => {
       const t = new THREE.CanvasTexture(c);
       if (srgb) t.encoding = THREE.sRGBEncoding;
-      t.anisotropy = 8;
+      t.anisotropy = maxAniso;
       if (repeat) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(repeat[0], repeat[1]); }
       return t;
     };
@@ -465,7 +470,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
       const stain = N.fbm(x / 120 + 9, y / 120, 3);
       if (stain > 0.68) col = mixRGB(col, [128, 104, 72], (stain - 0.68) * 1.6);
       return [col, height];
-    });
+    }, undefined, 1.5);
   }
 
   // Blackened iron with dull rust patches.
@@ -727,7 +732,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
       if (emit > 0) anyGlow = true;
       if (met > 0) anyMetal = true;
       return [col, height];
-    });
+    }, undefined, 1);
     if (style === "stalhrim") for (let i = 0; i < gi.data.length; i += 4) { gi.data[i] = gi.data[i] * 0.3; gi.data[i + 1] = gi.data[i] * 2; gi.data[i + 2] = gi.data[i] * 3.3; }
     gctx.putImageData(gi, 0, 0); mctx.putImageData(mi, 0, 0);
     t.glow = anyGlow ? new THREE.CanvasTexture(glow) : null;
@@ -751,7 +756,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     if (diceMatCache[style]) return diceMatCache[style];
     const look = DICE_LOOK[style];
     return (diceMatCache[style] = [1, 6, 2, 5, 3, 4].map((n) => {
-      const t = diceFace(style, n, 256);
+      const t = diceFace(style, n, 512);
       const mat = new THREE.MeshStandardMaterial({ map: t.map, bumpMap: t.bump, bumpScale: look.bump, roughness: look.rough,
         metalness: t.metal ? look.metal : 0 });
       if (t.metal) mat.metalnessMap = t.metal;
@@ -830,7 +835,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     t.flipY = false;  // DirectX texture origin
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
     if (srgb) t.encoding = THREE.sRGBEncoding;
-    t.anisotropy = 4;
+    t.anisotropy = maxAniso;
     return t;
   }
   // The game's own cup, from a local build: its shapes, scaled so the inside radius matches the physics cup, with
@@ -962,7 +967,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   function resize() {
     const r = canvas.parentElement.getBoundingClientRect();
     // The HUD and panels are sized for 1080p and scale with the window, so every screen keeps the same proportions.
-    const ui = Math.max(0.55, Math.min(r.width / 1920, r.height / 1080) * 1.105);
+    const ui = Math.max(0.5, Math.min(r.width / 1920, r.height / 1080) * 0.94);
     document.documentElement.style.setProperty("--ui", ui.toFixed(3));
     renderer.setSize(r.width, r.height, false);
     camera.aspect = r.width / Math.max(1, r.height);

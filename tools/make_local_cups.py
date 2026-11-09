@@ -51,7 +51,7 @@ def find(folder, stem, ext):
     return None
 
 
-def png_uri(path, size=512):
+def png_uri(path, size=1024):
     im = Image.open(path)
     im.load()
     im = im.convert("RGBA")
