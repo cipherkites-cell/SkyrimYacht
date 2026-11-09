@@ -2141,6 +2141,8 @@ namespace Game
 			ImGui::End();
 		}
 
+		void MsgBox(ImDrawList* dl, ImVec2 a, ImVec2 b);
+
 		// The sound panel: three sliders (the music, the dice, the Thu'um) and a mute, hung over the Sound key. Saved to the
 		// INI when it closes.
 		void SoundMenu(float W, float H)
