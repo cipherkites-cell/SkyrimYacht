@@ -69,9 +69,9 @@ def rec(tag, name, payload, flags=0):
     return record(tag, fid(name), payload, flags)
 
 
-def info(name, edid, text, conds, flags):
+def info(name, edid, text, conds, flags, prev=None):
     # ENAM: flags u16 (0x1 Goodbye, 0x200 Force Subtitle) + reset hours u16
-    p = sub("EDID", zstr(edid)) + sub("ENAM", u16(flags) + u16(0)) + sub("PNAM", u32(0))
+    p = sub("EDID", zstr(edid)) + sub("ENAM", u16(flags) + u16(0)) + sub("PNAM", u32(fid(prev) if prev else 0))  # previous INFO in the topic
     trdt = u32(7) + u32(50) + u32(0) + u8(1) + b"\0\0\0" + u32(0) + u8(0) + b"\0\0\0"  # Neutral 50, response 1
     p += sub("TRDT", trdt) + sub("NAM1", zstr(text)) + sub("NAM2", zstr("")) + sub("NAM3", zstr(""))
     for c in conds:
@@ -93,7 +93,7 @@ def main():
     infos = (info("InfoPlay", "YA_InfoPlay", "Pull up a chair. Let's see your coin.",
                   seated + [ctda(GET_GLOBAL, 1.0, fid("CanAfford"))], 0x0201) +
              info("InfoPoor", "YA_InfoPoor", f"Come back when you've got the coin. {MIN_BET} septims, at least.",
-                  seated + [ctda(GET_GLOBAL, 0.0, fid("CanAfford"))], 0x0201))
+                  seated + [ctda(GET_GLOBAL, 0.0, fid("CanAfford"))], 0x0201, prev="InfoPlay"))
     dial = rec("DIAL", "TopicPlay", sub("EDID", zstr("YA_TopicPlay")) + sub("FULL", zstr("Care for a Yacht game?")) +
                sub("PNAM", f32(50.0)) + sub("BNAM", u32(fid("BranchPlay"))) + sub("QNAM", u32(fid("Quest"))) +
                sub("DATA", u8(0) + u8(0) + u16(0)) + sub("SNAM", b"CUST") + sub("TIFC", u32(2)))

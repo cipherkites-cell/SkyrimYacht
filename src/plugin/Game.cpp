@@ -1581,6 +1581,13 @@ namespace Game
 			spdlog::error("{} records missing (faction {}, global {}, info {:X}) - is the plugin enabled?", EspIds::kPlugin, g_faction != nullptr,
 				g_canAfford != nullptr, g_infoPlay);
 		}
+		{
+			auto* topic = dh->LookupForm<RE::TESTopic>(EspIds::kTopicPlay, EspIds::kPlugin);
+			auto* play = dh->LookupForm<RE::TESTopicInfo>(EspIds::kInfoPlay, EspIds::kPlugin);
+			auto* poor = dh->LookupForm<RE::TESTopicInfo>(EspIds::kInfoPoor, EspIds::kPlugin);
+			spdlog::info("Dialogue records: topic {}, responses loaded {}, play line {}, poor line {}", topic != nullptr,
+				topic ? topic->numTopicInfos : 0, play != nullptr, poor != nullptr);
+		}
 		if (auto* src = RE::ScriptEventSourceHolder::GetSingleton()) {
 			src->AddEventSink<RE::TESTopicInfoEvent>(&g_sinks);
 		}
