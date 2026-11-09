@@ -27,5 +27,6 @@ namespace EspIds
 	inline constexpr RE::FormID kDiceStalhrim = 0x818;
 	inline constexpr RE::FormID kDiceDragonbone = 0x819;
 	inline constexpr RE::FormID kDiceDaedric = 0x81A;
+	inline constexpr RE::FormID kVendorItemDice = 0x81B;
 	inline constexpr int kMinBet = 25;
 }

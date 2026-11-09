@@ -2752,6 +2752,9 @@ namespace Game
 				return;
 			}
 			std::set<RE::TESObjectCONT*> chests;
+			std::set<RE::BGSListForm*>   lists;
+			int                          everything = 0;
+			auto* kw = RE::TESDataHandler::GetSingleton()->LookupForm<RE::BGSKeyword>(EspIds::kVendorItemDice, EspIds::kPlugin);
 			for (auto* npc : RE::TESDataHandler::GetSingleton()->GetFormArray<RE::TESNPC>()) {
 				if (!npc) {
 					continue;
@@ -2765,6 +2768,15 @@ namespace Game
 				}
 				for (const auto& fr : npc->factions) {
 					auto* ref = fr.faction && fr.faction->IsVendor() ? fr.faction->vendorData.merchantContainer : nullptr;
+					// a shop only shows what its buy/sell list names: add the dice's keyword to it
+					if (ref) {
+						const auto& vd = fr.faction->vendorData;
+						if (vd.vendorSellBuyList && !vd.vendorValues.notBuySell) {
+							lists.insert(vd.vendorSellBuyList);
+						} else if (!vd.vendorSellBuyList) {
+							++everything;
+						}
+					}
 					auto* base = ref ? ref->GetBaseObject() : nullptr;
 					if (auto* cont = base ? base->As<RE::TESObjectCONT>() : nullptr) {
 						chests.insert(cont);
@@ -2778,7 +2790,15 @@ namespace Game
 					}
 				}
 			}
-			spdlog::info("Dice: in {} innkeepers' shop chests", chests.size());
+			int added = 0;
+			for (auto* list : lists) {
+				if (kw && !list->HasForm(kw)) {
+					list->AddForm(kw);
+					++added;
+				}
+			}
+			spdlog::info("Dice: in {} innkeepers' shop chests; their keyword added to {} buy/sell lists ({} shops deal in anything)",
+				chests.size(), added, everything);
 		}
 
 		// The sets not on sale yet (wins) or already yours come out of the shop as it opens

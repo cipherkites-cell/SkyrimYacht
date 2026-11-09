@@ -30,6 +30,8 @@ DICE = [("Iron", 50), ("Steel", 100), ("Corundum", 150), ("Dwemer", 200), ("Oric
         ("Dragonbone", 1500), ("Daedric", 2500)]
 for _k, (_name, _gold) in enumerate(DICE):
     IDS[f"Dice{_name}"] = 0x80D + _k
+# Shops only show the goods their buy/sell list names: the DLL adds this keyword to the innkeepers' lists
+IDS["VendorItemDice"] = 0x80D + len(DICE)
 INNKEEPER = 0x0005091B  # Skyrim.esm JobInnkeeperFaction
 MIN_BET = 25
 
@@ -115,11 +117,12 @@ def main():
     for name, gold in DICE:
         misc += rec("MISC", f"Dice{name}", sub("EDID", zstr(f"YA_Dice{name}")) + sub("OBND", struct.pack("<6h", -1, -1, -1, 1, 1, 1)) +
                     sub("FULL", zstr(f"{name} Dice")) + sub("MODL", zstr(f"SkyrimYacht\\Die_{name.lower()}.nif")) +
-                    sub("DATA", i32(gold) + f32(0.5)))
+                    sub("KSIZ", u32(1)) + sub("KWDA", u32(fid("VendorItemDice"))) + sub("DATA", i32(gold) + f32(0.5)))
+    kywd = rec("KYWD", "VendorItemDice", sub("EDID", zstr("YA_VendorItemDice")))
 
-    body = (group("GLOB", glob) + group("FACT", faction) + group("MISC", misc) + group("DIAL", dial) +
+    body = (group("KYWD", kywd) + group("GLOB", glob) + group("FACT", faction) + group("MISC", misc) + group("DIAL", dial) +
             group("QUST", quest) + group("DLBR", branch))
-    groups = 6
+    groups = 7
     hedr = struct.pack("<fiI", 1.70, COUNT + groups, max(IDS.values()) + 1)
     tes4 = (sub("HEDR", hedr) + sub("CNAM", zstr("evodube")) +
             sub("SNAM", zstr("Yacht - a dice game you play with seated NPCs (needs SkyrimYacht.dll)")) +
