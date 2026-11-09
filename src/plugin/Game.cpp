@@ -1588,9 +1588,6 @@ namespace Game
 			spdlog::info("Dialogue records: topic {}, responses loaded {}, play line {}, poor line {}", topic != nullptr,
 				topic ? topic->numTopicInfos : 0, play != nullptr, poor != nullptr);
 		}
-		if (auto* src = RE::ScriptEventSourceHolder::GetSingleton()) {
-			src->AddEventSink<RE::TESTopicInfoEvent>(&g_sinks);
-		}
 		Scene::Register();
 	}
 
@@ -1671,9 +1668,22 @@ namespace Game
 		if (!ui) {
 			return;
 		}
-		// the opponent said yes: open the table once the conversation has closed
+		// the opponent said yes ("Pull up a chair..."): note who, while the line is being spoken
+		if (ui->IsMenuOpen(RE::DialogueMenu::MENU_NAME)) {
+			auto* mtm = RE::MenuTopicManager::GetSingleton();
+			auto* info = mtm ? mtm->currentTopicInfo : nullptr;
+			if (info && g_infoPlay && info->GetFormID() == g_infoPlay && !g_pendingSpeaker.load()) {
+				auto ref = mtm->speaker.get();
+				if (ref) {
+					g_pendingSpeaker = ref->GetFormID();
+					spdlog::info("{} agreed to a game", ref->GetDisplayFullName());
+				}
+			}
+		}
+		// ...and open the table once the conversation has closed
 		if (const auto id = g_pendingSpeaker.load(); id && !ui->IsMenuOpen(RE::DialogueMenu::MENU_NAME)) {
 			g_pendingSpeaker = 0;
+			spdlog::info("Opening the table");
 			std::lock_guard lk(g_mtx);
 			StartWith(RE::TESForm::LookupByID<RE::Actor>(id));
 		}
