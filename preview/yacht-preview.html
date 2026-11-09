@@ -1265,32 +1265,32 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     set = [];
     for (let v = 0; v < 5; v++) {
       let modes, click, tone;
-      if (surf === "die") { modes = [...dm, ...scaled(dm, 0.85, 1.09)]; click = 3.2; tone = 0.85; }
-      else if (surf === "felt") { modes = [...LINEN_MODES, ...scaled(dm, 0.3)]; click = 1.4; tone = 0.18; }
-      else if (surf === "wall") { modes = [...TRAY_MODES, ...scaled(dm, 0.6)]; click = 2.2; tone = 0.5; }
-      else { modes = [...CUP_MODES[cupMat], ...scaled(dm, 0.55)]; click = 2.0; tone = 0.45; }
+      if (surf === "die") { modes = [...dm, ...scaled(dm, 0.85, 1.09)]; click = 1.6; tone = 0.6; }
+      else if (surf === "felt") { modes = [...LINEN_MODES, ...scaled(dm, 0.3)]; click = 0.8; tone = 0.15; }
+      else if (surf === "wall") { modes = [...TRAY_MODES, ...scaled(dm, 0.6)]; click = 1.2; tone = 0.4; }
+      else { modes = [...CUP_MODES[cupMat], ...scaled(dm, 0.55)]; click = 1.1; tone = 0.35; }
       set.push(strike(modes, ringLen(modes), click, tone));
     }
     bufCache.set(key, set);
     return set;
   }
-  const SURF = ["die", "felt", "wall", "cup"], SURF_GAIN = [0.5, 0.75, 0.8, 0.6];
+  const SURF = ["die", "felt", "wall", "cup"], SURF_GAIN = [0.26, 0.4, 0.38, 0.32];
   const lastHit = new Float64Array(24).fill(-1);
   const activeCupId = () => (turn === "npc" ? "tankard" : ranks.selected);
   // type: 0 die-die, 1 linen, 2 tray wall, 3 cup. die: which die (for its pitch and where it is), or -1.
   function hit(type, speed, die) {
     if (!audio || !soundOn || voices > 28) return;
-    const v = Math.min(1, Math.max(0, (speed - 3) / 95));
-    if (v < 0.015) return;
+    const v = Math.min(1, Math.max(0, (speed - 6) / 95));
+    if (v < 0.04) return;  // the little taps of a settling die stay silent
     const now = audio.currentTime;
-    if (die >= 0) { const k = die * 4 + type; if (now - lastHit[k] < 0.024) return; lastHit[k] = now; }
+    if (die >= 0) { const k = die * 4 + type; if (now - lastHit[k] < 0.05) return; lastHit[k] = now; }
     const set = hitSet(SURF[type], DIE_MAT[curDiceStyle] || "bone", CUP_MAT[activeCupId()] || "wood");
     const src = audio.createBufferSource();
     src.buffer = set[(Math.random() * set.length) | 0];
     src.playbackRate.value = (die >= 0 ? dieTune[die] : 1) * (1 + (Math.random() - 0.5) * 0.05);
     // Soft knocks are dark, hard ones bright.
-    const f = audio.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = 700 + 17000 * v * v; f.Q.value = 0.4;
-    const g = audio.createGain(); g.gain.value = Math.pow(v, 1.15) * SURF_GAIN[type];
+    const f = audio.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = 600 + 8000 * v * v; f.Q.value = 0.4;
+    const g = audio.createGain(); g.gain.value = Math.pow(v, 1.6) * SURF_GAIN[type];
     src.connect(f); f.connect(g);
     let out = g;
     if (audio.createStereoPanner) {
@@ -1321,7 +1321,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     }
     bedsPrimed = true;
     const on = soundOn ? 1 : 0, now = audio.currentTime;
-    rollGain.gain.setTargetAtTime(on * Math.min(0.16, rolling * 0.004), now, 0.04);
+    rollGain.gain.setTargetAtTime(on * Math.min(0.07, rolling * 0.002), now, 0.06);
   }
 
   // A swing of the cup through the air.
