@@ -47,6 +47,7 @@ canvas#view.over-die { cursor: pointer; }
   color: var(--brass); text-shadow: 0 2px 18px rgba(0, 0, 0, 0.8); pointer-events: none; opacity: 0; transition: opacity 0.25s, transform 0.6s;
 }
 .toast.show { opacity: 1; transform: translate(-50%, -70%); }
+.toast.long { font-family: var(--body); font-size: 20px; font-weight: 500; color: var(--parchment); text-align: center; max-width: 80%; }
 
 .icon-btn {
   font: inherit; font-size: 13px; color: var(--parchment); background: rgba(43, 32, 23, 0.85); border: 1px solid var(--oak-edge);
@@ -118,9 +119,9 @@ canvas#view.over-die { cursor: pointer; }
     <button class="newgame" id="newgame" type="button" hidden>New game</button>
     <div class="help">
       <b>Hold</b> the left button and <b>move</b> to pick up the cup and shake it; a click alone does nothing.
-      <b>Let go</b> and it throws the dice the way you last moved it. <b>Click</b> a die to set it on the rack (click
-      again to put it back). <b>Drag</b> a die to lift it and carry it into the cup for the next roll. After up to
-      three rolls, <b>pick a box</b> to score.
+      <b>Let go</b> to flick the dice out the way you last moved it. <b>Click</b> a die to set it on the rack (click
+      again to put it back). <b>Drag</b> a die to lift it and carry it into the cup for the next roll. The cup
+      stays put until the pad is clear. After up to three rolls, <b>pick a box</b> to score.
     </div>
   </aside>
 </div>
@@ -409,7 +410,9 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     updateUI();
   }
 
-  function canRoll() { return (phase === "ready" || phase === "choose") && rollsUsed < 3 && !carry && anyInCup(); }
+  // Dice still lying on the pad have to go back in the cup or onto the rack before the cup can be picked up.
+  function diceOnPad() { const st = state(); for (let i = 0; i < 5; i++) if (active(st, i) && !inCup(st, i)) return true; return false; }
+  function canRoll() { return (phase === "ready" || phase === "choose") && rollsUsed < 3 && !carry && anyInCup() && !diceOnPad(); }
 
   function beginShake() {
     if (!canRoll()) return false;
@@ -443,10 +446,11 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     const tipX = THREE.MathUtils.clamp(px + dx * reach, -S.X + 2.6, S.X - 2.6) - dx * reach;
     const tipY = THREE.MathUtils.clamp(py + dy * reach, -S.Yh + 2.6, S.Yh - 2.6) - dy * reach;
     const axis = new THREE.Vector3(-dy, dx, 0).normalize();
-    // Wind up behind the tip spot, then fling forward while tipping, so the dice leave the cup moving and tumble.
-    const windX = THREE.MathUtils.clamp(tipX - dx * 5, -S.X + 2, S.X - 2), windY = THREE.MathUtils.clamp(tipY - dy * 5, -S.Yh + 2, S.Yh - 2);
-    pour = { t: 0, wind: { x: windX, y: windY, z: 5.2 }, at: { x: tipX, y: tipY, z: 4.4 } };
-    tilt = { axis, angle: 0, vel: 0, lean0: cup.q.clone() };
+    // A flick of the wrist: the cup keeps the swing it had from shaking, gets a push the way it was going, and snaps
+    // over with a burst of spin. The spin is what throws the dice out.
+    pour = { t: 0, at: { x: tipX, y: tipY, z: SHAKE_Z - 0.4 } };
+    tilt = { axis, angle: 0, vel: 10, lean0: cup.q.clone() };
+    cup.vx += dx * 22; cup.vy += dy * 22;
     phase = "pouring";
     updateUI();
   }
@@ -513,6 +517,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   function toast(text) {
     const t = $("toast");
     t.textContent = text;
+    t.classList.toggle("long", text.length > 16);
     t.classList.add("show");
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => t.classList.remove("show"), 1300);
@@ -558,8 +563,9 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     else if (phase === "pouring" || phase === "rolling") hint.textContent = "Rolling…";
     else if (phase === "choose") {
       if (rollsUsed >= 3) hint.textContent = "Pick a box on the scorecard to score this roll.";
-      else if (anyInCup()) hint.textContent = "Shake the cup to roll what's in it. Dice on the rack or pad stay as they are.";
-      else hint.textContent = "Drag dice into the cup to roll them again. Click a die to put it on the rack.";
+      else if (diceOnPad()) hint.textContent = "Click dice to keep them on the rack, drag the rest into the cup.";
+      else if (anyInCup()) hint.textContent = "Shake the cup to roll what's in it.";
+      else hint.textContent = "All five kept. Pick a box to score, or drag dice into the cup.";
     } else hint.textContent = "Game over. Start a new game from the scorecard.";
   }
 
@@ -604,6 +610,10 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     }
     return best < Math.max(30, rad * 1.6);
   }
+  function carryHeight(x) {
+    const k = THREE.MathUtils.smoothstep(x, S.X - 3, REST.x - S.R);
+    return CARRY_Z + (REST.z + S.H + S.die * 1.4 - CARRY_Z) * k;
+  }
   function overRack() {
     const pt = onPlane(tablePlane);
     return pt && pt.y < -S.Yh - wallT * 0.5 && pt.y > rackY - 2 && Math.abs(pt.x) < 7.5;
@@ -629,7 +639,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
         return;
       }
     }
-    if (!canRoll()) return;
+    if (!((phase === "ready" || phase === "choose") && rollsUsed < 3)) return;
     press = { id: e.pointerId, x0: e.clientX, y0: e.clientY, kind: "cup", moved: false };
     canvas.setPointerCapture(e.pointerId);
   });
@@ -645,8 +655,9 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     if (press.kind === "cup") {
       if (!press.moved && dist > 10) {
         press.moved = true;
-        aimCup();
-        beginShake();
+        if (diceOnPad()) toast("Put the dice on the pad in the cup or on the rack first");
+        else if (!anyInCup()) toast("The cup is empty");
+        else { aimCup(); beginShake(); }
       }
       if (press.moved && phase === "shaking") aimCup();
       return;
@@ -666,8 +677,16 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
       hit(0, 18);
     }
     if (press.moved && carry) {
-      const pt = onPlane(carryPlane);
-      if (pt) { carry.x = pt.x; carry.y = pt.y; }
+      // Over the tray it's carried low; heading right towards the cup it climbs until it's above the rim.
+      // The height depends on where it is, so find the point under the pointer at that height (two passes).
+      let z = carry.z;
+      for (let pass = 0; pass < 2; pass++) {
+        const pt = onPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -z));
+        if (!pt) break;
+        carry.x = pt.x; carry.y = pt.y;
+        z = carryHeight(pt.x);
+      }
+      carry.z = z;
       setCupGlow(rollsUsed < 3 && overCup(e.clientX, e.clientY));
     }
   });
@@ -762,21 +781,17 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     } else if (phase === "pouring" && pour) {
       pour.t += dt;
       const p = pour.t;
-      if (p < 0.12) {
-        // Wind up: draw back with the mouth leaning away.
-        springCup(pour.wind.x, pour.wind.y, pour.wind.z, dt, 22, 0.7);
-        springTilt(-0.22, dt, 18, 0.6);
-      } else if (p < 0.85) {
-        // Fling forward and let it swing over loosely, overshooting and wobbling before it settles tipped.
-        springCup(pour.at.x, pour.at.y, pour.at.z, dt, 24, 0.45);
-        springTilt(THREE.MathUtils.degToRad(125), dt, 15, 0.42);
+      if (p < 0.9) {
+        // Loose: the cup drifts on with its momentum and the tip swings past and wobbles before it settles.
+        springCup(pour.at.x, pour.at.y, pour.at.z, dt, 10, 0.42);
+        springTilt(THREE.MathUtils.degToRad(120), dt, 11, 0.36);  // swings to about 160 degrees, then settles
       } else {
         pour = null;
         phase = "rolling";
         rollingTime = 0;
         updateUI();
       }
-      applyTilt(1 - Math.exp(-dt * 10));
+      applyTilt(1 - Math.exp(-dt * 6));
     } else {
       // Back to its spot beside the tray, where it stays still.
       springCup(REST.x, REST.y, REST.z, dt, 6, tilt ? 0.5 : 0.8);
