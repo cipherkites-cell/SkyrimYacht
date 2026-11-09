@@ -2756,25 +2756,6 @@ namespace Game
 				spdlog::info("Dice: {} keeps no shop chest", a_keeper->GetDisplayFullName());
 				return;
 			}
-			// The game restocks a shop (empties the chest and refills it from its lists) when you open it, if two days
-			// have passed since the last time: that would throw our dice out again. So do the restock here, as the
-			// game would, and mark it done, then add the dice.
-			{
-				int days = 2;
-				if (auto* gs = RE::GameSettingCollection::GetSingleton()) {
-					if (const auto it = gs->settings.find("iDaysToRespawnVendor"); it != gs->settings.end() && it->second) {
-						days = it->second->GetSInt();
-					}
-				}
-				const auto* cal = RE::Calendar::GetSingleton();
-				const auto  today = cal ? static_cast<std::uint32_t>(cal->GetDaysPassed()) : 0u;
-				auto&       last = vendor->vendorData.lastDayReset;
-				if (cal && (last == 0 || today >= last + static_cast<std::uint32_t>(days))) {
-					spdlog::info("Dice: restocking {}'s shop (last {}, today {})", a_keeper->GetDisplayFullName(), last, today);
-					chest->ResetInventory(false);
-					last = (std::max)(today, 1u);
-				}
-			}
 			auto counts = chest->GetInventoryCounts([](RE::TESBoundObject& a_obj) {
 				for (int k = 1; k < 15; ++k) {
 					if (g_diceItem[k] == &a_obj) {
@@ -3051,8 +3032,23 @@ namespace Game
 						}
 					}
 				}
-				spdlog::info("Shop opened: {} (chest {:08X}): {} dice sets in it, last restock day {}", a ? a->GetDisplayFullName() : "?",
-					chest ? chest->GetFormID() : 0, dice, vendor ? vendor->vendorData.lastDayReset : 0);
+				auto target = RE::BarterMenu::GetTargetRefHandle();
+				auto tref = RE::TESObjectREFR::LookupByHandle(target);
+				spdlog::info("Shop opened: {} (chest {:08X}, menu shows {:08X}): {} dice sets in it before ours", a ? a->GetDisplayFullName() : "?",
+					chest ? chest->GetFormID() : 0, tref ? tref->GetFormID() : 0, dice);
+				// The game restocks the chest as the shop opens (which throws out what we put in on the way), so put the
+				// dice in now, then have the menu read the chest again
+				if (a && g_innkeeper && a->IsInFaction(g_innkeeper)) {
+					StockDice(a);
+					SKSE::GetTaskInterface()->AddUITask([]() {
+						if (auto menu = RE::UI::GetSingleton()->GetMenu<RE::BarterMenu>()) {
+							if (auto* list = menu->GetRuntimeData().itemList) {
+								list->Update();
+								spdlog::info("Shop: list refreshed with the dice");
+							}
+						}
+					});
+				}
 			}
 			s_barter = barter;
 		}
