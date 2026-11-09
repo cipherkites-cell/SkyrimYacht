@@ -22,6 +22,8 @@ namespace Audio
 	void  SetRoll(float a_volume);              // the looped scuff of dice on the linen
 	void  StopAll();
 	void  SetMuted(bool a_muted);  // M on the table
+	void  SetMusic(bool a_on);      // the tavern music, while you're at the table (fades)
+	void  Tick(float a_dt);         // every frame: the music's fade and queue
 	bool  Muted();
 	double Now();                               // seconds, for spacing sounds out
 }

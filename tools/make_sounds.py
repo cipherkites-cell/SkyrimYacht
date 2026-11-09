@@ -184,6 +184,24 @@ def swoosh():
     write("swoosh", y * g * 0.9)
 
 
+def coins():
+    # a small handful of coins set down: a few bright, short metal clinks
+    out = np.zeros(int(0.5 * SR))
+    t0 = 0.0
+    for k in range(5):
+        n = int(0.12 * SR)
+        i = np.arange(n)
+        c = np.zeros(n)
+        for f0, dec, a in ((3150, 0.05, 1.0), (5230, 0.035, 0.6), (7820, 0.02, 0.35)):
+            f = f0 * (1 + (rng.random() - 0.5) * 0.08)
+            c += a * np.exp(-i / (dec * SR)) * np.sin(2 * np.pi * f * i / SR + rng.random() * 6.28)
+        c *= np.minimum(1, i / 24)
+        a0 = int(t0 * SR)
+        out[a0:a0 + n] += c[: len(out) - a0] * (0.9 - k * 0.12)
+        t0 += 0.045 + rng.random() * 0.05
+    write("coins", out / np.max(np.abs(out)) * 0.5)
+
+
 def roll():
     # the scuff bed: band-passed noise, looped seamlessly (crossfaded ends)
     x = noise(2.2)
@@ -209,6 +227,7 @@ def main():
     quill()
     swoosh()
     roll()
+    coins()
     if "--shout" in sys.argv:
         src = sys.argv[sys.argv.index("--shout") + 1]
         x = np.array(json.load(open(src)), dtype=np.float64)

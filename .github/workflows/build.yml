@@ -99,7 +99,7 @@ jobs:
           Set-Content -Path shader.hlsl -Value $m.Groups[1].Value
           $fxc = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Filter fxc.exe | Where-Object { $_.FullName -match 'x64' } | Select-Object -First 1
           $fail = 0
-          foreach ($e in @('VSMain:vs_5_0','VSShadow:vs_5_0','VSFull:vs_5_0','PSMain:ps_5_0','PSDown:ps_5_0','PSBlur:ps_5_0','PSBack:ps_5_0','PSComposite:ps_5_0')) {
+          foreach ($e in @('VSMain:vs_5_0','VSShadow:vs_5_0','VSFull:vs_5_0','PSMain:ps_5_0','PSDown:ps_5_0','PSBlur:ps_5_0','PSBack:ps_5_0','PSComposite:ps_5_0','PSShout:ps_5_0')) {
             $entry, $target = $e.Split(':')
             & $fxc.FullName /nologo /E $entry /T $target /Fo NUL shader.hlsl
             if ($LASTEXITCODE -ne 0) { Write-Output "::error::shader $entry failed"; $fail = 1 }
@@ -154,6 +154,8 @@ jobs:
           Copy-Item assets/fonts/* "$out/Data/SKSE/Plugins/SkyrimYacht/Fonts/"
           New-Item -ItemType Directory -Force -Path "$out/Data/SKSE/Plugins/SkyrimYacht/UI" | Out-Null
           Copy-Item assets/ui/*.rgba "$out/Data/SKSE/Plugins/SkyrimYacht/UI/"
+          New-Item -ItemType Directory -Force -Path "$out/Data/SKSE/Plugins/SkyrimYacht/Music" | Out-Null
+          Copy-Item assets/music/*.ogg "$out/Data/SKSE/Plugins/SkyrimYacht/Music/"
           Copy-Item SkyrimYacht.esp "$out/Data/"
           Copy-Item -Recurse assets/seq "$out/Data/Seq"
           Copy-Item -Recurse assets/meshes "$out/Data/meshes"

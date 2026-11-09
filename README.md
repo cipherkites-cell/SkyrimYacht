@@ -90,3 +90,9 @@ cups' `.nif` and `.dds` files into `local-assets/cups.js`. `LOCAL=1 ./preview/bu
 `preview/yacht-local.html`, which shows the real Tankard, Glazed Goblet, Dwemer Cup, Silver Goblet and Thieves Guild Golden Goblet. Both outputs
 hold Bethesda's assets, so they are git-ignored and never published; the plugin uses the vanilla meshes from the
 player's own game.
+
+## Credits
+
+- Tavern music: "The Old Tower Inn" and "Medieval Kings Feast" by RandomMind, CC0 (OpenGameArt.org).
+- Ogg decoding: stb_vorbis by Sean Barrett (public domain / MIT).
+- Settings page: SKSE Menu Framework header (MIT).

@@ -187,6 +187,35 @@ float3 ACES(float3 c)
 	c = mul(a / b, outM);
 	return saturate(c);
 }
+// The Shout: a cone of air bends the whole frame, fringed with colour and lit faintly blue at the wavefront (as the
+// preview's post pass). passArgs: x time 0..1, y aspect.
+float4 PSShout(FSOut i) : SV_Target
+{
+	const float T = passArgs.x, aspect = passArgs.y;
+	float2 vUv = float2(i.uv.x, 1 - i.uv.y);
+	float2 d = vUv - float2(0.5, -0.32);
+	d.x *= aspect;
+	float r = length(d);
+	float2 dir = d / max(r, 1e-4);
+	float ang = abs(atan2(d.x, d.y));
+	float cone = 1.0 - smoothstep(0.42, 0.9, ang);
+	float x = r - T * 2.0;
+	float band = exp(-x * x / 0.005) * cone;
+	float wake = (1.0 - smoothstep(-0.5, 0.0, x)) * smoothstep(-1.3, -0.35, x) * cone;
+	float fade = 1.0 - smoothstep(0.5, 1.0, T);
+	float ripple = sin(x * 75.0 - T * 45.0);
+	float amt = (band * 0.04 + wake * 0.007 * ripple) * fade;
+	float2 off = dir * amt;
+	off.x /= aspect;
+	off.y = -off.y;  // back to texture space (v down)
+	float3 col;
+	col.r = texDiffuse.Sample(smpClamp, i.uv - off).r;
+	col.g = texDiffuse.Sample(smpClamp, i.uv - off * 1.1).g;
+	col.b = texDiffuse.Sample(smpClamp, i.uv - off * 1.22).b;
+	col += float3(0.55, 0.72, 1.0) * band * 0.22 * fade;
+	col = lerp(col, col * float3(0.92, 0.97, 1.08) + 0.02, wake * fade * 0.6);
+	return float4(col, 1);
+}
 float4 PSComposite(FSOut i) : SV_Target
 {
 	float4 c = texDiffuse.Sample(smpClamp, i.uv);
@@ -243,6 +272,7 @@ float4 PSComposite(FSOut i) : SV_Target
 		ID3D11PixelShader*  g_psBlur = nullptr;
 		ID3D11PixelShader*  g_psBack = nullptr;
 		ID3D11PixelShader*  g_psComposite = nullptr;
+		ID3D11PixelShader*  g_psShout = nullptr;
 		std::vector<char>   g_vsCode;
 		ID3D11Buffer*       g_cbFrame = nullptr;
 		ID3D11Buffer*       g_cbObject = nullptr;
@@ -320,7 +350,7 @@ float4 PSComposite(FSOut i) : SV_Target
 				return ok;
 			};
 			if (!vs("VSMain", &g_vs, true) || !vs("VSShadow", &g_vsShadow, false) || !vs("VSFull", &g_vsFull, false) || !ps("PSMain", &g_ps) ||
-				!ps("PSDown", &g_psDown) || !ps("PSBlur", &g_psBlur) || !ps("PSBack", &g_psBack) || !ps("PSComposite", &g_psComposite)) {
+				!ps("PSDown", &g_psDown) || !ps("PSBlur", &g_psBlur) || !ps("PSBack", &g_psBack) || !ps("PSComposite", &g_psComposite) || !ps("PSShout", &g_psShout)) {
 				return false;
 			}
 			auto cb = [&](UINT size, ID3D11Buffer** out) {
@@ -938,6 +968,14 @@ float4 PSComposite(FSOut i) : SV_Target
 			c->OMSetDepthStencilState(g_dsOff, 0);
 			const float p[4] = { 0, 0, g_frame.reveal, 1.1f };
 			FullScreen(c, backRTV, g_w, g_h, g_psComposite, g_resolvedSRV, p, g_bsPremul);
+		}
+
+		// 6. the Shout bends the finished frame
+		if (g_frame.shout >= 0.0f && bdsc.SampleDesc.Count == 1) {
+			c->OMSetRenderTargets(0, nullptr, nullptr);
+			c->CopyResource(g_bg, back);
+			const float p[4] = { (std::min)(1.0f, g_frame.shout), g_frame.aspect, 0, 0 };
+			FullScreen(c, backRTV, g_w, g_h, g_psShout, g_bgSRV, p, g_bsOpaque);
 		}
 
 		saved.Put(c);

@@ -42,6 +42,8 @@ namespace Render3D
 		float             camPos[3]{};
 		float             reveal = 0.0f;  // the table fading in (0..1)
 		float             blur = 0.0f;    // the world behind blurred and darkened (0..1)
+		float             shout = -1.0f;  // the Thu'um in the air: 0..1 across its flight, < 0 none
+		float             aspect = 1.0f;
 		bool              show = false;
 	};
 

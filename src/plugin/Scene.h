@@ -16,6 +16,7 @@ namespace Scene
 	void Close();
 	bool IsOpen();
 	bool Ready();
+	void ShoutFx();  // the Thu'um leaves the mouth: the air bends, the view punches and shakes
 	void Reveal();  // the wager is placed: the table rises into view  // the tray has loaded and the dice and cups are attached
 
 	void SetDie(int a_index, const yacht::Vec3& a_pos, const yacht::Quat& a_rot, bool a_visible);

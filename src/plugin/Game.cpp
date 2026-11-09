@@ -530,6 +530,7 @@ namespace Game
 			g_sim.SetActive(i, false);
 			g_kept[i] = true;
 			g_rackSlot[i] = FreeSlot();
+			Hit(2, 30, i, false, RackX(g_rackSlot[i] < 0 ? 2 : g_rackSlot[i]));  // set down on the rack
 		}
 		void PlaceOnPad(int i, double x, double y, bool a_drop)
 		{
@@ -538,6 +539,7 @@ namespace Game
 			g_rackSlot[i] = -1;
 			g_sim.PlaceDie(i, { Clamp(x, -kX + kHalf, kX - kHalf), Clamp(y, -kYh + kHalf, kYh - kHalf), kHalf + (a_drop ? 0.5 : 0.02) },
 				g_faces[i] ? g_faces[i] : 1);
+			Hit(1, 34, i, false, x);  // onto the linen
 		}
 		void PutInCup(int i)
 		{
@@ -545,6 +547,7 @@ namespace Game
 			g_kept[i] = false;
 			g_rackSlot[i] = -1;
 			g_sim.AddToCup(i);
+			Hit(3, 32, i, true, g_cups[0].p.x);  // into the cup
 		}
 		std::pair<double, double> FrontSpot(int i)
 		{
@@ -663,7 +666,7 @@ namespace Game
 					Player()->AddObjectToContainer(g_gold, nullptr, g_betHeld * 2, nullptr);
 				}
 				g_payoutText = fmt::format("You take {} septims", g_betHeld * 2);
-				Sound("ITMGoldUp");
+				Ui("coins", 0.9f);
 				if (g_totalWins % 10 == 0 && g_totalWins / 10 < 15) {
 					Toast(fmt::format("Innkeepers now sell {} dice", kDiceInfo[g_totalWins / 10].name));
 				}
@@ -883,6 +886,7 @@ namespace Game
 		// On "Dah", the blast: the dice are thrown back into the cup, the nearest first so it reads as a wave.
 		void ShoutBlast()
 		{
+			Scene::ShoutFx();
 			int order[5], n = 0;
 			for (int i = 0; i < 5; ++i) {
 				if (Active(i) && !InCup(i)) {
@@ -1160,7 +1164,7 @@ namespace Game
 						Player()->RemoveItem(g_gold, bet, RE::ITEM_REMOVE_REASON::kRemove, nullptr, nullptr);
 						g_bet = bet;
 						g_betHeld = bet;
-						Sound("ITMGoldDown");
+						Ui("coins", 0.7f);
 						spdlog::info("Wager {} against {}", bet, g_oppName);
 						Scene::Reveal();
 						NewGame();
@@ -1214,7 +1218,7 @@ namespace Game
 							break;
 						}
 						Player()->RemoveItem(g_gold, price, RE::ITEM_REMOVE_REASON::kRemove, nullptr, nullptr);
-						Sound("ITMGoldDown");
+						Ui("coins", 0.7f);
 						g_ownedDice |= 1u << arg;
 						g_diceSel = kDiceSets[arg];
 						Toast(fmt::format("{} dice: yours", kDiceInfo[arg].name));
@@ -1333,6 +1337,7 @@ namespace Game
 						g_sim.SetFrozen(i, false);
 					}
 					g_phase = g_rollsUsed == 0 ? Phase::Ready : Phase::Choose;
+					Hit(3, 30, -1, true, g_cups[0].p.x);
 				}
 			} else if (g_phase == Phase::Scored && g_turn == 0) {
 				g_scoredTime += dt;
@@ -2708,6 +2713,13 @@ namespace Game
 
 	void FrameTick()
 	{
+		{
+			static auto s_prev = std::chrono::steady_clock::now();
+			const auto  now = std::chrono::steady_clock::now();
+			Audio::Tick(std::clamp(std::chrono::duration<float>(now - s_prev).count(), 0.0f, 0.1f));
+			s_prev = now;
+			Audio::SetMusic(Scene::IsOpen());
+		}
 		Scene::TeardownTick();
 		QuestFixTick();
 		auto* ui = RE::UI::GetSingleton();

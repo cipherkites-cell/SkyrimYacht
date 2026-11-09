@@ -82,6 +82,34 @@ namespace Scene
 		bool                     g_withTable = true;
 		bool                     g_entering = false;  // still rising into place
 		bool                     g_hiddenUntilBet = false;
+		std::chrono::steady_clock::time_point g_shoutAt{};
+		bool                                  g_shoutOn = false;
+		float SinceShout() { return g_shoutOn ? std::chrono::duration<float>(std::chrono::steady_clock::now() - g_shoutAt).count() : -1.0f; }
+
+		// The game's own sounds (the fire, the bard, the wind) keep playing while it's paused: hush them at the table.
+		std::vector<std::pair<RE::BGSSoundCategory*, float>> g_hushed;
+		void HushGame(bool a_hush)
+		{
+			if (!a_hush) {
+				for (auto& [cat, vol] : g_hushed) {
+					cat->SetCategoryVolume(vol);
+				}
+				g_hushed.clear();
+				return;
+			}
+			if (!g_hushed.empty()) {
+				return;
+			}
+			if (auto* dh = RE::TESDataHandler::GetSingleton()) {
+				for (auto* cat : dh->GetFormArray<RE::BGSSoundCategory>()) {
+					if (cat && !cat->parentCategory) {
+						g_hushed.emplace_back(cat, cat->GetCategoryVolume());
+						cat->SetCategoryVolume(0.0f);
+					}
+				}
+			}
+			spdlog::info("Hushed {} of the game's sound categories", g_hushed.size());
+		}
 		std::chrono::steady_clock::time_point g_shownAt{};  // the menu opened (the world blurs in)  // the table waits out of sight until the wager is placed
 		std::chrono::steady_clock::time_point g_openAt{};  // false: the menu is only a window (the dice shop)
 
@@ -569,6 +597,7 @@ namespace Scene
 					subs->KillSubtitles();
 				}
 				g_shownAt = std::chrono::steady_clock::now();
+				HushGame(true);
 				if (!g_withTable) {
 					return;
 				}
@@ -608,6 +637,8 @@ namespace Scene
 					return;
 				}
 				g_shown = false;
+				g_shoutOn = false;
+				HushGame(false);
 				Render3D::Clear();
 				if (g_hidHud) {
 					g_hidHud = false;
@@ -725,6 +756,12 @@ namespace Scene
 	bool IsOpen() { return g_open; }
 	bool Ready() { return g_withTable && g_scene && g_attached && g_placed; }
 
+	void ShoutFx()
+	{
+		g_shoutAt = std::chrono::steady_clock::now();
+		g_shoutOn = true;
+	}
+
 	void Reveal()
 	{
 		if (!g_hiddenUntilBet) {
@@ -814,12 +851,23 @@ namespace Scene
 			(void)a_reveal;
 			const auto& cfg = Config::Get();
 			const float aspect = g_screenW / (std::max)(1.0f, g_screenH);
-			const float vfov = 38.0f * 0.0174533f, th = std::tan(vfov * 0.5f);
+			// the Shout's blast punches the lens wide for a moment and shakes the view (as the preview)
+			float kick = 0.0f, shake = 0.0f;
+			if (const float s = SinceShout(); s >= 0.0f) {
+				kick = s < 0.07f ? (s / 0.07f) * 3.2f : (s < 0.9f ? 3.2f * std::exp(-(s - 0.07f) * 7.0f) * std::cos((s - 0.07f) * 14.0f) : 0.0f);
+				const float st = (std::max)(0.0f, 0.55f - s);
+				shake = st * st * 1.1f;
+			}
+			const float vfov = (38.0f + kick) * 0.0174533f, th = std::tan(vfov * 0.5f);
 			const float needW = 2.0f * (12.65f + 0.8f + 3.6f + 1.9f + 3.0f), needD = 31.0f, zc = 1.8f;
 			const float fit = (std::max)(0.3f, cfg.fitWidth);
 			const float dist = (std::max)((needD * 0.5f) / th, (needW * 0.5f) / (th * aspect)) * 0.95f / fit;
 			const float tilt = std::clamp(cfg.tiltDeg, 15.0f, 89.0f) * 0.0174533f;
-			const float eye[3] = { 0.0f, -(std::cos(tilt) * dist + zc), std::sin(tilt) * dist };
+			float eye[3] = { 0.0f, -(std::cos(tilt) * dist + zc), std::sin(tilt) * dist };
+			if (shake > 0.0f) {
+				eye[0] += (static_cast<float>(std::rand()) / RAND_MAX - 0.5f) * shake;
+				eye[1] += (static_cast<float>(std::rand()) / RAND_MAX - 0.5f) * shake;
+			}
 			const float at[3] = { 0.0f, -zc, 0.0f };
 			float f[3] = { at[0] - eye[0], at[1] - eye[1], at[2] - eye[2] };
 			const float fl = std::sqrt(f[0] * f[0] + f[1] * f[1] + f[2] * f[2]);
@@ -883,6 +931,12 @@ namespace Scene
 			f.show = true;
 			f.reveal = g_hiddenUntilBet ? 0.0f : e;
 			f.blur = std::clamp(a_sinceShown / 0.4f, 0.0f, 1.0f);
+			if (const float s = SinceShout(); s >= 0.0f && s <= 1.05f) {
+				f.shout = s;
+			} else {
+				g_shoutOn = false;
+			}
+			f.aspect = g_screenW / (std::max)(1.0f, g_screenH);
 			std::memcpy(f.viewProj, g_vp, sizeof(g_vp));
 			std::memcpy(f.camPos, g_camPos, sizeof(g_camPos));
 			int skipped = 0;

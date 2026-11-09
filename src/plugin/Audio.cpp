@@ -10,13 +10,15 @@
 #include <xaudio2.h>
 #pragma pop_macro("_WIN32_WINNT")
 
+extern "C" int stb_vorbis_decode_filename(const char* filename, int* channels, int* sample_rate, short** output);
+
 namespace Audio
 {
 	namespace
 	{
 		constexpr UINT32 kRate = 48000;
 		constexpr int    kVoices = 24;
-		constexpr float  kMaster = 0.85f;  // the preview's master level
+		constexpr float  kMaster = 0.85f * 2.2f;  // the preview's master level, and its compressor's make-up (the browser's output is louder)
 
 		IXAudio2*                g_xa = nullptr;
 		IXAudio2MasteringVoice*  g_master = nullptr;
@@ -28,6 +30,20 @@ namespace Audio
 		std::atomic<bool>        g_muted = false;
 		std::mutex               g_mtx;
 		std::unordered_map<std::string, std::vector<std::int16_t>> g_bank;
+
+		// Tavern music: CC0 tracks (RandomMind, OpenGameArt), decoded once, played in turn while you're at the table
+		struct Track
+		{
+			std::string               name;
+			std::vector<std::int16_t> pcm;  // stereo, interleaved
+			int                       rate = 44100;
+		};
+		std::vector<Track>   g_tracks;
+		bool                 g_tracksTried = false;
+		IXAudio2SourceVoice* g_music = nullptr;
+		bool                 g_musicOn = false;
+		float                g_musicVol = 0.0f;
+		std::size_t          g_nextTrack = 0;
 
 		bool ReadWav(const std::filesystem::path& a_path, std::vector<std::int16_t>& a_out)
 		{
@@ -195,6 +211,7 @@ namespace Audio
 			return;
 		}
 		const float vol = g_muted ? 0.0f : a_voice.volume * kMaster * Config::Get().volume;
+
 		if (vol <= 0.0001f) {
 			return;
 		}
@@ -266,4 +283,98 @@ namespace Audio
 
 	void SetMuted(bool a_muted) { g_muted = a_muted; }
 	bool Muted() { return g_muted; }
+
+	namespace
+	{
+		void LoadTracks()
+		{
+			if (g_tracksTried) {
+				return;
+			}
+			g_tracksTried = true;
+			const std::filesystem::path dir = "Data\\SKSE\\Plugins\\SkyrimYacht\\Music";
+			std::error_code             ec;
+			for (const auto& e : std::filesystem::directory_iterator(dir, ec)) {
+				if (e.path().extension() != ".ogg") {
+					continue;
+				}
+				int    ch = 0, rate = 0;
+				short* out = nullptr;
+				const int frames = stb_vorbis_decode_filename(e.path().string().c_str(), &ch, &rate, &out);
+				if (frames <= 0 || !out || (ch != 1 && ch != 2)) {
+					std::free(out);
+					continue;
+				}
+				Track t;
+				t.name = e.path().stem().string();
+				t.rate = rate;
+				t.pcm.resize(static_cast<std::size_t>(frames) * 2);
+				for (int i = 0; i < frames; ++i) {
+					t.pcm[i * 2] = out[i * ch];
+					t.pcm[i * 2 + 1] = out[i * ch + (ch - 1)];
+				}
+				std::free(out);
+				g_tracks.push_back(std::move(t));
+			}
+			spdlog::info("Music: {} tracks", g_tracks.size());
+			if (g_tracks.empty() || !g_xa) {
+				return;
+			}
+			WAVEFORMATEX wf{};
+			wf.wFormatTag = WAVE_FORMAT_PCM;
+			wf.nChannels = 2;
+			wf.nSamplesPerSec = static_cast<DWORD>(g_tracks[0].rate);
+			wf.wBitsPerSample = 16;
+			wf.nBlockAlign = 4;
+			wf.nAvgBytesPerSec = wf.nSamplesPerSec * 4;
+			if (FAILED(g_xa->CreateSourceVoice(&g_music, &wf, 0, 2.0f))) {
+				g_music = nullptr;
+				return;
+			}
+			g_music->SetVolume(0.0f);
+			g_music->Start();
+		}
+	}
+
+	void SetMusic(bool a_on)
+	{
+		std::lock_guard lk(g_mtx);
+		if (!Init()) {
+			return;
+		}
+		if (a_on) {
+			LoadTracks();
+		}
+		g_musicOn = a_on;
+	}
+
+	void Tick(float a_dt)
+	{
+		std::lock_guard lk(g_mtx);
+		if (!g_ok || !g_music || g_tracks.empty()) {
+			return;
+		}
+		// keep a track queued behind the one playing, each in turn
+		XAUDIO2_VOICE_STATE st{};
+		g_music->GetState(&st, XAUDIO2_VOICE_NOSAMPLESPLAYED);
+		if (g_musicOn && st.BuffersQueued < 2) {
+			const auto& t = g_tracks[g_nextTrack % g_tracks.size()];
+			++g_nextTrack;
+			XAUDIO2_BUFFER buf{};
+			buf.AudioBytes = static_cast<UINT32>(t.pcm.size() * 2);
+			buf.pAudioData = reinterpret_cast<const BYTE*>(t.pcm.data());
+			buf.LoopCount = 1;  // each plays twice, then the next
+			g_music->SubmitSourceBuffer(&buf);
+		}
+		// a slow fade in as you sit down, and out as you leave
+		const float target = g_musicOn && !g_muted ? Config::Get().musicVolume : 0.0f;
+		const float speed = g_musicOn ? 0.5f : 1.2f;  // per second
+		g_musicVol += std::clamp(target - g_musicVol, -speed * a_dt, speed * a_dt);
+		g_music->SetVolume(g_musicVol);
+		if (!g_musicOn && g_musicVol <= 0.0001f && st.BuffersQueued > 0) {
+			g_music->Stop();
+			g_music->FlushSourceBuffers();
+			g_music->Start();
+		}
+	}
 }

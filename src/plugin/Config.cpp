@@ -61,6 +61,7 @@ namespace Config
 		put("Play", "UiScale", f(v.uiScale));
 		put("Play", "Volume", f(v.volume));
 		put("Play", "PauseGame", v.pauseGame ? "1" : "0");
+		put("Play", "MusicVolume", f(v.musicVolume));
 		put("Table", "Mode", std::to_string(v.mode));
 		put("Table", "Distance", f(v.distance));
 		put("Table", "Brightness", f(v.brightness));
@@ -92,6 +93,7 @@ namespace Config
 		v.uiScale = std::clamp(Float("Play", "UiScale", v.uiScale), 0.5f, 2.0f);
 		v.volume = std::clamp(Float("Play", "Volume", v.volume), 0.0f, 2.0f);
 		v.pauseGame = Bool("Play", "PauseGame", v.pauseGame);
+		v.musicVolume = std::clamp(Float("Play", "MusicVolume", v.musicVolume), 0.0f, 1.0f);
 		v.debugOverlay = Bool("Debug", "Overlay", v.debugOverlay);
 		v.logInput = Bool("Debug", "LogInput", v.logInput);
 		g_values = v;
