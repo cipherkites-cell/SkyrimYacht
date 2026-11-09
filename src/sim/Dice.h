@@ -22,16 +22,17 @@ namespace yacht
 		double dieMass{ 1.0 };
 		double gravity{ 686.0 };         // 9.81 m/s^2 in game units
 
-		double trayHalfX{ 11.0 };        // inside of the tray walls
-		double trayHalfY{ 7.5 };
+		double trayHalfX{ 12.65 };       // inside of the tray walls
+		double trayHalfY{ 8.6 };
 		double trayWallHeight{ 1.5 };    // walls stop dice below this; higher up only dice already over the tray
 		double trayWallThick{ 0.8 };
-		// Invisible walls that go up forever on these sides (left = -x, far = +y). The open sides are where the cup
-		// waits and where the player sits; a die thrown off the table there falls away.
+		// Invisible walls that go up forever on these sides (left = -x, far = +y). A side without one stops at the
+		// tray wall, and a die thrown over it falls off the table. Dice still inside the cup ignore the barriers: the
+		// cup carries them in over the wall.
 		bool barrierLeft{ true };
 		bool barrierFar{ true };
-		bool barrierRight{ false };
-		bool barrierNear{ false };
+		bool barrierRight{ true };
+		bool barrierNear{ true };
 
 		double dragSpeed{ 45.0 };        // fastest a die follows the player's hand when moved on the table
 

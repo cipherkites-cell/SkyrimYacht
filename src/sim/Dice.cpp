@@ -396,6 +396,7 @@ namespace yacht
 		const double Y = _spec.trayHalfY;
 		const double T = _spec.trayWallThick;
 		const bool   overTray = m::Abs(d.pos.x) < X && m::Abs(d.pos.y) < Y;
+		const bool   carried = InCup(a_index);
 
 		for (const auto& corner : kCorners) {
 			const Vec3 s = d.pos + d.rot.Rotate(Offset(corner, e));
@@ -422,7 +423,7 @@ namespace yacht
 				{ Y + s.y, { 0.0, 1.0, 0.0 }, _spec.barrierNear }
 			};
 			for (const auto& w : walls) {
-				if (!(w.barrier || overTray || s.z < _spec.trayWallHeight)) {
+				if (!((w.barrier && !carried) || overTray || s.z < _spec.trayWallHeight)) {
 					continue;
 				}
 				if (w.gap < r && w.gap > -T) {

@@ -16,6 +16,7 @@ every frame, so dice can't be flung off the table or wedge in level geometry.
   substeps. A die that settles leaning on another is nudged until it lies flat. Faces: +x 1, -x 6, +y 2, -y 5,
   +z 3, -z 4. `Drag` slides a die across the felt by hand without turning it over, shoving others aside.
 - **Cup:** inside wall, base, outside wall and underside; 1.9 units inside radius, 4 deep. While shaking, the player's palm covers the mouth (`SetLid`); releasing winds up and flings it forward while tipping, so the dice tumble out. `AddToCup` drops a die back in through the mouth.
+- **Table:** 25.3 x 17.2 inside, invisible walls on all four sides (dice in the cup pass over them; `barrierLeft` and friends can open a side, and `OffTable` reports a die that fell off).
 - **Keepers:** dice left on the pad are frozen (`SetFrozen`) while the rest roll, so a throw can't knock them over. Fairness is checked with a chi-square test over 400 throws.
   (`SetLid`), so dice can't jump out; tipping it pours them onto the tray.
 - **Scoring:** `src/sim/Yacht` has the thirteen boxes, the 35-point upper bonus at 63, 100-point bonuses for extra

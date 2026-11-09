@@ -395,24 +395,33 @@ namespace
 
 	void TestBarriers()
 	{
+		// Hard flicks straight at every wall from as close as the game lets the cup get: nothing leaves the table.
 		const DiceSpec s{};
-		int offLeft = 0, offFar = 0, offRight = 0, inFromOutside = 0;
+		const double   edge = s.cupRadius + s.cupWall + 0.4;
+		int            off = 0;
 		for (unsigned int seed = 1; seed <= 20; ++seed) {
-			// Hard flicks at the left and far walls from inside the tray: the invisible barriers hold everything.
-			const double edge = s.cupRadius + s.cupWall + 0.4;  // the closest the game lets the cup get to a barrier
-			offLeft += FlickFrom(seed, { -s.trayHalfX + edge + 1.5, 0.0, 5.6 }, { -1, 0, 0 }, 15.0);
-			offFar += FlickFrom(seed, { 0.0, s.trayHalfY - edge - 1.5, 5.6 }, { 0, 1, 0 }, 15.0);
-			// Flicked away from the table from outside the right edge: the dice fall off.
-			offRight += FlickFrom(seed, { s.trayHalfX + 4.0, 0.0, 5.6 }, { 1, 0, 0 }, 80.0);
-			// Flicked towards the tray from outside the right edge: they clear the wall and land on the pad.
-			inFromOutside += FlickFrom(seed, { s.trayHalfX + 3.0, 0.0, 6.0 }, { -1, 0, 0 }, 80.0) == 0 ? 1 : 0;
+			off += FlickFrom(seed, { -s.trayHalfX + edge + 1.5, 0.0, 5.6 }, { -1, 0, 0 }, 15.0);
+			off += FlickFrom(seed, { s.trayHalfX - edge - 1.5, 0.0, 5.6 }, { 1, 0, 0 }, 15.0);
+			off += FlickFrom(seed, { 0.0, s.trayHalfY - edge - 1.5, 5.6 }, { 0, 1, 0 }, 15.0);
+			off += FlickFrom(seed, { 0.0, -s.trayHalfY + edge + 1.5, 5.6 }, { 0, -1, 0 }, 15.0);
 		}
-		std::printf("barriers: off left %d, off far %d, off right %d/100, clean throws in from outside %d/20\n", offLeft, offFar, offRight,
-			inFromOutside);
-		Check(offLeft == 0, "nothing leaves over the left barrier");
-		Check(offFar == 0, "nothing leaves over the far barrier");
-		Check(offRight > 50, "dice thrown off the open side fall off the table");
-		Check(inFromOutside >= 18, "a throw from outside into the tray lands on the pad");
+		std::printf("barriers: %d of 400 dice off the table\n", off);
+		Check(off == 0, "the invisible walls hold every die");
+
+		// With a side left open, a die thrown over it falls off the table and is reported.
+		DiceSpec open{};
+		open.barrierRight = false;
+		DiceSim sim(open, 3);
+		sim.PlaceCup({ 30, 0, 6 }, {});
+		sim.PlaceDie(0, { open.trayHalfX - 1.0, 0.0, 3.0 }, 1);
+		for (int i = 0; i < 60; ++i) {
+			sim.Step(kFrame, sim.CupPos(), sim.CupRot());
+			if (i == 0) {
+				// Give it a shove over the open wall.
+				sim.PlaceDie(0, { open.trayHalfX + 2.0, 0.0, 3.0 }, 1);
+			}
+		}
+		Check(sim.OffTable(0), "a die past an open side falls off the table");
 	}
 
 	void TestSideTable()

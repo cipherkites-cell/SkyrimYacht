@@ -93,6 +93,19 @@ canvas#view.over-die { cursor: pointer; }
   margin-top: 14px; font: inherit; font-weight: 700; color: var(--soot); background: var(--brass); border: none; border-radius: 6px;
   padding: 9px 12px; cursor: pointer;
 }
+.ranks { margin-top: 14px; }
+.rank-line { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 2px 4px 6px; }
+.rank-name { font-family: var(--display); font-size: 20px; color: var(--brass); }
+.rank-next { font-size: 12px; color: var(--muted); text-align: right; }
+.cup-chips { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.cup-chip {
+  font: inherit; font-size: 13px; text-align: left; color: var(--parchment); background: rgba(0, 0, 0, 0.18);
+  border: 1px solid var(--oak-edge); border-radius: 6px; padding: 6px 8px; cursor: pointer; display: flex; flex-direction: column; gap: 1px;
+}
+.cup-chip small { font-size: 11px; color: var(--muted); letter-spacing: 0.04em; }
+.cup-chip[aria-pressed="true"] { border-color: var(--brass); background: rgba(202, 164, 87, 0.14); }
+.cup-chip:disabled { cursor: default; color: var(--muted); opacity: 0.7; }
+.cup-chip:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
 .help { margin-top: auto; padding-top: 14px; font-size: 13px; color: var(--muted); line-height: 1.5; }
 .help b { color: var(--parchment); font-weight: 500; }
 .loading { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 15px; }
@@ -129,11 +142,17 @@ canvas#view.over-die { cursor: pointer; }
     <div class="sub"><span>Upper bonus (35 at 63)</span><span id="upper">0 / 63</span></div>
     <div class="sub"><span>Yacht bonuses</span><span id="ybonus">0</span></div>
     <button class="newgame" id="newgame" type="button" hidden>New game</button>
+    <div class="ranks">
+      <div class="section-label">Rank</div>
+      <div class="rank-line"><span class="rank-name" id="rankName">Novice</span><span class="rank-next" id="rankNext"></span></div>
+      <div class="cup-chips" id="cupChips" role="group" aria-label="Choose a cup"></div>
+    </div>
     <div class="help">
       <b>Hold</b> the left button and <b>move</b> to pick up the cup and shake it. <b>Let go</b> to flick the dice out the
       way you last moved. A die that lands off the table means throw again.
       <b>Click</b> a die to keep it on the rack; <b>drag</b> one into the cup to roll it again. The cup waits until the
       pad is clear. <b>Fus Ro Dah</b> shouts the pad's dice back into the cup.
+      Finish games with higher scores to rank up and unlock better cups.
     </div>
   </aside>
 </div>
@@ -294,32 +313,108 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     dice.push(m);
   }
 
-  // ------------------------------------------------------------------ cup
-  const cupGroup = new THREE.Group();
-  const rimMat = brassMat.clone();
-  const cupParts = [];
+  // ------------------------------------------------------------------ cups
+  // A soft warm room for metal to reflect, so pewter, bronze and silver read as metal instead of black.
   {
-    const R = S.R, W = S.W, H = S.H;
-    const pts = [
-      [0.01, 0.0], [R, 0.0], [R, H - 0.08], [R + 0.02, H], [R + W * 0.5, H + 0.08], [R + W + 0.04, H],
-      [R + W + 0.02, H - 0.4], [R + W - 0.03, 0.3], [R + W + 0.05, 0.04], [R + W + 0.03, -W], [0.01, -W],
-    ].map(([x, y]) => new THREE.Vector2(x, y));
-    const geo = new THREE.LatheGeometry(pts, 48);
-    geo.rotateX(Math.PI / 2);
-    const leather = canvasTex(256, 128, (g, w, h) => {
-      noise(g, w, h, "#5a3320", 7, false);
-      g.fillStyle = "rgba(0,0,0,0.18)"; g.fillRect(0, h * 0.86, w, h * 0.14);
+    const env = canvasTex(256, 128, (g, w, h) => {
+      const grad = g.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, "#3a2c20"); grad.addColorStop(0.45, "#6b5038"); grad.addColorStop(0.55, "#4a3624"); grad.addColorStop(1, "#2a1e14");
+      g.fillStyle = grad; g.fillRect(0, 0, w, h);
+      for (const [x, y, r] of [[60, 30, 22], [190, 40, 16], [130, 22, 10]]) {
+        const sp = g.createRadialGradient(x, y, 0, x, y, r);
+        sp.addColorStop(0, "rgba(255,220,160,1)"); sp.addColorStop(1, "rgba(255,200,120,0)");
+        g.fillStyle = sp; g.fillRect(x - r, y - r, r * 2, r * 2);
+      }
     });
-    const cupMesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: leather, roughness: 0.82, side: THREE.DoubleSide }));
-    cupMesh.castShadow = cupMesh.receiveShadow = true;
-    cupGroup.add(cupMesh);
-    const rim = new THREE.Mesh(new THREE.TorusGeometry(R + W * 0.5, 0.08, 10, 48), rimMat);
-    rim.position.z = H + 0.04;
-    rim.castShadow = true;
-    cupGroup.add(rim);
-    cupParts.push(cupMesh, rim);
+    env.mapping = THREE.EquirectangularReflectionMapping;
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    scene.environment = pmrem.fromEquirectangular(env).texture;
   }
+
+  // The four cups, in rank order. Every cup has the same inside (radius S.R, depth S.H) so none rolls differently;
+  // only the outside changes. Shapes are drawn here in the spirit of the game's own tableware; in the mod the real
+  // vanilla meshes are used.
+  const CUPS = [
+    { id: "tankard", name: "Tankard", rank: "Novice", need: 0 },
+    { id: "dwemer", name: "Dwemer Cup", rank: "Apprentice", need: 150 },
+    { id: "goblet", name: "Goblet", rank: "Adept", need: 200 },
+    { id: "silver", name: "Silver Goblet", rank: "Expert", need: 250 },
+  ];
+  const cupGroup = new THREE.Group();
   world.add(cupGroup);
+  let glowMats = [];
+
+  function lathe(points, segments, mat, flat) {
+    const g = new THREE.LatheGeometry(points.map(([x, y]) => new THREE.Vector2(x, y)), segments);
+    g.rotateX(Math.PI / 2);
+    if (flat) g.computeVertexNormals();
+    const m = new THREE.Mesh(g, mat);
+    m.castShadow = m.receiveShadow = true;
+    return m;
+  }
+  function ring(radius, tube, z, mat, segs) {
+    const m = new THREE.Mesh(new THREE.TorusGeometry(radius, tube, 10, segs || 48), mat);
+    m.position.z = z;
+    m.castShadow = true;
+    return m;
+  }
+
+  function buildCup(id) {
+    while (cupGroup.children.length) cupGroup.remove(cupGroup.children[0]);
+    const R = S.R, W = S.W, H = S.H, O = R + W;
+    const metal = (color, rough, metalness) => new THREE.MeshStandardMaterial({ color, roughness: rough, metalness, side: THREE.DoubleSide });
+    let parts = [];
+
+    if (id === "tankard") {
+      // Pewter tankard: straight body, two raised bands, a flared foot and a handle.
+      const pewter = metal(0x9a968c, 0.42, 0.85);
+      parts.push(lathe([[0.01, 0], [R, 0], [R, H], [R + 0.1, H + 0.06], [O + 0.06, H - 0.02], [O + 0.02, H - 0.3], [O, 0.5],
+        [O + 0.08, 0.15], [O + 0.2, -W], [0.01, -W - 0.04]], 48, pewter));
+      parts.push(ring(O + 0.03, 0.09, H * 0.78, pewter), ring(O + 0.03, 0.09, H * 0.22, pewter));
+      const hg = new THREE.TorusGeometry(1.15, 0.16, 12, 24, Math.PI);
+      hg.rotateZ(-Math.PI / 2);
+      hg.rotateX(Math.PI / 2);
+      const handle = new THREE.Mesh(hg, pewter);
+      handle.position.set(O - 0.05, 0, H * 0.5);
+      handle.castShadow = true;
+      parts.push(handle);
+      glowMats = [pewter];
+    } else if (id === "dwemer") {
+      // Dwemer cup: bronze, eight-sided, stepped flare at the lip and a heavy foot ring.
+      const bronze = metal(0xb07a3c, 0.38, 0.9);
+      bronze.flatShading = true;
+      const k = 1 / Math.cos(Math.PI / 8);  // eight flat sides whose flats sit at the round inside radius
+      parts.push(lathe([[0.01, 0], [R * k, 0], [R * k, H], [R * k + 0.12, H + 0.08], [(O + 0.32) * k, H], [(O + 0.12) * k, H - 0.35],
+        [(O + 0.12) * k, H * 0.56], [(O + 0.26) * k, H * 0.5], [(O + 0.12) * k, H * 0.44], [O * k, 0.4], [(O + 0.34) * k, 0.12],
+        [(O + 0.34) * k, -W - 0.12], [0.01, -W - 0.12]], 8, bronze, true));
+      const dark = metal(0x6e4a24, 0.5, 0.9);
+      parts.push(ring((O + 0.2) * k, 0.07, H * 0.5, dark, 8));
+      glowMats = [bronze];
+    } else {
+      // Goblets: a straight bowl on a knotted stem and a wide foot. The silver one is brighter and more ornate.
+      const silver = id === "silver";
+      const mat = silver ? metal(0xf2f3f7, 0.26, 0.9) : metal(0x8c8070, 0.45, 0.8);
+      if (silver) mat.envMapIntensity = 1.8;
+      parts.push(lathe([[0.01, 0], [R, 0], [R, H], [R + 0.1, H + 0.06], [O + 0.08, H], [O + 0.02, H * 0.55], [O - 0.12, 0.35],
+        [1.35, -0.4], [0.55, -0.85], [0.34, -1.25], [0.55, -1.5], [0.34, -1.75], [0.3, -2.4], [1.15, -2.75], [1.55, -2.95],
+        [1.55, -3.08], [0.01, -3.08]], 48, mat));
+      if (silver) {
+        parts.push(ring(O + 0.07, 0.07, H - 0.25, mat), ring(O - 0.02, 0.05, H * 0.35, mat), ring(0.56, 0.08, -1.5, mat),
+          ring(1.5, 0.06, -2.98, mat));
+        const gemMat = new THREE.MeshStandardMaterial({ color: 0x6a1020, roughness: 0.15, metalness: 0.2, emissive: 0x200006 });
+        for (let g = 0; g < 4; g++) {
+          const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.16), gemMat);
+          const a = g * Math.PI / 2;
+          gem.position.set(Math.cos(a) * (O + 0.06), Math.sin(a) * (O + 0.06), H * 0.62);
+          parts.push(gem);
+        }
+      } else {
+        parts.push(ring(0.55, 0.07, -1.5, mat));
+      }
+      glowMats = [mat];
+    }
+    parts.forEach((m) => cupGroup.add(m));
+  }
 
   // ------------------------------------------------------------------ camera fit
   function resize() {
@@ -327,7 +422,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     renderer.setSize(r.width, r.height, false);
     camera.aspect = r.width / Math.max(1, r.height);
     // Keep the tray and the cup beside it in view at any aspect.
-    const needW = 42, needD = 29, cx = 3.6, zc = 1.6;
+    const needW = 48, needD = 33, cx = 4.1, zc = 1.8;
     const vFov = 38 * Math.PI / 180;
     const distForH = (needD / 2) / Math.tan(vFov / 2);
     const distForW = (needW / 2) / (Math.tan(vFov / 2) * camera.aspect);
@@ -454,9 +549,9 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     const len = Math.hypot(aim.x, aim.y) || 1;
     const dx = aim.x / len, dy = aim.y / len;
     const reach = S.H * 0.85;
-    // Wherever it is: off the table is allowed (that throw gets redone); only keep the mouth off the barrier sides.
-    const tipX = Math.max(cup.x + dx * reach, -S.X + 1.5) - dx * reach;
-    const tipY = Math.min(cup.y + dy * reach, S.Yh - 1.5) - dy * reach;
+    const px = THREE.MathUtils.clamp(cup.x, -S.X + 2, S.X - 2), py = THREE.MathUtils.clamp(cup.y, -S.Yh + 2, S.Yh - 2);
+    const tipX = THREE.MathUtils.clamp(px + dx * reach, -S.X + 2.6, S.X - 2.6) - dx * reach;
+    const tipY = THREE.MathUtils.clamp(py + dy * reach, -S.Yh + 2.6, S.Yh - 2.6) - dy * reach;
     const axis = new THREE.Vector3(-dy, dx, 0).normalize();
     // A flick of the wrist: the cup keeps the swing it had from shaking, gets a push the way it was going, and snaps
     // over with a burst of spin. The spin is what throws the dice out.
@@ -583,13 +678,67 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     else keep(i);
   }
 
+  // ---- Ranks: your best final score unlocks better cups. Kept in this browser only.
+  const ranks = { best: 0, selected: "tankard" };
+  try {
+    const saved = JSON.parse(localStorage.getItem("yacht-ranks") || "null");
+    if (saved && typeof saved.best === "number") { ranks.best = saved.best; ranks.selected = saved.selected || "tankard"; }
+  } catch (e) { /* storage blocked: start fresh */ }
+  function saveRanks() { try { localStorage.setItem("yacht-ranks", JSON.stringify(ranks)); } catch (e) { /* ignore */ } }
+  const unlocked = (c) => ranks.best >= c.need;
+  function currentRank() { let r = CUPS[0]; for (const c of CUPS) if (unlocked(c)) r = c; return r; }
+
+  const chipsEl = $("cupChips");
+  CUPS.forEach((c) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "cup-chip"; b.id = "cup-" + c.id;
+    b.innerHTML = `<span>${c.name}</span><small></small>`;
+    b.addEventListener("click", () => {
+      if (!unlocked(c) || phase === "shaking" || phase === "pouring") return;
+      ranks.selected = c.id; saveRanks(); buildCup(c.id); updateRanks();
+    });
+    chipsEl.appendChild(b);
+  });
+  function updateRanks() {
+    const r = currentRank(), next = CUPS.find((c) => !unlocked(c));
+    $("rankName").textContent = r.rank;
+    $("rankNext").textContent = next ? `Score ${next.need}+ in a game for the ${next.name}` : `Best game ${ranks.best}`;
+    CUPS.forEach((c) => {
+      const b = $("cup-" + c.id);
+      b.disabled = !unlocked(c);
+      b.setAttribute("aria-pressed", String(ranks.selected === c.id));
+      b.querySelector("small").textContent = unlocked(c) ? c.rank : `Locked · ${c.need}+`;
+    });
+  }
+  function finishGame(total) {
+    const before = currentRank();
+    ranks.best = Math.max(ranks.best, total);
+    const after = currentRank();
+    if (after !== before) {
+      ranks.selected = after.id;
+      buildCup(after.id);
+      setTimeout(() => toast(`${after.rank}! ${after.name} unlocked`), 2400);
+    }
+    saveRanks();
+    updateRanks();
+  }
+  if (!CUPS.some((c) => c.id === ranks.selected && unlocked(c))) ranks.selected = "tankard";
+  buildCup(ranks.selected);
+  updateRanks();
+
   function score(cat) {
     if (phase !== "choose" || carry) return;
     Y.y_dice(faces[0], faces[1], faces[2], faces[3], faces[4]);
     const pts = Y.y_card_fill(cat);
     if (pts < 0) return;
     toast(pts > 0 ? `+${pts}` : "Scratched");
-    if (Y.y_card_full()) { phase = "over"; updateUI(); setTimeout(() => toast(`Final score ${Y.y_card_total()}`), 900); return; }
+    if (Y.y_card_full()) {
+      phase = "over"; updateUI();
+      const total = Y.y_card_total();
+      setTimeout(() => toast(`Final score ${total}`), 900);
+      finishGame(total);
+      return;
+    }
     startTurn(true);
   }
 
@@ -672,10 +821,10 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   function aimCup() {
     const pt = onPlane(shakePlane);
     if (pt) {
-      // Free to leave the table on the right and the near side; the left and far sides have the invisible walls.
+      // The cup stays over the tray, inside the invisible walls.
       const m = S.R + S.W + 0.4;
-      cupTarget.x = THREE.MathUtils.clamp(pt.x, -S.X + m, REST.x + 1.5);
-      cupTarget.y = THREE.MathUtils.clamp(pt.y, -S.Yh - 7, S.Yh - m);
+      cupTarget.x = THREE.MathUtils.clamp(pt.x, -S.X + m, S.X - m);
+      cupTarget.y = THREE.MathUtils.clamp(pt.y, -S.Yh + m, S.Yh - m);
     }
   }
   // Whether a screen point is over the cup (its mouth or body), for dropping dice in.
@@ -705,7 +854,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     const pt = onPlane(tablePlane);
     return pt && Math.abs(pt.x) < S.X + wallT && Math.abs(pt.y) < S.Yh + wallT;
   }
-  function setCupGlow(on) { rimMat.emissive.setHex(on ? 0x6a4a10 : 0x000000); }
+  function setCupGlow(on) { glowMats.forEach((m) => m.emissive.setHex(on ? 0x5a3c08 : 0x000000)); }
 
   // Press a die: click it to send it to the rack (or back), or drag it to lift it and carry it anywhere, such as
   // into the cup. Press anywhere else: the cup only lifts once the pointer moves while the button is held.
@@ -857,7 +1006,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
         aim.x += (cup.vx / sp - aim.x) * k;
         aim.y += (cup.vy / sp - aim.y) * k;
       }
-      if (pourPending && cup.z > SHAKE_Z - 1) {
+      if (pourPending && cup.z > SHAKE_Z - 1 && Math.abs(cup.x) < S.X - 2 && Math.abs(cup.y) < S.Yh - 2) {
         pourPending = false;
         beginPour();
       }
@@ -976,6 +1125,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
 
   // Hooks for automated checks of the preview.
   window.__yacht = {
+    setBest: (n) => { ranks.best = n; saveRanks(); updateRanks(); }, finishGame: (n) => finishGame(n),
     state: () => Array.from(state()), phase: () => phase, faces: () => faces.slice(), rolls: () => rollsUsed,
     screen: (i) => {
       const v = dice[i].getWorldPosition(new THREE.Vector3()).project(camera); const r = canvas.getBoundingClientRect();
