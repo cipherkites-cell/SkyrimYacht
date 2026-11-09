@@ -67,6 +67,7 @@ namespace Scene
 		RE::NiPointer<RE::NiNode> g_root;           // ours, under the tray
 		RE::NiPointer<RE::NiAVObject> g_dice[2][5];  // [0] the player's set, [1] bone (the opponent's)
 		RE::NiPointer<RE::NiAVObject> g_cupNode[2];
+		RE::NiTransform               g_cupAt[2];  // where each cup was last put, so a new cup starts there
 		std::string              g_diceSet = "bone", g_loadedSet;
 		std::string              g_cupId[2] = { "tankard", "tankard" }, g_loadedCup[2];
 		int                      g_diceSide = 0;    // which set is showing
@@ -435,6 +436,9 @@ namespace Scene
 			mesh->local.scale = s;
 			mesh->local.translate = { 0.0f, 0.0f, -c.floor * s };
 			holder->AttachChild(mesh.get(), true);
+			// in its place from the first frame (not at the table's middle until the next move)
+			holder->local.translate = g_cupAt[a_which].translate;
+			holder->local.rotate = g_cupAt[a_which].rotate;
 			g_cupNode[a_which] = RE::NiPointer<RE::NiAVObject>(holder.get());
 			g_root->AttachChild(holder.get(), true);
 			g_loadedCup[a_which] = g_cupId[a_which];
@@ -802,12 +806,15 @@ namespace Scene
 
 	void SetCup(int a_which, const yacht::Vec3& a_pos, const yacht::Quat& a_rot)
 	{
-		auto& c = g_cupNode[std::clamp(a_which, 0, 1)];
+		const int w = std::clamp(a_which, 0, 1);
+		g_cupAt[w].translate = { static_cast<float>(a_pos.x), static_cast<float>(a_pos.y), static_cast<float>(a_pos.z) };
+		g_cupAt[w].rotate = FromQuat(a_rot);
+		auto& c = g_cupNode[w];
 		if (!c) {
 			return;
 		}
-		c->local.translate = { static_cast<float>(a_pos.x), static_cast<float>(a_pos.y), static_cast<float>(a_pos.z) };
-		c->local.rotate = FromQuat(a_rot);
+		c->local.translate = g_cupAt[w].translate;
+		c->local.rotate = g_cupAt[w].rotate;
 	}
 
 	namespace
