@@ -2801,6 +2801,30 @@ namespace Game
 				chests.size(), added, everything);
 		}
 
+		// A shop marks goods up by your Speech (about x3.3 at 0, x2 at 100): the dice's value is set so the price you
+		// see is the set's own (Iron 50 ... Daedric 2500), whatever your Speech
+		void PriceDice()
+		{
+			float hi = 3.3f, lo = 2.0f;
+			if (auto* gs = RE::GameSettingCollection::GetSingleton()) {
+				if (const auto it = gs->settings.find("fBarterMax"); it != gs->settings.end() && it->second) {
+					hi = it->second->GetFloat();
+				}
+				if (const auto it = gs->settings.find("fBarterMin"); it != gs->settings.end() && it->second) {
+					lo = it->second->GetFloat();
+				}
+			}
+			auto*       pc = RE::PlayerCharacter::GetSingleton();
+			const float speech = pc ? std::clamp(pc->AsActorValueOwner()->GetActorValue(RE::ActorValue::kSpeech), 0.0f, 100.0f) : 15.0f;
+			const float mark = (std::max)(1.0f, hi - (hi - lo) * speech / 100.0f);
+			for (int k = 1; k < 15; ++k) {
+				if (g_diceItem[k]) {
+					g_diceItem[k]->value = (std::max)(1, static_cast<std::int32_t>(std::lround(kDiceInfo[k].gold / mark)));
+				}
+			}
+			spdlog::info("Dice: priced for Speech {:.0f} (mark-up x{:.2f})", speech, mark);
+		}
+
 		// The sets not on sale yet (wins) or already yours come out of the shop as it opens
 		void HideUnsold(RE::TESObjectREFR* a_ref)
 		{
@@ -3078,6 +3102,7 @@ namespace Game
 					chest ? chest->GetFormID() : 0, tref ? tref->GetFormID() : 0, dice);
 				// what isn't on sale yet comes out (wherever the shop's goods are while you trade), then the list reloads
 				if (a && g_innkeeper && a->IsInFaction(g_innkeeper)) {
+					PriceDice();
 					HideUnsold(chest);
 					HideUnsold(tref.get());
 					SKSE::GetTaskInterface()->AddUITask([]() {
