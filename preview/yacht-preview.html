@@ -21,8 +21,13 @@ body {
   background: var(--soot); color: var(--parchment); font-family: var(--body); font-size: 15px;
   overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none;
 }
-.app { position: relative; height: 100%; display: flex; }
-.stage { position: relative; flex: 1; min-width: 0; }
+/* The table fills the window with the tray in the middle; the scorecard floats top right, rank and cups bottom left. */
+.app { position: relative; height: 100%; }
+.stage { position: absolute; inset: 0; }
+.panel {
+  background: rgba(31, 23, 16, 0.9); border: 1px solid var(--oak-edge); border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+}
 canvas#view { display: block; width: 100%; height: 100%; cursor: grab; }
 canvas#view.shaking { cursor: grabbing; }
 canvas#view.over-die { cursor: pointer; }
@@ -38,7 +43,7 @@ canvas#view.over-die { cursor: pointer; }
 .hud button { pointer-events: auto; }
 
 .hint {
-  position: absolute; left: 50%; top: 62px; transform: translateX(-50%); max-width: calc(100% - 32px);
+  position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); max-width: min(460px, calc(100% - 660px));
   padding: 8px 16px; border-radius: 999px; background: rgba(21, 16, 12, 0.72); border: 1px solid var(--oak-edge);
   font-size: 15px; text-align: center; pointer-events: none; text-wrap: balance;
 }
@@ -68,17 +73,26 @@ canvas#view.over-die { cursor: pointer; }
 .icon-btn:focus-visible, .row:focus-visible, .newgame:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
 
 .ledger {
-  width: 290px; flex: none; background: var(--oak); border-left: 1px solid var(--oak-edge);
-  display: flex; flex-direction: column; padding-block: 14px; padding-left: 16px; padding-right: max(16px, env(safe-area-inset-right, 0px));
-  overflow-y: auto;
+  position: absolute; top: 12px; right: max(14px, env(safe-area-inset-right, 0px)); width: min(370px, calc(100% - 28px));
+  max-height: calc(100% - 24px); overflow-y: auto; padding: 10px 14px 12px;
 }
-.ledger h2 { margin: 0 0 6px; font-family: var(--display); font-weight: 400; font-size: 22px; color: var(--brass); display: flex; justify-content: space-between; align-items: baseline; }
-.ledger h2 span { font-family: var(--body); font-size: 26px; font-weight: 700; color: var(--parchment); font-variant-numeric: tabular-nums; }
-.section-label { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin: 10px 0 2px; }
+.cols { display: grid; grid-template-columns: 1fr 1fr; column-gap: 18px; }
+.col { min-width: 0; }
+.dock {
+  position: absolute; left: max(14px, env(safe-area-inset-left, 0px)); bottom: 14px; width: min(270px, calc(100% - 28px));
+  padding: 10px 12px 10px;
+}
+.help.panel {
+  position: absolute; top: 58px; left: max(14px, env(safe-area-inset-left, 0px)); width: min(340px, calc(100% - 28px));
+  padding: 12px 14px; z-index: 3;
+}
+.ledger h2 { margin: 0 0 2px; font-family: var(--display); font-weight: 400; font-size: 21px; color: var(--brass); display: flex; justify-content: space-between; align-items: baseline; }
+.ledger h2 span { font-family: var(--body); font-size: 24px; font-weight: 700; color: var(--parchment); font-variant-numeric: tabular-nums; }
+.section-label { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin: 6px 0 1px; }
 .row {
   display: flex; justify-content: space-between; align-items: baseline; gap: 10px; width: 100%;
   font: inherit; color: var(--parchment); background: none; border: none; border-bottom: 1px dotted var(--oak-edge);
-  padding: 5px 4px; text-align: left; cursor: default;
+  padding: 2px 3px; text-align: left; cursor: default; font-size: 13.5px;
 }
 .row .val { font-variant-numeric: tabular-nums; font-weight: 700; min-width: 2.5em; text-align: right; }
 .row.filled .val { color: var(--parchment); }
@@ -88,43 +102,44 @@ canvas#view.over-die { cursor: pointer; }
 .row.pickable { cursor: pointer; }
 .row.pickable:hover { background: rgba(202, 164, 87, 0.12); }
 .row.locked .val { color: transparent; }
-.sub { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); padding: 4px 4px 0; font-variant-numeric: tabular-nums; }
+.sub { display: flex; justify-content: space-between; gap: 6px; font-size: 12px; color: var(--muted); padding: 4px 3px 0; font-variant-numeric: tabular-nums; }
 .newgame {
-  margin-top: 14px; font: inherit; font-weight: 700; color: var(--soot); background: var(--brass); border: none; border-radius: 6px;
+  margin-top: 10px; width: 100%; font: inherit; font-weight: 700; color: var(--soot); background: var(--brass); border: none; border-radius: 6px;
   padding: 9px 12px; cursor: pointer;
 }
-.ranks { margin-top: 14px; }
 .rank-line { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 2px 4px 6px; }
-.rank-name { font-family: var(--display); font-size: 20px; color: var(--brass); }
+.rank-name { font-family: var(--display); font-size: 18px; color: var(--brass); }
 .rank-next { font-size: 12px; color: var(--muted); text-align: right; }
-.cup-chips { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.cup-chips { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
 .cup-chip {
   font: inherit; font-size: 13px; text-align: left; color: var(--parchment); background: rgba(0, 0, 0, 0.18);
-  border: 1px solid var(--oak-edge); border-radius: 6px; padding: 6px 8px; cursor: pointer; display: flex; flex-direction: column; gap: 1px;
+  border: 1px solid var(--oak-edge); border-radius: 6px; padding: 3px 7px; cursor: pointer; display: flex; flex-direction: column; gap: 0;
+  font-size: 12.5px;
 }
-.test-row { display: flex; gap: 12px; padding: 8px 4px 0; }
+.test-row { display: flex; gap: 12px; padding: 6px 4px 0; }
 .test-btn { font: inherit; font-size: 12px; color: var(--muted); background: none; border: none; padding: 0; cursor: pointer;
   text-decoration: underline; text-underline-offset: 2px; }
 .test-btn:hover { color: var(--parchment); }
 .test-btn:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
 .cup-chip:last-child:nth-child(odd) { grid-column: 1 / -1; }
-.cup-chip small { font-size: 11px; color: var(--muted); letter-spacing: 0.04em; }
+.cup-chip small { font-size: 10.5px; color: var(--muted); letter-spacing: 0.04em; }
 .cup-chip[aria-pressed="true"] { border-color: var(--brass); background: rgba(202, 164, 87, 0.14); }
 .cup-chip:disabled { cursor: default; color: var(--muted); opacity: 0.7; }
 .cup-chip:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
-.help { margin-top: auto; padding-top: 14px; font-size: 13px; color: var(--muted); line-height: 1.5; }
+.help { font-size: 13px; color: var(--muted); line-height: 1.55; }
 .help b { color: var(--parchment); font-weight: 500; }
 .loading { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 15px; }
 
+@media (max-width: 1060px) {
+  .hint { left: auto; right: 14px; transform: none; max-width: min(360px, calc(100% - 340px)); }
+}
 @media (max-width: 760px) {
-  .app { flex-direction: column; }
-  .stage { flex: 1 1 58%; }
-  .ledger { width: auto; flex: 1 1 42%; border-left: none; border-top: 1px solid var(--oak-edge); padding-left: max(16px, env(safe-area-inset-left, 0px)); }
-  .rows { display: grid; grid-template-columns: 1fr 1fr; column-gap: 14px; }
-  .section-label { grid-column: 1 / -1; }
-  .help { display: none; }
+  .app { display: flex; flex-direction: column; overflow-y: auto; }
+  .stage { position: relative; flex: 0 0 58%; min-height: 340px; }
+  .ledger, .dock { position: static; flex: none; width: auto; max-height: none; border-radius: 0; border-left: none; border-right: none; box-shadow: none;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
   .hud h1 { font-size: 24px; }
-  .hint { font-size: 13px; top: 52px; }
+  .hint { left: 50%; right: auto; transform: translateX(-50%); bottom: 10px; font-size: 13px; max-width: calc(100% - 32px); }
 }
 @media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
 </style>
@@ -137,32 +152,35 @@ canvas#view.over-die { cursor: pointer; }
       <div class="rolls" id="rolls" aria-live="polite"><span>Roll</span><i></i><i></i><i></i></div>
       <button class="icon-btn" id="sound" type="button" aria-pressed="true">Sound on</button>
       <button class="shout-btn" id="shout" type="button" title="Shout the dice on the pad back into the cup">Fus Ro Dah<span class="cool" id="shoutCool"></span></button>
+      <button class="icon-btn" id="helpBtn" type="button" aria-expanded="false" aria-controls="help">How to play</button>
     </div>
-    <div class="hint" id="hint">Loading…</div>
-    <div class="toast" id="toast"></div>
-    <div class="loading" id="loading">Setting up the table…</div>
-  </div>
-  <aside class="ledger" aria-label="Scorecard">
-    <h2>Scorecard <span id="total">0</span></h2>
-    <div class="rows" id="rows"></div>
-    <div class="sub"><span>Upper bonus (35 at 63)</span><span id="upper">0 / 63</span></div>
-    <div class="sub"><span>Yacht bonuses</span><span id="ybonus">0</span></div>
-    <button class="newgame" id="newgame" type="button" hidden>New game</button>
-    <div class="ranks">
-      <div class="section-label">Rank</div>
-      <div class="rank-line"><span class="rank-name" id="rankName">Novice</span><span class="rank-next" id="rankNext"></span></div>
-      <div class="cup-chips" id="cupChips" role="group" aria-label="Choose a cup"></div>
-      <div class="test-row">
-        <button class="test-btn" id="unlockAll" type="button">Unlock all (test)</button>
-        <button class="test-btn" id="resetRank" type="button">Reset rank</button>
-      </div>
-    </div>
-    <div class="help">
+    <div class="help panel" id="help" hidden>
       <b>Hold</b> the left button and <b>move</b> to pick up the cup and shake it. <b>Let go</b> to flick the dice out the
       way you last moved. A die that lands off the table means throw again.
       <b>Click</b> a die to keep it on the rack; <b>drag</b> one into the cup to roll it again. The cup waits until the
       pad is clear. <b>Fus Ro Dah</b> shouts the pad's dice back into the cup.
       Finish games with higher scores to rank up and unlock better cups.
+    </div>
+    <div class="hint" id="hint">Loading…</div>
+    <div class="toast" id="toast"></div>
+    <div class="loading" id="loading">Setting up the table…</div>
+
+  </div>
+  <aside class="ledger panel" aria-label="Scorecard">
+    <h2>Scorecard <span id="total">0</span></h2>
+    <div class="cols">
+      <div class="col" id="colUpper"></div>
+      <div class="col" id="colLower"></div>
+    </div>
+    <button class="newgame" id="newgame" type="button" hidden>New game</button>
+  </aside>
+
+  <aside class="dock panel" aria-label="Rank and cups">
+    <div class="rank-line"><span class="rank-name" id="rankName">Novice</span><span class="rank-next" id="rankNext"></span></div>
+    <div class="cup-chips" id="cupChips" role="group" aria-label="Choose a cup"></div>
+    <div class="test-row">
+      <button class="test-btn" id="unlockAll" type="button">Unlock all (test)</button>
+      <button class="test-btn" id="resetRank" type="button">Reset rank</button>
     </div>
   </aside>
 </div>
@@ -693,7 +711,8 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     renderer.setSize(r.width, r.height, false);
     camera.aspect = r.width / Math.max(1, r.height);
     // Keep the tray and the cup beside it in view at any aspect.
-    const needW = 48, needD = 33, cx = 4.1, zc = 1.8;
+    // Centre on the tray; wide enough for the cup on its right (and the same space on its left, so it stays centred).
+    const needW = 2 * (S.X + wallT + 3.6 + S.R + 3) * 1.2, needD = 40, cx = 0, zc = 1.8;
     const vFov = 38 * Math.PI / 180;
     const distForH = (needD / 2) / Math.tan(vFov / 2);
     const distForW = (needW / 2) / (Math.tan(vFov / 2) * camera.aspect);
@@ -701,6 +720,9 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     const tilt = 0.9; // radians down from horizontal
     camera.position.set(cx, Math.sin(tilt) * dist, Math.cos(tilt) * dist + zc);
     camera.lookAt(cx, 0, zc);
+    // On wide screens the scorecard floats top right: draw the table a little lower so it clears the panel.
+    if (r.width > 760) camera.setViewOffset(r.width, r.height, 0, -r.height * 0.06, r.width, r.height);
+    else camera.clearViewOffset();
     camera.updateProjectionMatrix();
   }
   window.addEventListener("resize", resize);
@@ -743,7 +765,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   });
 
   // ------------------------------------------------------------------ game state
-  const REST = { x: S.X + wallT + 3.6, y: -1.0, z: 3.0 };  // to the right of the tray, held still
+  const REST = { x: S.X + wallT + 3.6, y: -3.5, z: 3.0 };  // to the right of the tray, toward the front, held still
   const SHAKE_Z = 5.6, CARRY_Z = 3.2;
   const cup = { x: REST.x, y: REST.y, z: REST.z, vx: 0, vy: 0, vz: 0, q: new THREE.Quaternion() };
   const cupTarget = { x: REST.x, y: REST.y };
@@ -1032,17 +1054,29 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   }
 
   // ------------------------------------------------------------------ scorecard UI
-  const rowsEl = $("rows");
+  // Two columns: the upper section with its bonus on the left, the lower section with yacht bonuses on the right.
   const rowEls = [];
+  const addLabel = (col, text) => { const l = document.createElement("div"); l.className = "section-label"; l.textContent = text; col.appendChild(l); };
+  const addSub = (col, label, id, value) => {
+    const d = document.createElement("div"); d.className = "sub";
+    d.innerHTML = `<span>${label}</span><span id="${id}">${value}</span>`;
+    col.appendChild(d);
+  };
+  addLabel($("colUpper"), "Upper");
+  addLabel($("colLower"), "Lower");
   CATS.forEach((name, c) => {
-    if (c === 0) { const l = document.createElement("div"); l.className = "section-label"; l.textContent = "Upper"; rowsEl.appendChild(l); }
-    if (c === 6) { const l = document.createElement("div"); l.className = "section-label"; l.textContent = "Lower"; rowsEl.appendChild(l); }
     const b = document.createElement("button");
     b.type = "button"; b.className = "row"; b.id = "row-" + c;
     b.innerHTML = `<span class="name">${name}</span><span class="val"></span>`;
     b.addEventListener("click", () => score(c));
-    rowsEl.appendChild(b);
+    $(c < 6 ? "colUpper" : "colLower").appendChild(b);
     rowEls.push(b);
+  });
+  addSub($("colUpper"), "Bonus 35 at 63", "upper", "0 / 63");
+  addSub($("colLower"), "Yacht bonuses", "ybonus", "0");
+  $("helpBtn").addEventListener("click", () => {
+    const h = $("help"); h.hidden = !h.hidden;
+    $("helpBtn").setAttribute("aria-expanded", String(!h.hidden));
   });
   $("newgame").addEventListener("click", () => { Y.y_card_reset(); $("newgame").hidden = true; startTurn(true); });
 
