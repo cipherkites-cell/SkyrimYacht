@@ -1551,7 +1551,7 @@ namespace Game
 		spdlog::info("  menu:{}", names);
 		if (branch) {
 			spdlog::info("  branch: quest {:08X}, start topic {:08X}, flags {:X}, type {}", branch->quest ? branch->quest->GetFormID() : 0,
-				branch->startingTopic ? branch->startingTopic->GetFormID() : 0, branch->flags.underlying(), static_cast<int>(branch->type.get()));
+				branch->startingTopic ? branch->startingTopic->GetFormID() : 0, branch->flags.underlying(), static_cast<int>(branch->type));
 		}
 		auto* player = RE::PlayerCharacter::GetSingleton();
 		for (std::uint32_t i = 0; i < topic->numTopicInfos; ++i) {
