@@ -61,6 +61,8 @@ namespace Game
 			{ "silver", "Silver Goblet", 4.62, "silver" },
 			{ "silver2", "Silver Chalice", 4.01, "silver" },
 			{ "golden", "Golden Goblet", 6.01, "golden" },
+			{ "bloodtankard", "Bloody Tankard", 4.21, "tankard" },
+			{ "bloodchalice", "Blood Chalice", 1.67, "silver" },
 		};
 		constexpr int kNumCups = static_cast<int>(std::size(kCups));
 		// Your title at the table, from your best finished game

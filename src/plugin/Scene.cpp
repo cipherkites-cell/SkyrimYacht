@@ -47,6 +47,8 @@ namespace Scene
 			const char* id;
 			const char* file;  // the vanilla mesh's file name; its path comes from the game's own item
 			float       floor, inner, room;
+			const char* fallback = nullptr;  // its path if no item in the game uses it (meshes\\...)
+			bool        hideBlood = false;   // the blood chalice: its pool of blood would cover the dice
 		};
 		constexpr CupModel kCups[] = {
 			{ "tankard", "basictankard01.nif", 2.9f, 4.32f, 1.04f },
@@ -57,6 +59,8 @@ namespace Scene
 			{ "silver", "silvergoblet01.nif", 7.8f, 5.2f, 1.1f },
 			{ "silver2", "silvergoblet02.nif", 9.8f, 4.54f, 1.1f },
 			{ "golden", "tggoldengoblet01.nif", 8.3f, 4.19f, 1.1f },
+			{ "bloodtankard", "dlc01tankardblood.nif", 2.9f, 4.32f, 1.04f, "DLC01\\Clutter\\DLC01TankardBlood.nif" },
+			{ "bloodchalice", "dlc01chaliceblood.nif", 15.5f, 8.5f, 1.0f, "DLC01\\Clutter\\DLC01ChaliceBlood.nif", true },
 		};
 		constexpr float kCupRadius = 1.9f;
 		constexpr float kTableHalfWidth = 19.6f;  // tray, and the cups resting beside it
@@ -382,6 +386,11 @@ namespace Scene
 					look(f->GetModel(), f, true);
 				}
 			}
+			for (auto* f : dh->GetFormArray<RE::TESObjectSTAT>()) {
+				if (f) {
+					look(f->GetModel(), f, false);
+				}
+			}
 			for (const auto& c : kCups) {
 				if (!g_cupPaths.contains(c.id)) {
 					spdlog::warn("Cup {}: nothing in the game uses {}", c.id, c.file);
@@ -434,13 +443,21 @@ namespace Scene
 			FindCupPaths();
 			const auto& c = Cup(g_cupId[a_which]);
 			const auto  it = g_cupPaths.find(c.id);
-			if (it == g_cupPaths.end()) {
+			if (it == g_cupPaths.end() && !c.fallback) {
 				spdlog::warn("No item in the game uses {}: the {} won't show", c.file, c.id);
 				g_loadedCup[a_which] = g_cupId[a_which];
 				return;
 			}
 			// the game's own paths are relative to Data\Meshes already
-			auto mesh = Instance(it->second);
+			auto mesh = Instance(it != g_cupPaths.end() ? it->second : std::string(c.fallback));
+			if (mesh && c.hideBlood) {
+				RE::BSVisit::TraverseScenegraphGeometries(mesh.get(), [](RE::BSGeometry* a_geo) {
+					if (a_geo && std::string_view(a_geo->name.c_str()).starts_with("Blood")) {
+						a_geo->CullGeometry(true);
+					}
+					return RE::BSVisit::BSVisitControl::kContinue;
+				});
+			}
 			if (!mesh) {
 				g_loadedCup[a_which] = g_cupId[a_which];
 				return;
