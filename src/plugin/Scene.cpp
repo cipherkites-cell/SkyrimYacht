@@ -50,9 +50,14 @@ namespace Scene
 		};
 		constexpr CupModel kCups[] = {
 			{ "tankard", "basictankard01.nif", 2.9f, 4.32f, 1.04f },
+			{ "glazedcup", "glazedcup01.nif", 1.0f, 4.55f, 1.1f },
 			{ "goblet", "glazedgoblet01.nif", 6.6f, 4.6f, 1.1f },
 			{ "dwemer", "dwecup01.nif", 0.8f, 4.36f, 1.22f },
+			{ "dwemer2", "dwecup02.nif", 1.29f, 4.36f, 1.22f },
 			{ "silver", "silvergoblet01.nif", 7.8f, 5.2f, 1.1f },
+			{ "silver2", "silvergoblet02.nif", 9.8f, 4.54f, 1.1f },
+			{ "sovngarde", "sovgoblet01.nif", 7.8f, 5.2f, 1.1f },
+			{ "sovngarde2", "sovgoblet02.nif", 9.8f, 4.54f, 1.1f },
 			{ "golden", "tggoldengoblet01.nif", 8.3f, 4.19f, 1.1f },
 		};
 		constexpr float kCupRadius = 1.9f;
@@ -348,28 +353,50 @@ namespace Scene
 			if (!dh) {
 				return;
 			}
-			for (auto* misc : dh->GetFormArray<RE::TESObjectMISC>()) {
-				const char* model = misc ? misc->GetModel() : nullptr;
+			// the cups' paths, from whatever in the game uses each mesh: an item, or else a static or a piece of clutter
+			auto look = [&](const char* model, RE::TESForm* a_form, bool a_item) {
 				if (!model || !*model) {
-					continue;
+					return;
 				}
 				std::string m = model;
 				std::string low = m;
 				std::transform(low.begin(), low.end(), low.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-				// every drinking vessel in the game, for choosing more cups
-				for (const char* w : { "cup", "goblet", "tankard", "mug", "flagon", "chalice", "horn", "stein", "tumbler" }) {
-					if (low.find(w) != std::string::npos) {
-						spdlog::info("Vessel: {} | {} | {:08X} | {}", misc->GetName(), m, misc->GetFormID(),
-							misc->GetFile(0) ? misc->GetFile(0)->GetFilename() : "?");
-						break;
+				if (a_item) {  // every drinking vessel in the game, for choosing more cups
+					for (const char* w : { "cup", "goblet", "tankard", "mug", "flagon", "chalice", "horn", "stein", "tumbler" }) {
+						if (low.find(w) != std::string::npos) {
+							spdlog::info("Vessel: {} | {} | {:08X} | {}", a_form->GetName(), m, a_form->GetFormID(),
+								a_form->GetFile(0) ? a_form->GetFile(0)->GetFilename() : "?");
+							break;
+						}
 					}
 				}
 				for (const auto& c : kCups) {
-					if (low.size() >= std::strlen(c.file) && low.compare(low.size() - std::strlen(c.file), std::strlen(c.file), c.file) == 0 &&
+					const auto n = std::strlen(c.file);
+					if (low.size() >= n && low.compare(low.size() - n, n, c.file) == 0 && (low.size() == n || low[low.size() - n - 1] == '\\' || low[low.size() - n - 1] == '/') &&
 						!g_cupPaths.contains(c.id)) {
 						g_cupPaths[c.id] = m;
 						spdlog::info("Cup {}: {}", c.id, m);
 					}
+				}
+			};
+			for (auto* f : dh->GetFormArray<RE::TESObjectMISC>()) {
+				if (f) {
+					look(f->GetModel(), f, true);
+				}
+			}
+			for (auto* f : dh->GetFormArray<RE::TESObjectSTAT>()) {
+				if (f) {
+					look(f->GetModel(), f, false);
+				}
+			}
+			for (auto* f : dh->GetFormArray<RE::BGSMovableStatic>()) {
+				if (f) {
+					look(f->GetModel(), f, false);
+				}
+			}
+			for (const auto& c : kCups) {
+				if (!g_cupPaths.contains(c.id)) {
+					spdlog::warn("Cup {}: nothing in the game uses {}", c.id, c.file);
 				}
 			}
 		}

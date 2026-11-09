@@ -49,17 +49,29 @@ namespace Game
 		{
 			const char* id;
 			const char* name;
-			const char* rank;
-			int         need;    // last finished game's score
 			double      height;  // inside depth (the vanilla meshes, scaled)
+			const char* sound;   // whose clang it makes in the hand (tankard, goblet, dwemer, silver, golden)
 		};
 		constexpr CupInfo kCups[] = {
-			{ "tankard", "Tankard", "Novice", 0, 4.21 },
-			{ "goblet", "Goblet", "Apprentice", 150, 3.82 },
-			{ "dwemer", "Dwemer Cup", "Adept", 200, 5.10 },
-			{ "silver", "Silver Goblet", "Expert", 250, 4.62 },
-			{ "golden", "Golden Goblet", "Master", 300, 6.01 },
+			{ "tankard", "Tankard", 4.21, "tankard" },
+			{ "glazedcup", "Glazed Cup", 4.20, "goblet" },
+			{ "goblet", "Glazed Goblet", 3.82, "goblet" },
+			{ "dwemer", "Dwemer Cup", 5.10, "dwemer" },
+			{ "dwemer2", "Ornate Dwemer Cup", 5.15, "dwemer" },
+			{ "silver", "Silver Goblet", 4.62, "silver" },
+			{ "silver2", "Silver Chalice", 4.01, "silver" },
+			{ "sovngarde", "Sovngarde Goblet", 4.62, "silver" },
+			{ "sovngarde2", "Sovngarde Chalice", 4.01, "silver" },
+			{ "golden", "Golden Goblet", 6.01, "golden" },
 		};
+		constexpr int kNumCups = static_cast<int>(std::size(kCups));
+		// Your title at the table, from your best finished game
+		struct RankInfo
+		{
+			const char* rank;
+			int         need;
+		};
+		constexpr RankInfo kRanks[] = { { "Novice", 0 }, { "Apprentice", 150 }, { "Adept", 200 }, { "Expert", 250 }, { "Master", 300 } };
 		constexpr const char* kDiceSets[] = { "bone", "iron", "steel", "corundum", "dwemer", "orichalcum", "silver", "quicksilver", "moonstone",
 			"gold", "malachite", "ebony", "stalhrim", "dragonbone", "daedric" };
 
@@ -346,8 +358,9 @@ namespace Game
 			if (inside && v > 0.08f && now - g_lastClang > 0.07) {
 				g_lastClang = now;
 				int ci = 0;
+				const char* banks[5] = { "tankard", "goblet", "dwemer", "silver", "golden" };
 				for (int c = 0; c < 5; ++c) {
-					if (g_soundCup == kCups[c].id) {
+					if (g_soundCup == banks[c]) {
 						ci = c;
 					}
 				}
@@ -410,8 +423,8 @@ namespace Game
 			{ "Daedric", 140, 2500, "Black and red, cut with runes, the pips smouldering like coals." },
 		};
 		int  BestScore() { return (std::max)(g_bestScore, Config::Get().testBestScore); }
-		bool CupUnlocked(int k) { return k >= 0 && k < 5; }  // every cup is yours to choose
-		bool RankReached(int k) { return k >= 0 && k < 5 && BestScore() >= kCups[k].need; }  // the title (Novice ... Master)
+		bool CupUnlocked(int k) { return k >= 0 && k < kNumCups; }  // every cup is yours to choose
+		bool RankReached(int k) { return k >= 0 && k < 5 && BestScore() >= kRanks[k].need; }  // the title (Novice ... Master)
 		bool DiceOwned(int k) { return k >= 0 && k < 15 && (k == 0 || (g_ownedDice >> k) & 1u); }
 		bool DiceOnSale(int k) { return k > 0 && k < 15 && !DiceOwned(k) && (Config::Get().allDiceForSale || g_totalWins >= kDiceInfo[k].wins); }
 		int  DiceIndex(const std::string& a_set)
@@ -434,18 +447,12 @@ namespace Game
 		}
 		const CupInfo& PlayerCup()
 		{
-			for (int k = 0; k < 5; ++k) {
-				if (g_cupSel == kCups[k].id && CupUnlocked(k)) {
+			for (int k = 0; k < kNumCups; ++k) {
+				if (g_cupSel == kCups[k].id) {
 					return kCups[k];
 				}
 			}
-			const CupInfo* best = &kCups[0];
-			for (int k = 0; k < 5; ++k) {
-				if (CupUnlocked(k)) {
-					best = &kCups[k];
-				}
-			}
-			return *best;
+			return kCups[0];
 		}
 		std::string PlayerDice()
 		{
@@ -692,8 +699,8 @@ namespace Game
 			++g_games;
 			if (outcome != "forfeit" && mine > g_bestScore) {
 				for (int k = 1; k < 5; ++k) {
-					if (mine >= kCups[k].need && g_bestScore < kCups[k].need) {
-						Toast(fmt::format("You're now {} at the table", kCups[k].rank));
+					if (mine >= kRanks[k].need && g_bestScore < kRanks[k].need) {
+						Toast(fmt::format("You're now {} at the table", kRanks[k].rank));
 					}
 				}
 				g_bestScore = mine;
@@ -1306,7 +1313,7 @@ namespace Game
 			}
 
 			const int nEv = g_sim.Step(dt, c.p, c.q);
-			g_soundCup = g_turn == 0 ? PlayerCup().id : "tankard";
+			g_soundCup = g_turn == 0 ? PlayerCup().sound : "tankard";
 			for (int e = 0; e < nEv; ++e) {
 				const auto& ev = g_sim.Events()[e];
 				const double x = ev.die >= 0 ? g_sim.DieAt(ev.die).pos.x : c.p.x;
@@ -2294,12 +2301,12 @@ namespace Game
 			}
 			const float x0 = S(30), x1 = w - S(44);
 			float       y = a.y + S(30);
-			Text(dl, F.skill, ImVec2(x0, y), kWhite, Upper(kCups[rank].rank), 0.22f, 0.8f);
-			const std::string next = rank < 4 ? fmt::format("{} at {}", kCups[rank + 1].rank, kCups[rank + 1].need) : "Master of the table";
+			Text(dl, F.skill, ImVec2(x0, y), kWhite, Upper(kRanks[rank].rank), 0.22f, 0.8f);
+			const std::string next = rank < 4 ? fmt::format("{} at {}", kRanks[rank + 1].rank, kRanks[rank + 1].need) : "Master of the table";
 			Text(dl, F.tiny, ImVec2(x1 - Measure(F.tiny, next, 0.05f), y + F.skill->FontSize - F.tiny->FontSize - S(2)), kGrey, next, 0.05f);
 			y += F.skill->FontSize + S(9);
 			// the skill bar: best score toward the next cup
-			const float lo = static_cast<float>(kCups[rank].need), hi = rank < 4 ? static_cast<float>(kCups[rank + 1].need) : lo + 1;
+			const float lo = static_cast<float>(kRanks[rank].need), hi = rank < 4 ? static_cast<float>(kRanks[rank + 1].need) : lo + 1;
 			const float f = rank < 4 ? std::clamp((BestScore() - lo) / (hi - lo), 0.0f, 1.0f) : 1.0f;
 			const ImVec2 ba(x0 + S(9), y), bb(x1 - S(9), y + S(7));
 			dl->AddRectFilled(ba, bb, IM_COL32(0, 0, 0, 153));
@@ -2477,12 +2484,12 @@ namespace Game
 			yy += S(28);
 			// what you play with
 			int cupIdx = 0;
-			for (int k = 0; k < 5; ++k) {
+			for (int k = 0; k < kNumCups; ++k) {
 				if (PlayerCup().id == std::string(kCups[k].id)) {
 					cupIdx = k;
 				}
 			}
-			Chooser(dl, "cup", cx, yy, S(520), "CUP", fmt::format("{}  ({})", kCups[cupIdx].name, kCups[cupIdx].rank), cupIdx, 5,
+			Chooser(dl, "cup", cx, yy, S(520), "CUP", kCups[cupIdx].name, cupIdx, kNumCups,
 				[](int k) { return CupUnlocked(k); }, UiAct::ChooseCup);
 			yy += S(40);
 			const int diceIdx = (std::max)(0, DiceIndex(PlayerDice()));
@@ -2647,7 +2654,7 @@ namespace Game
 			TextC(dl, F.tiny, cx, yy, kGrey,
 				Upper(fmt::format("Your record against {}: {}-{}{}", g_oppName, r.w, r.l, r.d ? fmt::format(", {} drawn", r.d) : "")), 0.34f, 0.8f);
 			yy += S(24);
-			TextC(dl, F.tiny, cx, yy, kDimC, Upper(fmt::format("Your cup: the {} ({})", PlayerCup().name, PlayerCup().rank)), 0.34f, 0.8f);
+			TextC(dl, F.tiny, cx, yy, kDimC, Upper(fmt::format("Your cup: the {}", PlayerCup().name)), 0.34f, 0.8f);
 			yy += S(44);
 			switch (MenuButtons("ob", { { "Rematch", false }, { "Leave", false } }, cx, yy)) {
 			case 0:
