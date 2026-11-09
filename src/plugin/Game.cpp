@@ -14,6 +14,8 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui.h>
 
+#undef GetObject  // wingdi.h turns it into GetObjectA, breaking BSScript::Variable::GetObject
+
 // The topic info event (not in CommonLibSSE-NG 3.7): speaker at 0x00, topic info form ID at 0x10, 0 = begin / 1 = end.
 namespace RE
 {

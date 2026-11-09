@@ -5,11 +5,21 @@
 // The simulation has no game or standard-library dependencies, so the same code builds for the SKSE plugin, the
 // native tests and the WebAssembly preview. sin and cos are our own, so every build gets the same numbers.
 
+#if defined(_MSC_VER) && !defined(__clang__)
+extern "C" double __cdecl sqrt(double);
+#pragma intrinsic(sqrt)
+#endif
+
 namespace yacht
 {
 	namespace m
 	{
+#if defined(_MSC_VER) && !defined(__clang__)
+		// MSVC has no __builtin_sqrt; its intrinsic is the same single instruction
+		inline double Sqrt(double a_x) { return a_x > 0.0 ? ::sqrt(a_x) : 0.0; }
+#else
 		inline double Sqrt(double a_x) { return a_x > 0.0 ? __builtin_sqrt(a_x) : 0.0; }
+#endif
 		inline double Abs(double a_x) { return a_x < 0.0 ? -a_x : a_x; }
 		inline double Min(double a_a, double a_b) { return a_a < a_b ? a_a : a_b; }
 		inline double Max(double a_a, double a_b) { return a_a > a_b ? a_a : a_b; }

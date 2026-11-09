@@ -38,13 +38,32 @@ every frame, so dice can't be flung off the table or wedge in level geometry.
 - **Fus Ro Dah:** an easter egg modelled on Unrelenting Force: the three words appear as they're spoken, then the
   blast bends the air in a cone across the board, kicks the view and throws the dice back into the cup.
 
-## In game
+## In game (SKSE plugin, test build 0.1.0)
 
-Playing pauses the world and blurs it behind the table, the way Skyrim's own menus do: the game is a menu with
-`kPausesGame`, and it raises the menu blur with `RE::UIBlurManager::IncrementBlurCount()` on open and lowers it on
-close. The preview stands in a blurred tavern for that world. The overlay follows Skyrim's interface: the compass
-across the top (whose turn, the three rolls, the Thu'um recharging), parchment tally sheets, an inventory-style
-panel for cups and dice, and key prompts in the corner (Z shout, H help, M sound, Tab forfeit).
+- **Who plays:** anyone sitting near a table. Every second the DLL puts seated NPCs within `TableReach` of a table
+  (any reference whose mesh path has "table" in it) into the hidden faction `YA_TableFaction`, and takes them out
+  again when they get up; the topic "Care for a Yacht game?" only shows for them. If you carry less than 25
+  septims they turn you away. When their "Pull up a chair" line ends, the table opens.
+- **The wager comes first:** 25 to 100 septims (`SkyrimYacht.ini`), taken when you place it. A win pays double, a
+  draw gives it back, a loss or a forfeit keeps it. Leaving before the bet costs nothing.
+- **The table:** a menu that pauses the game and blurs the world (`kPausesGame`, `UIBlurManager`). The tray
+  (`YA_Tray`, `meshes\SkyrimYacht\Tray.nif`) is loaded into the game's inventory 3D preview; the dice
+  (`Die_<set>.nif`) and the vanilla cups (found through the game's own items, so nothing of Bethesda's ships) hang
+  under it as our own nodes. Table space is physics space, so the sim's positions go straight onto the nodes. The
+  table is tilted toward you and scaled to the screen (`[Table]` in the ini); picking projects through the
+  inventory scene's view frustum and inverts it for the felt and the carrying heights.
+- **The game:** the same rules, physics and opponent as the preview (`src/sim`), driven from the menu's frame
+  update while the world is paused. Records per opponent, your last score (your cup) and your wins (your dice:
+  a new set every ten) are kept in the SKSE co-save.
+- **Every version:** CommonLibSSE-NG 3.7 built for SE and AE with every address from Address Library, declared
+  version-independent, so one DLL loads on 1.5.97, every 1.6 release (1.6.1170 included) and later ones Address
+  Library covers, Steam and GOG. The ESP is written with header 1.70 / form version 44 so 1.5.97 can load it.
+- **Built by CI:** `.github/workflows/build.yml` builds the DLL on Windows and pushes the ready-to-install package
+  to the `dist` branch (and its logs to `ci-logs`). `tools/make_esp.py` writes the ESP; `tools/make_meshes.py`
+  writes the meshes and textures from the preview's own art (`__yacht.exportTextures()`).
+
+The browser preview stands in a blurred tavern for the paused world, and has the fuller interface (compass,
+parchment tally sheets, inventory-style panel, key prompts) the plugin will grow into.
 - **Scoring:** `src/sim/Yacht` has the thirteen boxes, the 35-point upper bonus at 63, 100-point bonuses for extra
   five-of-a-kinds and the joker rule.
 
