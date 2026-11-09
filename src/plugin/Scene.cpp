@@ -779,7 +779,7 @@ namespace Scene
 		{
 			// the renderer's texture record is laid out as NiTexture::RendererData (texture, -, view)
 			auto* rt = a_tex ? reinterpret_cast<RE::NiTexture::RendererData*>(a_tex->rendererTexture) : nullptr;
-			return rt ? rt->resourceView : nullptr;
+			return rt ? reinterpret_cast<::ID3D11ShaderResourceView*>(rt->resourceView) : nullptr;
 		}
 		// A texture the material hasn't loaded yet: ask the game for it by path (and keep it)
 		ID3D11ShaderResourceView* SrvOfPath(const char* a_path)
@@ -902,9 +902,10 @@ namespace Scene
 						return RE::BSVisit::BSVisitControl::kContinue;
 					}
 					Render3D::Item it;
-					it.vb = rd->vertexBuffer;
-					it.ib = rd->indexBuffer;
-					it.desc = gd.vertexDesc.desc;
+					it.vb = reinterpret_cast<::ID3D11Buffer*>(rd->vertexBuffer);
+					it.ib = reinterpret_cast<::ID3D11Buffer*>(rd->indexBuffer);
+					static_assert(sizeof(gd.vertexDesc) == sizeof(std::uint64_t));
+					std::memcpy(&it.desc, &gd.vertexDesc, sizeof(it.desc));
 					it.indexCount = static_cast<std::uint32_t>(tri->GetTrishapeRuntimeData().triangleCount) * 3;
 					const auto& w = a_geo->world;
 					for (int rr = 0; rr < 3; ++rr) {
