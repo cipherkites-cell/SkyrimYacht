@@ -410,7 +410,8 @@ namespace Game
 			{ "Daedric", 140, 2500, "Black and red, cut with runes, the pips smouldering like coals." },
 		};
 		int  BestScore() { return (std::max)(g_bestScore, Config::Get().testBestScore); }
-		bool CupUnlocked(int k) { return k >= 0 && k < 5 && BestScore() >= kCups[k].need; }
+		bool CupUnlocked(int k) { return k >= 0 && k < 5; }  // every cup is yours to choose
+		bool RankReached(int k) { return k >= 0 && k < 5 && BestScore() >= kCups[k].need; }  // the title (Novice ... Master)
 		bool DiceOwned(int k) { return k >= 0 && k < 15 && (k == 0 || (g_ownedDice >> k) & 1u); }
 		bool DiceOnSale(int k) { return k > 0 && k < 15 && !DiceOwned(k) && (Config::Get().allDiceForSale || g_totalWins >= kDiceInfo[k].wins); }
 		int  DiceIndex(const std::string& a_set)
@@ -692,7 +693,7 @@ namespace Game
 			if (outcome != "forfeit" && mine > g_bestScore) {
 				for (int k = 1; k < 5; ++k) {
 					if (mine >= kCups[k].need && g_bestScore < kCups[k].need) {
-						Toast(fmt::format("New cup: the {} ({})", kCups[k].name, kCups[k].rank));
+						Toast(fmt::format("You're now {} at the table", kCups[k].rank));
 					}
 				}
 				g_bestScore = mine;
@@ -2272,7 +2273,7 @@ namespace Game
 			const float px = x + S(32), pw = w - S(64);
 			yy += Para(dl, F.sans, px, yy, pw, kGrey, "Hold the left button and move to lift the cup and shake it. Let go to flick the dice out the way you last moved. A die that leaves the board means throw again.") + S(9);
 			yy += Para(dl, F.sans, px, yy, pw, kGrey, "Click a die to set it on the rack. Drag one back into the cup to roll it again. The cup waits until the board is clear.") + S(9);
-			yy += Para(dl, F.sans, px, yy, pw, kGrey, "Score high to earn finer cups. Every ten wins, innkeepers sell you a finer set of dice.");
+			yy += Para(dl, F.sans, px, yy, pw, kGrey, "Score high to rise from Novice to Master. Pick any cup you like. Every ten wins, innkeepers sell you a finer set of dice.");
 			ImGui::End();
 		}
 
@@ -2287,7 +2288,7 @@ namespace Game
 			const auto& cup = PlayerCup();
 			int         rank = 0;
 			for (int k = 0; k < 5; ++k) {
-				if (CupUnlocked(k)) {
+				if (RankReached(k)) {
 					rank = k;
 				}
 			}
@@ -2495,15 +2496,6 @@ namespace Game
 			yy += bsz.y + S(10);
 			FadeRule(dl, cx - S(260), cx + S(260), yy);
 			yy += S(12);
-			int topCup = 0;
-			for (int k = 0; k < 5; ++k) {
-				if (CupUnlocked(k)) {
-					topCup = k;
-				}
-			}
-			if (topCup < 4) {
-				TextC(dl, F.tiny, cx, yy, kDimC, Upper(fmt::format("Score {} in a game to earn the {}", kCups[topCup + 1].need, kCups[topCup + 1].name)), 0.2f);
-			}
 			yy += S(34);
 			switch (MenuButtons("wb", { { "Place bet", false }, { "Leave", false } }, cx, yy)) {
 			case 0:
