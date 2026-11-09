@@ -2801,6 +2801,37 @@ namespace Game
 				chests.size(), added, everything);
 		}
 
+		// Other mods hand out keywords by name (KID): "Dragonbone" picked up a dragon-bone icon. Only ours and clutter stay.
+		void KeepDiceKeywords()
+		{
+			static bool s_done = false;
+			if (s_done) {
+				return;
+			}
+			s_done = true;
+			auto* ours = RE::TESDataHandler::GetSingleton()->LookupForm<RE::BGSKeyword>(EspIds::kVendorItemDice, EspIds::kPlugin);
+			auto* clutter = RE::TESForm::LookupByID<RE::BGSKeyword>(0x000914E9);
+			for (int k = 1; k < 15; ++k) {
+				auto* item = g_diceItem[k];
+				if (!item) {
+					continue;
+				}
+				std::vector<RE::BGSKeyword*> extra;
+				for (std::uint32_t i = 0; i < item->numKeywords; ++i) {
+					auto* kw = item->keywords[i];
+					if (kw && kw != ours && kw != clutter) {
+						extra.push_back(kw);
+					}
+				}
+				for (auto* kw : extra) {
+					spdlog::info("Dice: {} had keyword {} from another mod: removed", kDiceInfo[k].name, kw->GetFormEditorID());
+				}
+				if (!extra.empty()) {
+					item->RemoveKeywords(extra);
+				}
+			}
+		}
+
 		// A shop marks goods up by your Speech (about x3.3 at 0, x2 at 100): the dice's value is set so the price you
 		// see is the set's own (Iron 50 ... Daedric 2500), whatever your Speech
 		void PriceDice()
@@ -3102,6 +3133,7 @@ namespace Game
 					chest ? chest->GetFormID() : 0, tref ? tref->GetFormID() : 0, dice);
 				// what isn't on sale yet comes out (wherever the shop's goods are while you trade), then the list reloads
 				if (a && g_innkeeper && a->IsInFaction(g_innkeeper)) {
+					KeepDiceKeywords();
 					PriceDice();
 					HideUnsold(chest);
 					HideUnsold(tref.get());
