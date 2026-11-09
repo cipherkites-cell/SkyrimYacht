@@ -118,9 +118,9 @@ canvas#view.over-die { cursor: pointer; }
     <button class="newgame" id="newgame" type="button" hidden>New game</button>
     <div class="help">
       <b>Hold</b> the left button and <b>move</b> to pick up the cup and shake it; a click alone does nothing.
-      <b>Let go</b> and it throws the dice the way you last moved it. Dice left on the pad are kept: <b>drag</b> or
-      <b>click</b> a die to put it back in the cup for the next roll, or click it in the cup to take it out again.
-      After up to three rolls, <b>pick a box</b> to score.
+      <b>Let go</b> and it throws the dice the way you last moved it. <b>Click</b> a die to set it on the rack (click
+      again to put it back). <b>Drag</b> a die to lift it and carry it into the cup for the next roll. After up to
+      three rolls, <b>pick a box</b> to score.
     </div>
   </aside>
 </div>
@@ -228,6 +228,12 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     box(wallT + 0.12, wallT + 0.12, 0.25, sx * (S.X + wallT / 2), sy * (S.Yh + wallT / 2), wallH - 0.08, brassMat);
   }
 
+  // The rack: a wooden ledge in front of the tray where kept dice sit.
+  const rackY = -S.Yh - wallT - 1.7, rackTop = 0.0;
+  box(13.5, 2.4, 0.5, 0, rackY, rackTop - 0.25, woodMat);
+  box(13.5, 0.25, 0.7, 0, rackY - 1.15, rackTop + 0.1, woodMat);
+  const rackX = (slot) => (slot - 2) * 2.4;
+
   // ------------------------------------------------------------------ dice
   const PIPS = {
     1: [[1, 1]], 2: [[0, 0], [2, 2]], 3: [[0, 0], [1, 1], [2, 2]], 4: [[0, 0], [2, 0], [0, 2], [2, 2]],
@@ -308,14 +314,14 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     renderer.setSize(r.width, r.height, false);
     camera.aspect = r.width / Math.max(1, r.height);
     // Keep the tray and the cup beside it in view at any aspect.
-    const needW = 42, needD = 25, cx = 3.6;
+    const needW = 42, needD = 29, cx = 3.6, zc = 1.6;
     const vFov = 38 * Math.PI / 180;
     const distForH = (needD / 2) / Math.tan(vFov / 2);
     const distForW = (needW / 2) / (Math.tan(vFov / 2) * camera.aspect);
     const dist = Math.max(distForH, distForW) * 0.95;
     const tilt = 0.9; // radians down from horizontal
-    camera.position.set(cx, Math.sin(tilt) * dist, Math.cos(tilt) * dist - 0.5);
-    camera.lookAt(cx, 0, -0.5);
+    camera.position.set(cx, Math.sin(tilt) * dist, Math.cos(tilt) * dist + zc);
+    camera.lookAt(cx, 0, zc);
     camera.updateProjectionMatrix();
   }
   window.addEventListener("resize", resize);
@@ -358,54 +364,61 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   });
 
   // ------------------------------------------------------------------ game state
-  const REST = { x: S.X + wallT + 3.6, y: -1.0, z: 3.0 };  // floating to the right of the tray
-  const SHAKE_Z = 5.6;
+  const REST = { x: S.X + wallT + 3.6, y: -1.0, z: 3.0 };  // to the right of the tray, held still
+  const SHAKE_Z = 5.6, CARRY_Z = 3.2;
   const cup = { x: REST.x, y: REST.y, z: REST.z, vx: 0, vy: 0, vz: 0, q: new THREE.Quaternion() };
   const cupTarget = { x: REST.x, y: REST.y };
   Y.y_place_cup(cup.x, cup.y, cup.z, 1, 0, 0, 0);
 
   let phase = "ready";      // ready, shaking, pouring, rolling, choose, over
   let rollsUsed = 0;
-  const faces = [0, 0, 0, 0, 0];             // last face each die showed on the pad (0 before the first roll)
-  const lastSpot = [null, null, null, null, null];  // where each die lay before it went back in the cup
+  const faces = [0, 0, 0, 0, 0];                    // last face each die showed (0 before the first roll)
+  const kept = [false, false, false, false, false]; // on the rack
+  const rackSlot = [-1, -1, -1, -1, -1];
+  const lastSpot = [null, null, null, null, null];  // where each die lay on the pad before it was moved
   const anim = [null, null, null, null, null];      // per-die visual tweens
+  let carry = null;         // { i, x, y, z, from } while a die is in the player's hand
   let rolled = 0;           // dice in this roll (bit mask)
   let pour = null, rollingTime = 0, shakeTime = 0, pourPending = false;
   const aim = { x: -1, y: 0.2 };  // smoothed direction of the cup's movement: it tips this way on release
-  let press = null;         // { id, x0, y0, kind: "die" | "cup", i, moved, fromCup }
+  let press = null;         // { id, x0, y0, kind: "die" | "cup", i, moved }
 
   const state = () => f64(Y.y_state(), 62);
   const inCup = (st, i) => st[i * 11 + 8] > 0;
+  const active = (st, i) => st[i * 11 + 7] > 0;
   function anyInCup() { const st = state(); for (let i = 0; i < 5; i++) if (inCup(st, i)) return true; return false; }
   const posOf = (st, i) => new THREE.Vector3(st[i * 11], st[i * 11 + 1], st[i * 11 + 2]);
   const quatOf = (st, i) => new THREE.Quaternion(st[i * 11 + 4], st[i * 11 + 5], st[i * 11 + 6], st[i * 11 + 3]);
-
-  function tweenFrom(i, st, dur) { anim[i] = { from: posOf(st, i), fromQ: quatOf(st, i), t: 0, dur: dur || 0.25 }; }
+  // Tweens start from wherever the die is drawn right now, so nothing jumps.
+  function tweenFrom(i, dur) { anim[i] = { from: dice[i].position.clone(), fromQ: dice[i].quaternion.clone(), t: 0, dur: dur || 0.25 }; }
+  function freeSlot() { const used = new Set(rackSlot.filter((v) => v >= 0)); let k = 0; while (used.has(k)) k++; return k; }
 
   function startTurn(animate) {
-    const st = state();
     for (let i = 0; i < 5; i++) {
       Y.y_set_frozen(i, 0);
-      if (animate && st[i * 11 + 7] && !inCup(st, i)) tweenFrom(i, st, 0.3);
+      if (animate) tweenFrom(i, 0.3);
       faces[i] = 0;
+      kept[i] = false;
+      rackSlot[i] = -1;
       lastSpot[i] = null;
     }
+    carry = null;
     Y.y_load(0x1f);
     rollsUsed = 0;
     phase = "ready";
     updateUI();
   }
 
-  function canRoll() { return (phase === "ready" || phase === "choose") && rollsUsed < 3 && anyInCup(); }
+  function canRoll() { return (phase === "ready" || phase === "choose") && rollsUsed < 3 && !carry && anyInCup(); }
 
   function beginShake() {
     if (!canRoll()) return false;
-    // Dice left on the pad are kept: lock them so the roll can't knock them over.
+    // Dice left on the pad stay as they are: lock them so the roll can't knock them over.
     const st = state();
     rolled = 0;
     for (let i = 0; i < 5; i++) {
       if (inCup(st, i)) rolled |= 1 << i;
-      else Y.y_set_frozen(i, 1);
+      else if (active(st, i)) Y.y_set_frozen(i, 1);
     }
     phase = "shaking";
     shakeTime = 0;
@@ -427,13 +440,13 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     const dx = aim.x / len, dy = aim.y / len;
     const reach = S.H * 0.85;
     const px = THREE.MathUtils.clamp(cup.x, -S.X + 2, S.X - 2), py = THREE.MathUtils.clamp(cup.y, -S.Yh + 2, S.Yh - 2);
-    const tipX = THREE.MathUtils.clamp(px + dx * reach, -S.X + 1.5, S.X - 1.5) - dx * reach;
-    const tipY = THREE.MathUtils.clamp(py + dy * reach, -S.Yh + 1.5, S.Yh - 1.5) - dy * reach;
+    const tipX = THREE.MathUtils.clamp(px + dx * reach, -S.X + 2.6, S.X - 2.6) - dx * reach;
+    const tipY = THREE.MathUtils.clamp(py + dy * reach, -S.Yh + 2.6, S.Yh - 2.6) - dy * reach;
     const axis = new THREE.Vector3(-dy, dx, 0).normalize();
     // Wind up behind the tip spot, then fling forward while tipping, so the dice leave the cup moving and tumble.
     const windX = THREE.MathUtils.clamp(tipX - dx * 5, -S.X + 2, S.X - 2), windY = THREE.MathUtils.clamp(tipY - dy * 5, -S.Yh + 2, S.Yh - 2);
-    pour = { t: 0, start: { x: cup.x, y: cup.y, z: cup.z }, q0: cup.q.clone(), wind: { x: windX, y: windY, z: 5.2 },
-      at: { x: tipX, y: tipY, z: 4.4 }, axis };
+    pour = { t: 0, wind: { x: windX, y: windY, z: 5.2 }, at: { x: tipX, y: tipY, z: 4.4 } };
+    tilt = { axis, angle: 0, vel: 0, lean0: cup.q.clone() };
     phase = "pouring";
     updateUI();
   }
@@ -442,37 +455,52 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     const st = state();
     for (let i = 0; i < 5; i++) {
       if (rolled & (1 << i)) faces[i] = st[i * 11 + 10];
-      Y.y_set_frozen(i, 0);
+      if (active(st, i)) Y.y_set_frozen(i, 0);
     }
     rollsUsed++;
     phase = "choose";
     updateUI();
   }
 
-  function putInCup(i) {
-    if (phase !== "choose") return;
-    if (rollsUsed >= 3) { toast("No rolls left"); return; }
+  // Rack and pad.
+  function keep(i) {
     const st = state();
-    if (inCup(st, i)) return;
-    lastSpot[i] = { x: st[i * 11], y: st[i * 11 + 1] };
-    tweenFrom(i, st, 0.22);
+    if (active(st, i) && !inCup(st, i)) lastSpot[i] = { x: st[i * 11], y: st[i * 11 + 1] };
+    tweenFrom(i, 0.25);
+    Y.y_set_active(i, 0);
+    kept[i] = true;
+    rackSlot[i] = freeSlot();
+    hit(2, 22);
+    updateUI();
+  }
+  function placeOnPad(i, x, y, drop) {
+    tweenFrom(i, drop ? 0.12 : 0.25);
+    kept[i] = false;
+    rackSlot[i] = -1;
+    Y.y_place_die(i, THREE.MathUtils.clamp(x, -S.X + half, S.X - half), THREE.MathUtils.clamp(y, -S.Yh + half, S.Yh - half),
+      half + (drop ? 0.5 : 0.02), faces[i] || 1);
+    hit(1, 22);
+    updateUI();
+  }
+  function putInCup(i) {
+    tweenFrom(i, 0.18);
+    kept[i] = false;
+    rackSlot[i] = -1;
     Y.y_add_to_cup(i);
     hit(3, 25);
     updateUI();
   }
+  function frontSpot(i) { return lastSpot[i] || { x: kept[i] ? rackX(rackSlot[i]) : S.X - 2, y: -S.Yh + 1.4 }; }
 
-  function takeOut(i, x, y) {
+  // A click: a die on the pad goes to the rack, a racked die goes back on the pad.
+  function clickDie(i) {
     if (phase !== "choose") return;
-    const st = state();
-    if (!inCup(st, i)) return;
-    tweenFrom(i, st, 0.22);
-    Y.y_place_die(i, THREE.MathUtils.clamp(x, -S.X + half, S.X - half), THREE.MathUtils.clamp(y, -S.Yh + half, S.Yh - half), half + 0.02, faces[i] || 1);
-    hit(1, 25);
-    updateUI();
+    if (kept[i]) { const sp = frontSpot(i); placeOnPad(i, sp.x, sp.y, false); }
+    else keep(i);
   }
 
   function score(cat) {
-    if (phase !== "choose") return;
+    if (phase !== "choose" || carry) return;
     Y.y_dice(faces[0], faces[1], faces[2], faces[3], faces[4]);
     const pts = Y.y_card_fill(cat);
     if (pts < 0) return;
@@ -530,33 +558,35 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     else if (phase === "pouring" || phase === "rolling") hint.textContent = "Rolling…";
     else if (phase === "choose") {
       if (rollsUsed >= 3) hint.textContent = "Pick a box on the scorecard to score this roll.";
-      else if (anyInCup()) hint.textContent = "Shake the cup to roll what's in it. Dice left on the pad are kept.";
-      else hint.textContent = "Drop dice into the cup to roll them again, or pick a box to score.";
+      else if (anyInCup()) hint.textContent = "Shake the cup to roll what's in it. Dice on the rack or pad stay as they are.";
+      else hint.textContent = "Drag dice into the cup to roll them again. Click a die to put it on the rack.";
     } else hint.textContent = "Game over. Start a new game from the scorecard.";
   }
 
   // ------------------------------------------------------------------ input
   const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
   const shakePlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -SHAKE_Z);
-  const feltPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -half);
+  const carryPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -CARRY_Z);
+  const tablePlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
   const hitPt = new THREE.Vector3();
   function setRay(e) {
     const r = canvas.getBoundingClientRect();
     ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
     ray.setFromCamera(ndc, camera);
   }
+  // Dice inside the cup aren't picked: a press on the cup always means the cup.
   function pickDie() {
-    const hits = ray.intersectObjects(dice, false);
+    const st = state();
+    const hits = ray.intersectObjects(dice.filter((d, i) => !inCup(st, i)), false);
     return hits.length ? hits[0].object.userData.index : -1;
   }
-  function feltPoint() {
-    return ray.ray.intersectPlane(feltPlane, hitPt) ? { x: hitPt.x, y: -hitPt.z } : null;
-  }
+  function onPlane(plane) { return ray.ray.intersectPlane(plane, hitPt) ? { x: hitPt.x, y: -hitPt.z } : null; }
   function aimCup() {
-    if (ray.ray.intersectPlane(shakePlane, hitPt)) {
+    const pt = onPlane(shakePlane);
+    if (pt) {
       const m = S.R + S.W + 0.6;
-      cupTarget.x = THREE.MathUtils.clamp(hitPt.x, -S.X + m, S.X - m);
-      cupTarget.y = THREE.MathUtils.clamp(-hitPt.z, -S.Yh + m, S.Yh - m);
+      cupTarget.x = THREE.MathUtils.clamp(pt.x, -S.X + m, S.X - m);
+      cupTarget.y = THREE.MathUtils.clamp(pt.y, -S.Yh + m, S.Yh - m);
     }
   }
   // Whether a screen point is over the cup (its mouth or body), for dropping dice in.
@@ -572,12 +602,20 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
       rad = Math.max(rad, Math.hypot(b[0] - a[0], b[1] - a[1]));
       best = Math.min(best, Math.hypot(clientX - a[0], clientY - a[1]));
     }
-    return best < Math.max(28, rad * 1.5);
+    return best < Math.max(30, rad * 1.6);
+  }
+  function overRack() {
+    const pt = onPlane(tablePlane);
+    return pt && pt.y < -S.Yh - wallT * 0.5 && pt.y > rackY - 2 && Math.abs(pt.x) < 7.5;
+  }
+  function overPad() {
+    const pt = onPlane(tablePlane);
+    return pt && Math.abs(pt.x) < S.X + wallT && Math.abs(pt.y) < S.Yh + wallT;
   }
   function setCupGlow(on) { rimMat.emissive.setHex(on ? 0x6a4a10 : 0x000000); }
 
-  // A press on a die moves it (a click sends it into the cup, or back out). A press anywhere else picks the cup up
-  // only once the pointer moves while the button is held: a plain click does nothing.
+  // Press a die: click it to send it to the rack (or back), or drag it to lift it and carry it anywhere, such as
+  // into the cup. Press anywhere else: the cup only lifts once the pointer moves while the button is held.
   canvas.addEventListener("pointerdown", (e) => {
     if (e.button !== 0 || press) return;
     initAudio();
@@ -586,7 +624,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     if (phase === "choose") {
       const i = pickDie();
       if (i >= 0) {
-        press = { id: e.pointerId, x0: e.clientX, y0: e.clientY, kind: "die", i, moved: false, fromCup: inCup(state(), i) };
+        press = { id: e.pointerId, x0: e.clientX, y0: e.clientY, kind: "die", i, moved: false };
         canvas.setPointerCapture(e.pointerId);
         return;
       }
@@ -614,18 +652,22 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
       return;
     }
 
-    // Carrying a die by hand.
+    // Lift the die into the hand and carry it above the table.
     if (!press.moved && dist > 6) {
       press.moved = true;
-      if (press.fromCup) {
-        const pt = feltPoint() || { x: S.X - 2, y: 0 };
-        takeOut(press.i, pt.x, pt.y);
-        anim[press.i] = null;
-      }
+      const i = press.i, st = state();
+      if (active(st, i) && !inCup(st, i)) lastSpot[i] = { x: st[i * 11], y: st[i * 11 + 1] };
+      const from = kept[i] ? "rack" : inCup(st, i) ? "cup" : "pad";
+      tweenFrom(i, 0.12);
+      Y.y_set_active(i, 0);
+      kept[i] = false;
+      rackSlot[i] = -1;
+      carry = { i, x: dice[i].position.x, y: dice[i].position.y, z: CARRY_Z, from };
+      hit(0, 18);
     }
-    if (press.moved) {
-      const pt = feltPoint();
-      if (pt) Y.y_drag(press.i, THREE.MathUtils.clamp(pt.x, -S.X + half, S.X - half), THREE.MathUtils.clamp(pt.y, -S.Yh + half, S.Yh - half), half);
+    if (press.moved && carry) {
+      const pt = onPlane(carryPlane);
+      if (pt) { carry.x = pt.x; carry.y = pt.y; }
       setCupGlow(rollsUsed < 3 && overCup(e.clientX, e.clientY));
     }
   });
@@ -639,15 +681,18 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
       if (p.moved && phase === "shaking") pourPending = true;  // pours once the cup is over the tray
       return;
     }
-    if (!p.moved) {
-      if (p.fromCup) {
-        const spot = lastSpot[p.i] || { x: S.X - 2, y: -S.Yh + 1.5 };
-        takeOut(p.i, spot.x, spot.y);
-      } else putInCup(p.i);
-      return;
-    }
-    Y.y_drag_end();
-    if (overCup(e.clientX, e.clientY)) putInCup(p.i);
+    if (!p.moved) { clickDie(p.i); return; }
+    // Let go of a carried die.
+    const c = carry;
+    carry = null;
+    setRay(e);
+    if (overCup(e.clientX, e.clientY) && rollsUsed < 3) putInCup(c.i);
+    else if (overRack()) keep(c.i);
+    else if (overPad()) { const pt = onPlane(tablePlane); placeOnPad(c.i, pt.x, pt.y, true); }
+    else if (c.from === "cup" && rollsUsed < 3) putInCup(c.i);
+    else if (c.from === "rack") keep(c.i);
+    else { const sp = frontSpot(c.i); placeOnPad(c.i, sp.x, sp.y, true); }
+    if (overCup(e.clientX, e.clientY) && rollsUsed >= 3) toast("No rolls left");
   };
   canvas.addEventListener("pointerup", release);
   canvas.addEventListener("pointercancel", release);
@@ -655,17 +700,37 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   // ------------------------------------------------------------------ loop
   const tmpQ = new THREE.Quaternion(), tmpV = new THREE.Vector3(), ident = new THREE.Quaternion();
   const ease = (t) => t * t * (3 - 2 * t);
+  function faceUpQuat(face, out) {
+    const q = Math.PI / 2;
+    const map = { 1: [[0, 1, 0], -q], 6: [[0, 1, 0], q], 2: [[1, 0, 0], q], 5: [[1, 0, 0], -q], 4: [[1, 0, 0], Math.PI], 3: [[0, 0, 1], 0] };
+    const [ax, ang] = map[face] || map[3];
+    return out.setFromAxisAngle(new THREE.Vector3(ax[0], ax[1], ax[2]), ang);
+  }
   let last = performance.now();
 
   // The cup follows its target on a damped spring, so it carries weight and swings instead of snapping.
-  function springCup(tx, ty, tz, dt, stiffness) {
-    const w = stiffness, z = 0.72, steps = Math.max(1, Math.ceil(dt / 0.008)), h = dt / steps;
+  function springCup(tx, ty, tz, dt, stiffness, damping) {
+    const w = stiffness, z = damping || 0.72, steps = Math.max(1, Math.ceil(dt / 0.008)), h = dt / steps;
     for (let s = 0; s < steps; s++) {
       cup.vx += (w * w * (tx - cup.x) - 2 * z * w * cup.vx) * h;
       cup.vy += (w * w * (ty - cup.y) - 2 * z * w * cup.vy) * h;
       cup.vz += (w * w * (tz - cup.z) - 2 * z * w * cup.vz) * h;
       cup.x += cup.vx * h; cup.y += cup.vy * h; cup.z += cup.vz * h;
     }
+  }
+  // The tip is a loose spring too: it swings past, wobbles and settles instead of following a fixed curve.
+  let tilt = null;  // { axis, angle, vel, lean0 } while the cup is tipped or swinging back upright
+  function springTilt(target, dt, w, z) {
+    const steps = Math.max(1, Math.ceil(dt / 0.008)), h = dt / steps;
+    for (let s = 0; s < steps; s++) {
+      tilt.vel += (w * w * (target - tilt.angle) - 2 * z * w * tilt.vel) * h;
+      tilt.angle += tilt.vel * h;
+    }
+  }
+  function applyTilt(leanFade) {
+    tmpQ.setFromAxisAngle(tilt.axis, tilt.angle);
+    tilt.lean0.slerp(ident, leanFade);
+    cup.q.copy(tmpQ).multiply(tilt.lean0);
   }
   function leanCup(dt, maxLean) {
     const sp = Math.hypot(cup.vx, cup.vy);
@@ -697,37 +762,32 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     } else if (phase === "pouring" && pour) {
       pour.t += dt;
       const p = pour.t;
-      if (p < 0.13) {
+      if (p < 0.12) {
         // Wind up: draw back with the mouth leaning away.
-        const k = ease(p / 0.13);
-        cup.x = pour.start.x + (pour.wind.x - pour.start.x) * k;
-        cup.y = pour.start.y + (pour.wind.y - pour.start.y) * k;
-        cup.z = pour.start.z + (pour.wind.z - pour.start.z) * k;
-        tmpQ.setFromAxisAngle(pour.axis, THREE.MathUtils.degToRad(-12));
-        cup.q.copy(pour.q0).slerp(tmpQ, k);
-      } else if (p < 0.28) {
-        // Fling: accelerate forward and tip over.
-        const f = Math.pow((p - 0.13) / 0.15, 2);
-        cup.x = pour.wind.x + (pour.at.x - pour.wind.x) * f;
-        cup.y = pour.wind.y + (pour.at.y - pour.wind.y) * f;
-        cup.z = pour.wind.z + (pour.at.z - pour.wind.z) * f;
-        cup.q.setFromAxisAngle(pour.axis, THREE.MathUtils.degToRad(-12 + 142 * f));
-      } else if (p < 0.7) {
-        cup.q.setFromAxisAngle(pour.axis, THREE.MathUtils.degToRad(130 + Math.sin((p - 0.28) * 18) * 4));
+        springCup(pour.wind.x, pour.wind.y, pour.wind.z, dt, 22, 0.7);
+        springTilt(-0.22, dt, 18, 0.6);
+      } else if (p < 0.85) {
+        // Fling forward and let it swing over loosely, overshooting and wobbling before it settles tipped.
+        springCup(pour.at.x, pour.at.y, pour.at.z, dt, 24, 0.45);
+        springTilt(THREE.MathUtils.degToRad(125), dt, 15, 0.42);
       } else {
         pour = null;
-        cup.vx = cup.vy = cup.vz = 0;
         phase = "rolling";
         rollingTime = 0;
         updateUI();
       }
+      applyTilt(1 - Math.exp(-dt * 10));
     } else {
-      // Drift back to its spot beside the tray and float there.
-      springCup(REST.x, REST.y, REST.z + Math.sin(t * 1.4) * 0.15, dt, 7);
-      leanCup(dt, 0.25);
-      tmpQ.setFromAxisAngle(tmpV.set(1, 0.3, 0).normalize(), Math.sin(t * 0.9) * 0.04);
-      if (phase === "rolling") cup.q.slerp(ident, 1 - Math.exp(-dt * 5));
-      else cup.q.multiply(tmpQ.slerp(ident, 0.92));
+      // Back to its spot beside the tray, where it stays still.
+      springCup(REST.x, REST.y, REST.z, dt, 6, tilt ? 0.5 : 0.8);
+      if (tilt) {
+        // Swing back upright on a loose spring.
+        springTilt(0, dt, 7, 0.38);
+        applyTilt(1);
+        if (Math.abs(tilt.angle) < 0.01 && Math.abs(tilt.vel) < 0.05) tilt = null;
+      } else {
+        leanCup(dt, 0.25);
+      }
     }
 
     const n = Y.y_step(dt, cup.x, cup.y, cup.z, cup.q.w, cup.q.x, cup.q.y, cup.q.z);
@@ -740,7 +800,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
       rollingTime += dt;
       if (anyInCup() && rollingTime > 1.0) {
         // A die stayed in the cup: tip it out again.
-        phase = "shaking"; pourPending = true;
+        phase = "shaking"; pourPending = true; tilt = null;
       } else if (Y.y_all_settled() && rollingTime > 0.3) {
         finishRoll();
       }
@@ -752,15 +812,31 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
       let changed = false;
       for (let i = 0; i < 5; i++) {
         const o = i * 11;
-        if (inCup(st, i) || !st[o + 9] || !st[o + 10]) continue;
+        if (!active(st, i) || inCup(st, i) || !st[o + 9] || !st[o + 10]) continue;
         if (st[o + 10] !== faces[i]) { faces[i] = st[o + 10]; changed = true; }
       }
       if (changed) updateUI();
     }
 
-    // Draw.
+    // Draw. Kept dice sit on the rack face up; a carried die hangs under the pointer; the rest come from the sim.
     for (let i = 0; i < 5; i++) {
-      const m = dice[i], target = posOf(st, i), targetQ = quatOf(st, i), a = anim[i];
+      const m = dice[i], a = anim[i];
+      let target, targetQ;
+      if (carry && carry.i === i) {
+        target = new THREE.Vector3(carry.x, carry.y, carry.z);
+        targetQ = faceUpQuat(faces[i] || 1, new THREE.Quaternion());
+        if (!a) {
+          m.position.lerp(target, 1 - Math.exp(-dt * 22));
+          m.quaternion.slerp(targetQ, 1 - Math.exp(-dt * 14));
+          continue;
+        }
+      } else if (kept[i]) {
+        target = new THREE.Vector3(rackX(rackSlot[i]), rackY, rackTop + half);
+        targetQ = faceUpQuat(faces[i] || 1, new THREE.Quaternion());
+      } else {
+        target = posOf(st, i);
+        targetQ = quatOf(st, i);
+      }
       if (a) {
         a.t += dt;
         const k = ease(Math.min(1, a.t / a.dur));
