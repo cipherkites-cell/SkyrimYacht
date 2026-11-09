@@ -30,6 +30,8 @@ every frame, so dice can't be flung off the table or wedge in level geometry.
   pitched for the dice's material, as loud as the impact and darker on the linen.
   Metal dice are heavier: pitched down, low end lifted, a touch of clank around 2 kHz, the top taken out so
   they're never tinny; in the cup a table knock sits under each click so they clunk.
+  While shaking, each cup adds its own short, low metal clang (tankard pewter, goblet iron, Dwemer bronze lowest,
+  silver brightest, gold longest), kept under 3.6 kHz so it never sounds like tin or glass.
 - **Never stuck:** a die resting on another die, or cocked against a wall, is knocked over a few times and then set
   down flat on its nearest face at the closest clear spot; any die still loose six seconds after leaving the cup is
   set down the same way, so a throw always ends (`TestNeverStuck`).

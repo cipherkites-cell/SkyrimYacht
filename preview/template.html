@@ -1237,6 +1237,39 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   // low end lifted for weight, a little presence around 2 kHz for the metallic clank, and the fizz on top taken out
   // so they never sound tinny. Gold and silver are heaviest of all.
   const MAT_PITCH = { bone: 1, metal: 0.88, precious: 0.84, stone: 0.95, ice: 1.15 };
+  // Shaking: each cup answers the dice with its own short metal clang, low and dull rather than tinny or glassy.
+  // Partials as [Hz, decay s]; each is doubled a hair apart so it beats like real metal. Heavier cups ring lower.
+  const CUP_CLANG = {
+    tankard: { modes: [[520, 0.05], [1230, 0.035], [2140, 0.024]], level: 0.2 },         // thick pewter
+    goblet: { modes: [[690, 0.045], [1640, 0.03], [2870, 0.02]], level: 0.17 },          // plain iron goblet
+    dwemer: { modes: [[430, 0.065], [1070, 0.045], [1880, 0.03]], level: 0.22 },         // heavy dwarven bronze
+    silver: { modes: [[780, 0.055], [1860, 0.038], [3150, 0.024]], level: 0.17 },        // silver, brightest
+    golden: { modes: [[600, 0.075], [1440, 0.05], [2560, 0.032]], level: 0.2 },          // soft gold, longest
+  };
+
+  const clangCache = new Map();
+  function clangBufs(id) {
+    let set = clangCache.get(id);
+    if (set) return set;
+    const sr = audio.sampleRate, modes = CUP_CLANG[id].modes;
+    set = [];
+    for (let v = 0; v < 4; v++) {
+      const n = Math.ceil(Math.max(...modes.map((m) => m[1])) * 6 * sr), b = audio.createBuffer(1, n, sr), o = b.getChannelData(0);
+      modes.forEach(([f0, dec], k) => {
+        for (const det of [1, 1.002 + Math.random() * 0.002]) {
+          const w = (2 * Math.PI * f0 * det * (1 + (Math.random() - 0.5) * 0.03)) / sr, kk = Math.exp(-1 / (dec * sr)), ph = Math.random() * 6.283;
+          let env = 0.5 / (k + 1);
+          for (let i = 0; i < n && env > 1e-5; i++) { o[i] += env * Math.sin(w * i + ph) * Math.min(1, i / 96); env *= kk; }
+        }
+      });
+      let peak = 0;
+      for (let i = 0; i < n; i++) peak = Math.max(peak, Math.abs(o[i]));
+      for (let i = 0; i < n; i++) o[i] *= 0.9 / peak;
+      set.push(b);
+    }
+    clangCache.set(id, set);
+    return set;
+  }
   const METAL_TONE = { metal: { low: 5, clank: 2.5, top: -7 }, precious: { low: 6, clank: 2, top: -8 } };
   const SURF_GAIN = [0.3, 0.55, 0.6, 0.35];
   const lastHit = new Float64Array(24).fill(-1);
@@ -1259,6 +1292,16 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     f.frequency.value = (type === 1 ? 1400 + 3000 * v : 2500 + 12000 * v * v);
     const g = audio.createGain(); g.gain.value = Math.pow(v, 1.6) * SURF_GAIN[type];
     const tone = METAL_TONE[DIE_MAT[curDiceStyle]];
+    // While shaking, the cup clangs a little with each hit, in its own voice.
+    const inCupHit = type === 3 || (type === 0 && die >= 0 && inCup(state(), die));
+    const clang = CUP_CLANG[activeCupId()];
+    if (inCupHit && clang && v > 0.08) {
+      const c = audio.createBufferSource(); c.buffer = clangBufs(activeCupId())[(Math.random() * 4) | 0];
+      c.playbackRate.value = 1 + (Math.random() - 0.5) * 0.04;
+      const cg = audio.createGain(); cg.gain.value = clang.level * (type === 0 ? 0.6 : 1);
+      const clp = audio.createBiquadFilter(); clp.type = "lowpass"; clp.frequency.value = 3600;  // no glassy top
+      c.connect(clp); clp.connect(cg); cg.connect(g); c.start(now);
+    }
     if (tone) {
       const lo = audio.createBiquadFilter(); lo.type = "lowshelf"; lo.frequency.value = 260; lo.gain.value = tone.low;
       const cl = audio.createBiquadFilter(); cl.type = "peaking"; cl.frequency.value = 2100; cl.Q.value = 1.4; cl.gain.value = tone.clank;
