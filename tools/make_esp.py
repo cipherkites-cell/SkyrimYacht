@@ -22,7 +22,9 @@ M = 0x01000000
 IDS = {
     "CanAfford": 0x800, "TableFaction": 0x801, "Tray": 0x802, "Quest": 0x803,
     "BranchPlay": 0x804, "TopicPlay": 0x805, "InfoPlay": 0x806, "InfoPoor": 0x807,
+    "DiceShop": 0x808, "BranchDice": 0x809, "TopicDice": 0x80A, "InfoDiceSale": 0x80B, "InfoDiceNone": 0x80C,
 }
+INNKEEPER = 0x0005091B  # Skyrim.esm JobInnkeeperFaction
 MIN_BET = 25
 
 
@@ -81,6 +83,8 @@ def info(name, edid, text, conds, flags, prev=None):
 
 def main():
     glob = rec("GLOB", "CanAfford", sub("EDID", zstr("YA_CanAfford")) + sub("FNAM", b"s") + sub("FLTV", f32(0.0)))
+    # 0: you haven't played yet (no line), 1: nothing new to sell, 2: a set of dice for sale
+    glob += rec("GLOB", "DiceShop", sub("EDID", zstr("YA_DiceShop")) + sub("FNAM", b"s") + sub("FLTV", f32(0.0)))
     faction = rec("FACT", "TableFaction", sub("EDID", zstr("YA_TableFaction")) + sub("DATA", u32(0x1)) + sub("RNAM", u32(0)))
     tray = rec("MISC", "Tray", sub("EDID", zstr("YA_Tray")) + sub("OBND", struct.pack("<6h", -16, -16, -1, 16, 16, 2)) +
                sub("FULL", zstr("Yacht Tray")) + sub("MODL", zstr("SkyrimYacht\\Tray.nif")) + sub("DATA", i32(0) + f32(0.0)))
@@ -89,6 +93,8 @@ def main():
                 sub("DNAM", u16(0x0001 | 0x8000) + u8(50) + u8(0) + u32(0) + u32(8)) + sub("ANAM", u32(0)))
     branch = rec("DLBR", "BranchPlay", sub("EDID", zstr("YA_BranchPlay")) + sub("QNAM", u32(fid("Quest"))) + sub("TNAM", u32(0)) +
                  sub("DNAM", u32(0x1)) + sub("SNAM", u32(fid("TopicPlay"))))
+    branch += rec("DLBR", "BranchDice", sub("EDID", zstr("YA_BranchDice")) + sub("QNAM", u32(fid("Quest"))) + sub("TNAM", u32(0)) +
+                  sub("DNAM", u32(0x1)) + sub("SNAM", u32(fid("TopicDice"))))
     seated = [ctda(GET_IN_FACTION, 1.0, fid("TableFaction")), ctda(IS_CHILD, 0.0)]
     infos = (info("InfoPlay", "YA_InfoPlay", "Pull up a chair. Let's see your coin.",
                   seated + [ctda(GET_GLOBAL, 1.0, fid("CanAfford"))], 0x0201) +
@@ -100,6 +106,17 @@ def main():
     global COUNT
     COUNT += 1  # the topic-children group
     dial += group(struct.pack("<I", fid("TopicPlay")), infos, gtype=7)
+    # Innkeepers sell finer dice as you win more games
+    keeper = [ctda(GET_IN_FACTION, 1.0, INNKEEPER), ctda(IS_CHILD, 0.0)]
+    dice_infos = (info("InfoDiceSale", "YA_InfoDiceSale", "Got a set put by for a player like you. Have a look.",
+                       keeper + [ctda(GET_GLOBAL, 2.0, fid("DiceShop"))], 0x0201) +
+                  info("InfoDiceNone", "YA_InfoDiceNone", "Nothing new. Win a few more games and come back.",
+                       keeper + [ctda(GET_GLOBAL, 1.0, fid("DiceShop"))], 0x0201, prev="InfoDiceSale"))
+    dial += rec("DIAL", "TopicDice", sub("EDID", zstr("YA_TopicDice")) + sub("FULL", zstr("Got any dice for sale?")) +
+                sub("PNAM", f32(50.0)) + sub("BNAM", u32(fid("BranchDice"))) + sub("QNAM", u32(fid("Quest"))) +
+                sub("DATA", u8(0) + u8(0) + u16(0)) + sub("SNAM", b"CUST") + sub("TIFC", u32(2)))
+    COUNT += 1
+    dial += group(struct.pack("<I", fid("TopicDice")), dice_infos, gtype=7)
 
     body = (group("GLOB", glob) + group("FACT", faction) + group("MISC", tray) + group("DIAL", dial) +
             group("QUST", quest) + group("DLBR", branch))

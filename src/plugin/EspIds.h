@@ -12,5 +12,10 @@ namespace EspIds
 	inline constexpr RE::FormID kTopicPlay = 0x805;
 	inline constexpr RE::FormID kInfoPlay = 0x806;
 	inline constexpr RE::FormID kInfoPoor = 0x807;
+	inline constexpr RE::FormID kDiceShop = 0x808;
+	inline constexpr RE::FormID kBranchDice = 0x809;
+	inline constexpr RE::FormID kTopicDice = 0x80A;
+	inline constexpr RE::FormID kInfoDiceSale = 0x80B;
+	inline constexpr RE::FormID kInfoDiceNone = 0x80C;
 	inline constexpr int kMinBet = 25;
 }

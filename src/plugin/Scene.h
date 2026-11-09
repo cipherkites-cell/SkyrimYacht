@@ -12,7 +12,7 @@ namespace Scene
 {
 	void Register();  // kDataLoaded
 
-	void Open();   // shows the menu (pauses, blurs) and loads the table
+	void Open(bool a_table = true);  // shows the menu (pauses the game) and, unless it's just a window, the table
 	void Close();
 	bool IsOpen();
 	bool Ready();  // the tray has loaded and the dice and cups are attached

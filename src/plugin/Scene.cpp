@@ -73,6 +73,7 @@ namespace Scene
 		RE::NiAVObject*          g_model = nullptr;
 		RE::NiPointer<RE::NiAVObject> g_worldTray;  // world mode: our own tray, hung under the world's scene node
 		bool                     g_world = false;   // this table is in the world (not the item view)
+		bool                     g_withTable = true;  // false: the menu is only a window (the dice shop)
 
 		// The table's placement this frame (in the inventory scene's camera space: y away from the camera, z up).
 		RE::NiMatrix3 g_rot;
@@ -471,6 +472,9 @@ namespace Scene
 				if (auto* subs = RE::SubtitleManager::GetSingleton()) {
 					subs->KillSubtitles();
 				}
+				if (!g_withTable) {
+					return;
+				}
 				if (Config::Get().mode == 0) {
 					OpenWorld();
 					return;
@@ -557,11 +561,12 @@ namespace Scene
 		g_rot = RE::NiMatrix3();
 	}
 
-	void Open()
+	void Open(bool a_table)
 	{
-		if (g_open || !g_tray) {
+		if (g_open || (a_table && !g_tray)) {
 			return;
 		}
+		g_withTable = a_table;
 		g_open = true;
 		Overlay::SetOpen(true);
 		if (auto* q = RE::UIMessageQueue::GetSingleton()) {
@@ -582,7 +587,7 @@ namespace Scene
 	}
 
 	bool IsOpen() { return g_open; }
-	bool Ready() { return g_attached && g_placed; }
+	bool Ready() { return g_withTable && g_scene && g_attached && g_placed; }
 
 	void UseDice(const std::string& a_set)
 	{

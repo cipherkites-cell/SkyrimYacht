@@ -3,7 +3,12 @@
 #include "Audio.h"
 #include "Config.h"
 
+// CommonLib targets Windows 7; XAudio2 2.8+ needs 8 or later in its header. We load the DLL ourselves (see Init).
+#pragma push_macro("_WIN32_WINNT")
+#undef _WIN32_WINNT
+#define _WIN32_WINNT 0x0A00
 #include <xaudio2.h>
+#pragma pop_macro("_WIN32_WINNT")
 
 namespace Audio
 {

@@ -73,7 +73,8 @@ namespace Game
 			Redo,
 			Choose,
 			Scored,
-			Over
+			Over,
+			Shop
 		};
 
 		struct Cup
@@ -189,6 +190,10 @@ namespace Game
 		std::unordered_map<RE::FormID, Record> g_records;
 		int g_lastScore = 0;
 		int g_totalWins = 0;
+		int g_bestScore = 0;            // best finished game: unlocks the cups
+		int g_games = 0;                // games finished (the innkeepers' line shows after the first)
+		std::uint32_t g_ownedDice = 1;  // bit per set in kDiceSets; bone is always yours
+		std::string   g_cupSel, g_diceSel;  // what you chose to play with ("" = the best you have)
 
 		// UI -> game
 		enum class UiAct
@@ -200,7 +205,11 @@ namespace Game
 			Forfeit,
 			ForfeitYes,
 			ForfeitNo,
-			Shout
+			Shout,
+			ChooseCup,
+			ChooseDice,
+			BuyDice,
+			CloseShop
 		};
 		std::vector<std::pair<UiAct, int>> g_uiActs;
 		std::mutex                         g_uiMtx;
@@ -214,6 +223,10 @@ namespace Game
 		RE::TESFaction*  g_faction = nullptr;
 		RE::TESGlobal*   g_canAfford = nullptr;
 		RE::FormID       g_infoPlay = 0;
+		RE::FormID       g_infoDiceSale = 0;
+		std::string      g_shopName;
+		RE::TESGlobal*   g_diceShop = nullptr;
+		std::atomic<RE::FormID> g_pendingShop{ 0 };
 		RE::TESBoundObject* g_gold = nullptr;
 		std::atomic<RE::FormID> g_pendingSpeaker{ 0 };
 		std::unordered_map<RE::FormID, bool> g_tagged;
@@ -360,24 +373,78 @@ namespace Game
 			}
 			return kCups[0];
 		}
+		// the dice sets as the innkeepers sell them: a new set every ten wins, for gold
+		struct DiceInfo
+		{
+			const char* name;
+			int         wins, gold;
+			const char* blurb;
+		};
+		constexpr DiceInfo kDiceInfo[15] = {
+			{ "Bone", 0, 0, "Hand-carved bone. Yellowed, scratched, and dirty in the pips." },
+			{ "Iron", 10, 50, "Hammered iron, pocked and spotted with rust, punched pips." },
+			{ "Steel", 20, 100, "Brushed steel with crisp engraved pips." },
+			{ "Corundum", 30, 150, "Coppery corundum, a little green at the edges." },
+			{ "Dwemer", 40, 200, "Dwarven bronze with gear-ring pips, green with age." },
+			{ "Orichalcum", 50, 250, "Orc-forged orichalcum, dark green-bronze, scored with claw marks." },
+			{ "Silver", 60, 300, "Polished silver, tarnished in the corners, black niello pips." },
+			{ "Quicksilver", 70, 400, "Mirror-bright quicksilver that looks wet." },
+			{ "Moonstone", 80, 500, "Pale elven moonstone with fine leaf lines." },
+			{ "Gold", 90, 650, "Solid gold with garnet pips." },
+			{ "Malachite", 100, 750, "Polished glass-green malachite, banded, with white pips." },
+			{ "Ebony", 110, 900, "Black ebony with inlaid gold pips." },
+			{ "Stalhrim", 120, 1100, "Enchanted ice from Solstheim. Cold blue, cracked, faintly glowing." },
+			{ "Dragonbone", 130, 1500, "Pale dragon bone, fibrous grain, pips stained dark red." },
+			{ "Daedric", 140, 2500, "Black and red, cut with runes, the pips smouldering like coals." },
+		};
+		bool CupUnlocked(int k) { return k >= 0 && k < 5 && g_bestScore >= kCups[k].need; }
+		bool DiceOwned(int k) { return k >= 0 && k < 15 && (k == 0 || (g_ownedDice >> k) & 1u); }
+		bool DiceOnSale(int k) { return k > 0 && k < 15 && !DiceOwned(k) && g_totalWins >= kDiceInfo[k].wins; }
+		int  DiceIndex(const std::string& a_set)
+		{
+			for (int k = 0; k < 15; ++k) {
+				if (a_set == kDiceSets[k]) {
+					return k;
+				}
+			}
+			return -1;
+		}
+		bool AnyDiceOnSale()
+		{
+			for (int k = 1; k < 15; ++k) {
+				if (DiceOnSale(k)) {
+					return true;
+				}
+			}
+			return false;
+		}
 		const CupInfo& PlayerCup()
 		{
+			for (int k = 0; k < 5; ++k) {
+				if (g_cupSel == kCups[k].id && CupUnlocked(k)) {
+					return kCups[k];
+				}
+			}
 			const CupInfo* best = &kCups[0];
-			for (const auto& c : kCups) {
-				if (g_lastScore >= c.need) {
-					best = &c;
+			for (int k = 0; k < 5; ++k) {
+				if (CupUnlocked(k)) {
+					best = &kCups[k];
 				}
 			}
 			return *best;
 		}
 		std::string PlayerDice()
 		{
-			if (!Config::Get().diceSet.empty()) {
-				return Config::Get().diceSet;
+			const int k = DiceIndex(g_diceSel);
+			if (DiceOwned(k)) {
+				return kDiceSets[k];
 			}
-			// one set more every ten wins (innkeepers selling them comes later; for now you just have them)
-			const int k = std::clamp(g_totalWins / 10, 0, 14);
-			return kDiceSets[k];
+			for (int j = 14; j >= 0; --j) {  // the finest you own
+				if (DiceOwned(j)) {
+					return kDiceSets[j];
+				}
+			}
+			return "bone";
 		}
 		double ActiveCupH() { return g_turn == 0 ? PlayerCup().height : kCups[0].height; }
 
@@ -590,7 +657,7 @@ namespace Game
 				g_payoutText = fmt::format("You take {} septims", g_betHeld * 2);
 				Sound("ITMGoldUp");
 				if (g_totalWins % 10 == 0 && g_totalWins / 10 < 15) {
-					Toast(fmt::format("Innkeepers now sell {} dice", PlayerDice()));
+					Toast(fmt::format("Innkeepers now sell {} dice", kDiceInfo[g_totalWins / 10].name));
 				}
 			} else if (outcome == "draw") {
 				++r.d;
@@ -604,6 +671,15 @@ namespace Game
 			}
 			g_betHeld = 0;
 			g_lastScore = outcome == "forfeit" ? 0 : mine;
+			++g_games;
+			if (outcome != "forfeit" && mine > g_bestScore) {
+				for (int k = 1; k < 5; ++k) {
+					if (mine >= kCups[k].need && g_bestScore < kCups[k].need) {
+						Toast(fmt::format("New cup: the {} ({})", kCups[k].name, kCups[k].rank));
+					}
+				}
+				g_bestScore = mine;
+			}
 			spdlog::info("Game over vs {}: {} ({} - {}), record {}-{}-{}", g_oppName, outcome, mine, theirs, r.w, r.l, r.d);
 		}
 
@@ -1070,6 +1146,43 @@ namespace Game
 					break;
 				case UiAct::Shout:
 					Shout();
+					break;
+				case UiAct::ChooseCup:
+					if (g_phase == Phase::Wager && CupUnlocked(arg)) {
+						g_cupSel = kCups[arg].id;
+						Scene::UseCup(0, PlayerCup().id);
+						Ui("ui_equip");
+					}
+					break;
+				case UiAct::ChooseDice:
+					if ((g_phase == Phase::Wager || g_phase == Phase::Shop) && DiceOwned(arg)) {
+						g_diceSel = kDiceSets[arg];
+						Scene::UseDice(PlayerDice());
+						g_soundSet = PlayerDice();
+						Ui("ui_equip");
+					}
+					break;
+				case UiAct::BuyDice:
+					if (g_phase == Phase::Shop && DiceOnSale(arg)) {
+						const int price = kDiceInfo[arg].gold;
+						if (GoldHeld() < price || !g_gold) {
+							Ui("ui_deny");
+							Toast("You can't afford those");
+							break;
+						}
+						Player()->RemoveItem(g_gold, price, RE::ITEM_REMOVE_REASON::kRemove, nullptr, nullptr);
+						Sound("ITMGoldDown");
+						g_ownedDice |= 1u << arg;
+						g_diceSel = kDiceSets[arg];
+						Toast(fmt::format("{} dice: yours", kDiceInfo[arg].name));
+						spdlog::info("Bought {} dice for {}", kDiceInfo[arg].name, price);
+					}
+					break;
+				case UiAct::CloseShop:
+					if (g_phase == Phase::Shop) {
+						g_phase = Phase::Idle;
+						Scene::Close();
+					}
 					break;
 				}
 			}
@@ -1640,6 +1753,59 @@ namespace Game
 			ImGui::PopFont();
 			Centered(fmt::format("Win and you take {} septims", s_bet * 2).c_str(), g_fBody, kDim);
 			Rule();
+			// what you play with: your cup (earned by your best score) and your dice (bought from innkeepers)
+			auto chooser = [&](const char* a_id, const char* a_label, const std::string& a_value, int a_cur, int a_count, auto a_ok,
+							   UiAct a_act) {
+				ImGui::PushID(a_id);
+				ImGui::PushFont(g_fBody);
+				ImGui::TextColored(kDim, "%s", a_label);
+				ImGui::SameLine(150 * g_ui);
+				if (Button("<", 40 * g_ui)) {
+					for (int k = a_cur - 1; k >= 0; --k) {
+						if (a_ok(k)) {
+							Post(a_act, k);
+							break;
+						}
+					}
+				}
+				ImGui::SameLine();
+				const float w = ImGui::GetContentRegionAvail().x - 48 * g_ui;
+				const float tw = ImGui::CalcTextSize(a_value.c_str()).x;
+				const float x0 = ImGui::GetCursorPosX();
+				ImGui::SetCursorPosX(x0 + (w - tw) * 0.5f);
+				ImGui::TextColored(kText, "%s", a_value.c_str());
+				ImGui::SameLine(x0 + w);
+				if (Button(">", 40 * g_ui)) {
+					for (int k = a_cur + 1; k < a_count; ++k) {
+						if (a_ok(k)) {
+							Post(a_act, k);
+							break;
+						}
+					}
+				}
+				ImGui::PopFont();
+				ImGui::PopID();
+			};
+			int cupIdx = 0;
+			for (int k = 0; k < 5; ++k) {
+				if (PlayerCup().id == std::string(kCups[k].id)) {
+					cupIdx = k;
+				}
+			}
+			chooser("cup", "Cup", fmt::format("{} ({})", kCups[cupIdx].name, kCups[cupIdx].rank), cupIdx, 5, [](int k) { return CupUnlocked(k); },
+				UiAct::ChooseCup);
+			const int diceIdx = (std::max)(0, DiceIndex(PlayerDice()));
+			chooser("dice", "Dice", kDiceInfo[diceIdx].name, diceIdx, 15, [](int k) { return DiceOwned(k); }, UiAct::ChooseDice);
+			int topCup = 0;
+			for (int k = 0; k < 5; ++k) {
+				if (CupUnlocked(k)) {
+					topCup = k;
+				}
+			}
+			if (topCup < 4) {
+				Centered(fmt::format("Score {} in a game to earn the {}", kCups[topCup + 1].need, kCups[topCup + 1].name).c_str(), g_fBody, kDim);
+			}
+			Rule();
 			ImGui::SetCursorPosX(ImGui::GetWindowWidth() * 0.5f - 170 * g_ui);
 			ImGui::PushFont(g_fBig);
 			if (Button("Place bet", 160 * g_ui)) {
@@ -1653,6 +1819,59 @@ namespace Game
 			if (!g_toast.empty() && g_clock - g_toastTime < 2.2) {
 				Centered(g_toast.c_str(), g_fBody, kRubric);
 			}
+			ImGui::End();
+		}
+
+		void DrawShop()
+		{
+			const auto& io = ImGui::GetIO();
+			ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f), 0, ImVec2(0.5f, 0.5f));
+			ImGui::SetNextWindowSize(ImVec2(760 * g_ui, 0));
+			ImGui::SetNextWindowBgAlpha(0.9f);
+			ImGui::Begin("##shop", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove);
+			Centered("DICE", g_fTitle, kText);
+			Centered(fmt::format("{}'s stock  -  your purse: {} septims", g_shopName, GoldHeld()).c_str(), g_fBody, kDim);
+			Rule();
+			const std::string using_ = PlayerDice();
+			ImGui::PushFont(g_fBody);
+			for (int k = 0; k < 15; ++k) {
+				const auto& d = kDiceInfo[k];
+				const bool  owned = DiceOwned(k), sale = DiceOnSale(k);
+				ImGui::PushID(k);
+				ImGui::TextColored(owned || sale ? kText : kDim, "%s", d.name);
+				ImGui::SameLine(200 * g_ui);
+				if (owned) {
+					if (using_ == kDiceSets[k]) {
+						ImGui::TextColored(kDim, "In use");
+					} else if (Button("Use", 140 * g_ui)) {
+						Post(UiAct::ChooseDice, k);
+					}
+				} else if (sale) {
+					if (Button(fmt::format("Buy  {} septims", d.gold).c_str(), 260 * g_ui)) {
+						Post(UiAct::BuyDice, k);
+					}
+				} else {
+					ImGui::TextColored(kDim, "%s", fmt::format("After {} wins ({} so far)", d.wins, g_totalWins).c_str());
+				}
+				if (owned || sale) {
+					ImGui::SameLine(470 * g_ui);
+					ImGui::PushTextWrapPos(ImGui::GetWindowWidth() - 16 * g_ui);
+					ImGui::TextColored(kDim, "%s", d.blurb);
+					ImGui::PopTextWrapPos();
+				}
+				ImGui::PopID();
+			}
+			ImGui::PopFont();
+			Rule();
+			if (!g_toast.empty() && g_clock - g_toastTime < 2.2) {
+				Centered(g_toast.c_str(), g_fBody, kRubric);
+			}
+			ImGui::SetCursorPosX(ImGui::GetWindowWidth() * 0.5f - 80 * g_ui);
+			ImGui::PushFont(g_fBig);
+			if (Button("Done", 160 * g_ui)) {
+				Post(UiAct::CloseShop);
+			}
+			ImGui::PopFont();
 			ImGui::End();
 		}
 
@@ -1746,6 +1965,8 @@ namespace Game
 		g_faction = dh->LookupForm<RE::TESFaction>(EspIds::kTableFaction, EspIds::kPlugin);
 		g_canAfford = dh->LookupForm<RE::TESGlobal>(EspIds::kCanAfford, EspIds::kPlugin);
 		g_infoPlay = dh->LookupFormID(EspIds::kInfoPlay, EspIds::kPlugin);
+		g_infoDiceSale = dh->LookupFormID(EspIds::kInfoDiceSale, EspIds::kPlugin);
+		g_diceShop = dh->LookupForm<RE::TESGlobal>(EspIds::kDiceShop, EspIds::kPlugin);
 		g_gold = RE::TESForm::LookupByID<RE::TESObjectMISC>(0x0000000F);
 		spdlog::info("Forms: faction {}, global {}, info {:X}, gold {}", g_faction != nullptr, g_canAfford != nullptr, g_infoPlay, g_gold != nullptr);
 		if (!g_faction || !g_canAfford || !g_infoPlay) {
@@ -1851,6 +2072,27 @@ namespace Game
 				}
 			}
 		}
+		// the innkeeper's "Have a look": the dice shop, once the conversation has closed
+		if (ui->IsMenuOpen(RE::DialogueMenu::MENU_NAME)) {
+			auto* mtm = RE::MenuTopicManager::GetSingleton();
+			auto* info = mtm ? mtm->currentTopicInfo : nullptr;
+			if (info && g_infoDiceSale && info->GetFormID() == g_infoDiceSale && !g_pendingShop.load()) {
+				if (auto ref = mtm->speaker.get()) {
+					g_pendingShop = ref->GetFormID();
+				}
+			}
+		}
+		if (const auto id = g_pendingShop.load(); id && !ui->IsMenuOpen(RE::DialogueMenu::MENU_NAME)) {
+			g_pendingShop = 0;
+			std::lock_guard lk(g_mtx);
+			if (!Scene::IsOpen()) {
+				auto* keeper = RE::TESForm::LookupByID<RE::Actor>(id);
+				g_shopName = keeper && keeper->GetDisplayFullName() ? keeper->GetDisplayFullName() : "The innkeeper";
+				g_phase = Phase::Shop;
+				Scene::Open(false);
+				spdlog::info("Dice shop with {}", g_shopName);
+			}
+		}
 		// ...and open the table once the conversation has closed
 		if (const auto id = g_pendingSpeaker.load(); id && !ui->IsMenuOpen(RE::DialogueMenu::MENU_NAME)) {
 			g_pendingSpeaker = 0;
@@ -1901,6 +2143,10 @@ namespace Game
 		if (g_canAfford) {
 			g_canAfford->value = GoldHeld() >= Config::Get().minBet ? 1.0f : 0.0f;
 		}
+		if (g_diceShop) {
+			std::lock_guard lk(g_mtx);
+			g_diceShop->value = g_games == 0 && g_totalWins == 0 ? 0.0f : AnyDiceOnSale() ? 2.0f : 1.0f;
+		}
 		TagSeated();
 	}
 
@@ -1908,6 +2154,13 @@ namespace Game
 	{
 		std::lock_guard lk(g_mtx);
 		const double    dt = std::clamp(static_cast<double>(a_dt), 0.001, 0.05);
+		if (g_phase == Phase::Shop) {
+			for (int key : Overlay::TakeKeys()) {
+				if (key == 0x01 || key == 0x0F) {  // Esc, Tab
+					Post(UiAct::CloseShop);
+				}
+			}
+		}
 		if (!Scene::Ready()) {
 			ProcessUiActs();  // the wager can be placed (or the table left) while it loads
 			return;
@@ -1985,6 +2238,9 @@ namespace Game
 			DrawPlay();
 			DrawOver();
 			break;
+		case Phase::Shop:
+			DrawShop();
+			break;
 		case Phase::Idle:
 			break;
 		default:
@@ -1997,7 +2253,7 @@ namespace Game
 	void Save(SKSE::SerializationInterface* a_intfc)
 	{
 		std::lock_guard lk(g_mtx);
-		if (!a_intfc->OpenRecord('YREC', 1)) {
+		if (!a_intfc->OpenRecord('YREC', 2)) {
 			return;
 		}
 		const std::uint32_t n = static_cast<std::uint32_t>(g_records.size());
@@ -2009,6 +2265,17 @@ namespace Game
 			a_intfc->WriteRecordData(r.w);
 			a_intfc->WriteRecordData(r.l);
 			a_intfc->WriteRecordData(r.d);
+		}
+		// version 2: the cups and dice
+		a_intfc->WriteRecordData(g_bestScore);
+		a_intfc->WriteRecordData(g_games);
+		a_intfc->WriteRecordData(g_ownedDice);
+		for (const std::string* str : { &g_cupSel, &g_diceSel }) {
+			const std::uint32_t len = static_cast<std::uint32_t>(str->size());
+			a_intfc->WriteRecordData(len);
+			if (len) {
+				a_intfc->WriteRecordData(str->data(), len);
+			}
 		}
 	}
 
@@ -2036,6 +2303,27 @@ namespace Game
 					g_records[fixed] = r;
 				}
 			}
+			if (version >= 2) {
+				a_intfc->ReadRecordData(g_bestScore);
+				a_intfc->ReadRecordData(g_games);
+				a_intfc->ReadRecordData(g_ownedDice);
+				for (std::string* str : { &g_cupSel, &g_diceSel }) {
+					std::uint32_t len = 0;
+					a_intfc->ReadRecordData(len);
+					str->assign((std::min)(len, 64u), '\0');
+					if (len) {
+						a_intfc->ReadRecordData(str->data(), (std::min)(len, 64u));
+					}
+				}
+			} else {
+				// saves from the test builds: the sets you'd already been given, and your last score as your best
+				g_bestScore = g_lastScore;
+				g_games = static_cast<int>(g_records.size());
+				for (int k = 0; k <= (std::min)(14, g_totalWins / 10); ++k) {
+					g_ownedDice |= 1u << k;
+				}
+			}
+			g_ownedDice |= 1u;
 		}
 		spdlog::info("Loaded: last score {}, {} wins, {} opponents", g_lastScore, g_totalWins, g_records.size());
 	}
@@ -2046,5 +2334,10 @@ namespace Game
 		g_records.clear();
 		g_lastScore = 0;
 		g_totalWins = 0;
+		g_bestScore = 0;
+		g_games = 0;
+		g_ownedDice = 1;
+		g_cupSel.clear();
+		g_diceSel.clear();
 	}
 }
