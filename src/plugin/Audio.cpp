@@ -445,7 +445,8 @@ namespace Audio
 				}
 			}
 			auto list = existing(deflt);
-			if (list.empty()) {  // no Music.ini: whatever is in the folder
+			std::error_code iniEc;
+			if (list.empty() && !std::filesystem::exists(kMusicDir / "Music.ini", iniEc)) {  // no Music.ini: whatever is in the folder
 				std::error_code ec;
 				for (const auto& e : std::filesystem::directory_iterator(kMusicDir, ec)) {
 					if (e.path().extension() == ".ogg") {
