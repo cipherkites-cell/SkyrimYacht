@@ -60,8 +60,6 @@ namespace Game
 			{ "dwemer2", "Ornate Dwemer Cup", 5.15, "dwemer" },
 			{ "silver", "Silver Goblet", 4.62, "silver" },
 			{ "silver2", "Silver Chalice", 4.01, "silver" },
-			{ "sovngarde", "Sovngarde Goblet", 4.62, "silver" },
-			{ "sovngarde2", "Sovngarde Chalice", 4.01, "silver" },
 			{ "golden", "Golden Goblet", 6.01, "golden" },
 		};
 		constexpr int kNumCups = static_cast<int>(std::size(kCups));

@@ -56,8 +56,6 @@ namespace Scene
 			{ "dwemer2", "dwecup02.nif", 1.29f, 4.36f, 1.22f },
 			{ "silver", "silvergoblet01.nif", 7.8f, 5.2f, 1.1f },
 			{ "silver2", "silvergoblet02.nif", 9.8f, 4.54f, 1.1f },
-			{ "sovngarde", "sovgoblet01.nif", 7.8f, 5.2f, 1.1f },
-			{ "sovngarde2", "sovgoblet02.nif", 9.8f, 4.54f, 1.1f },
 			{ "golden", "tggoldengoblet01.nif", 8.3f, 4.19f, 1.1f },
 		};
 		constexpr float kCupRadius = 1.9f;
@@ -353,7 +351,7 @@ namespace Scene
 			if (!dh) {
 				return;
 			}
-			// the cups' paths, from whatever in the game uses each mesh: an item, or else a static
+			// the cups' paths, from the game's own item that uses each mesh
 			auto look = [&](const char* model, RE::TESForm* a_form, bool a_item) {
 				if (!model || !*model) {
 					return;
@@ -382,11 +380,6 @@ namespace Scene
 			for (auto* f : dh->GetFormArray<RE::TESObjectMISC>()) {
 				if (f) {
 					look(f->GetModel(), f, true);
-				}
-			}
-			for (auto* f : dh->GetFormArray<RE::TESObjectSTAT>()) {
-				if (f) {
-					look(f->GetModel(), f, false);
 				}
 			}
 			for (const auto& c : kCups) {
