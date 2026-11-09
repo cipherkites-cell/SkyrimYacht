@@ -216,7 +216,10 @@ namespace Audio
 			return;
 		}
 		const auto& cfg = Config::Get();
-		const float vol = g_muted ? 0.0f : a_voice.volume * kMaster * (a_voice.name.rfind("shout", 0) == 0 ? cfg.shoutVolume : cfg.volume);
+		const auto& n = a_voice.name;
+		const bool  effect = n.rfind("ui_", 0) == 0 || n.rfind("coins", 0) == 0 || n.rfind("quill", 0) == 0 || n.rfind("swoosh", 0) == 0;
+		const float level = n.rfind("shout", 0) == 0 ? cfg.shoutVolume : effect ? cfg.effectsVolume : cfg.volume;
+		const float vol = g_muted ? 0.0f : a_voice.volume * kMaster * level;
 
 		if (vol <= 0.0001f) {
 			return;

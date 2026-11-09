@@ -91,13 +91,16 @@ def textures(pngs):
         nsize = (size[0] // 2, size[1] // 2)
         dds(os.path.join(out, name + "_n.dds"), normal_map(load(name + "_h", nsize), strength, spec), "DXT5")
         print("texture", name)
+    # the dice at the preview's own resolution (512 a face); the glow maps for the sets that glow (read by the DLL)
     for s in SETS:
-        dds(os.path.join(out, f"Dice_{s}.dds"), load(f"dice_{s}", (768, 512)), "DXT1")
-        metal = load(f"dice_{s}_m", (384, 256)).convert("L")
+        dds(os.path.join(out, f"Dice_{s}.dds"), load(f"dice_{s}", (1536, 1024)), "DXT1")
+        metal = load(f"dice_{s}_m", (768, 512)).convert("L")
         spec = metal.point(lambda v: 60 + v * 195 // 255) if LOOK[s][2] else 90
-        dds(os.path.join(out, f"Dice_{s}_n.dds"), normal_map(load(f"dice_{s}_h", (384, 256)), 3.0, spec), "DXT5")
+        dds(os.path.join(out, f"Dice_{s}_n.dds"), normal_map(load(f"dice_{s}_h", (768, 512)), 3.0, spec), "DXT5")
         if LOOK[s][2]:
-            dds(os.path.join(out, f"Dice_{s}_m.dds"), load(f"dice_{s}_m", (384, 256)), "DXT1")
+            dds(os.path.join(out, f"Dice_{s}_m.dds"), load(f"dice_{s}_m", (768, 512)), "DXT1")
+        if os.path.exists(os.path.join(pngs, f"dice_{s}_g.png")):
+            dds(os.path.join(out, f"Dice_{s}_g.dds"), load(f"dice_{s}_g", (768, 512)), "DXT1")
         print("texture dice", s)
 
 

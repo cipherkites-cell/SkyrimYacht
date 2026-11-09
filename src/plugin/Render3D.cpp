@@ -34,6 +34,8 @@ cbuffer Object : register(b1)
 	float4 spec;        // rgb * scale, w gloss
 	float4 misc;        // x env scale, y alpha, z alpha ref (0..1), w alpha test
 	uint4  has;         // diffuse, normal, env, env mask
+	float4 pbr;         // x roughness (>= 0: a die), y metalness
+	uint4  has2;        // x glow
 };
 
 Texture2D    texDiffuse : register(t0);
@@ -41,6 +43,7 @@ Texture2D    texNormal  : register(t1);
 TextureCube  texEnv     : register(t2);
 Texture2D    texEnvMask : register(t3);
 Texture2D    texShadow  : register(t4);
+Texture2D    texGlow    : register(t5);
 SamplerState smpWrap    : register(s0);
 SamplerComparisonState smpShadow : register(s1);
 
@@ -96,6 +99,91 @@ float Shadow(float3 wp, float3 n)
 
 float3 Lin(float3 c) { return pow(saturate(c), 2.2); }
 
+
+// ---- the dice, lit exactly as the preview's three.js MeshStandardMaterial (r128): GGX, a metal mask, and the preview's
+// warm room as the environment (a gradient with three lamp-glows, blurred by roughness as PMREM does)
+static const float PI = 3.14159265;
+float3 EnvGrad(float t)  // the canvas gradient, top (0) to bottom (1), in sRGB
+{
+	const float3 c0 = float3(0x3a, 0x2c, 0x20) / 255, c1 = float3(0x6b, 0x50, 0x38) / 255, c2 = float3(0x4a, 0x36, 0x24) / 255, c3 = float3(0x2a, 0x1e, 0x14) / 255;
+	if (t < 0.45) return lerp(c0, c1, t / 0.45);
+	if (t < 0.55) return lerp(c1, c2, (t - 0.45) / 0.1);
+	return lerp(c2, c3, (t - 0.55) / 0.45);
+}
+float3 EnvRad(float3 d, float rough)
+{
+	// table space (z up) to three's (y up): (x, z, -y); equirect u, v as three maps them, in the 256 x 128 canvas
+	float3 t3 = float3(d.x, d.z, -d.y);
+	float u = atan2(t3.z, t3.x) / (2 * PI) + 0.5;
+	float v = 1 - (asin(clamp(t3.y, -1, 1)) / PI + 0.5);  // 0 top
+	float2 px = float2(u * 256, v * 128);
+	float blur = rough * rough;
+	float3 g = EnvGrad(saturate(v));
+	g = lerp(g, float3(0x4a, 0x37, 0x27) / 255, smoothstep(0, 0.8, blur));
+	const float3 spots[3] = { float3(60, 30, 22), float3(190, 40, 16), float3(130, 22, 10) };
+	float3 col = g;
+	[unroll] for (int k = 0; k < 3; k++) {
+		float2 dd = px - spots[k].xy;
+		dd.x = dd.x - 256 * round(dd.x / 256);
+		float r0 = spots[k].z, r = sqrt(r0 * r0 + (blur * 70) * (blur * 70));
+		float a = saturate(1 - length(dd) / r) * (r0 * r0) / (r * r);
+		float3 sc = lerp(float3(255, 220, 160), float3(255, 200, 120), saturate(length(dd) / r)) / 255;
+		col = lerp(col, sc, a);
+	}
+	return Lin(col);
+}
+float D_GGX(float a, float nh) { float a2 = a * a; float d = nh * nh * (a2 - 1) + 1; return a2 / (PI * d * d); }
+float V_Smith(float a, float nl, float nv)
+{
+	float a2 = a * a;
+	float gv = nl * sqrt(a2 + (1 - a2) * nv * nv), gl = nv * sqrt(a2 + (1 - a2) * nl * nl);
+	return 0.5 / max(gv + gl, 1e-6);
+}
+float3 F_Schlick(float3 f0, float vh) { float f = exp2((-5.55473 * vh - 6.98316) * vh); return f0 * (1 - f) + f; }
+float3 DirectSpec(float3 f0, float rough, float3 N, float3 V, float3 L)
+{
+	float3 H = normalize(L + V);
+	float nl = saturate(dot(N, L)), nv = saturate(dot(N, V)), nh = saturate(dot(N, H)), vh = saturate(dot(V, H));
+	float a = rough * rough;
+	return F_Schlick(f0, vh) * V_Smith(a, nl, nv) * D_GGX(a, nh);
+}
+float3 DFG(float3 f0, float rough, float nv)
+{
+	const float4 c0 = float4(-1, -0.0275, -0.572, 0.022), c1 = float4(1, 0.0425, 1.04, -0.04);
+	float4 r = rough * c0 + c1;
+	float a004 = min(r.x * r.x, exp2(-9.28 * nv)) * r.x + r.y;
+	float2 fab = float2(-1.04, 1.04) * a004 + r.zw;
+	return f0 * fab.x + fab.y;
+}
+float4 ShadeDie(VSOut i, float4 dif, float3 N, float3 V)
+{
+	float3 albedo = Lin(dif.rgb);
+	float  m = pbr.y * (has.w ? texEnvMask.Sample(smpWrap, i.uv).r : 1);
+	float3 dN = abs(ddx(N)) + abs(ddy(N));
+	float  rough = min(max(pbr.x, 0.0525) + max(max(dN.x, dN.y), dN.z), 1);
+	float3 diff = albedo * (1 - m);
+	float3 f0 = lerp(float3(0.04, 0.04, 0.04), albedo, m);
+	float  nv = saturate(dot(N, V));
+	float3 L = keyDir.xyz;
+	float  nl = saturate(dot(N, L));
+	float  sh = Shadow(i.wpos, N);
+	float3 toC = candlePos.xyz - i.wpos;
+	float  dc = length(toC);
+	float3 Lc = toC / max(dc, 1e-3);
+	float  att = pow(saturate(1 - dc / candleColor.w), 2);
+	float  flick = 0.88 + 0.07 * sin(params.x * 13.1) + 0.05 * sin(params.x * 7.3 + 1.7);
+	float3 candle = candleColor.rgb * att * flick;
+	float  nlc = saturate(dot(N, Lc));
+	// three (not physically-correct lights): punctual irradiance is colour * NdotL * PI, the diffuse BRDF albedo / PI
+	float3 direct = keyColor.rgb * nl * sh * (diff + PI * DirectSpec(f0, rough, N, V, L)) + candle * nlc * (diff + PI * DirectSpec(f0, rough, N, V, Lc));
+	float3 hemi = lerp(ground.rgb, sky.rgb, N.z * 0.5 + 0.5);
+	float3 envIrr = EnvRad(N, 1);
+	float3 R = reflect(-V, N);
+	float3 indirect = diff * (hemi + envIrr) + EnvRad(R, rough) * DFG(f0, rough, nv);
+	float3 glow = has2.x ? Lin(texGlow.Sample(smpWrap, i.uv).rgb) : float3(0, 0, 0);
+	return float4(direct + indirect + glow, 1);
+}
+
 float4 PSMain(VSOut i) : SV_Target
 {
 	float4 dif = has.x ? texDiffuse.Sample(smpWrap, i.uv) : float4(0.6, 0.6, 0.6, 1);
@@ -114,6 +202,7 @@ float4 PSMain(VSOut i) : SV_Target
 	}
 	float3 V = normalize(camPos.xyz - i.wpos);
 	if (dot(N, V) < -0.2) N = -N;  // an inside face seen from inside (the cups)
+	if (pbr.x >= 0) return ShadeDie(i, dif, N, V);
 	float3 L = keyDir.xyz;
 	float  nl = saturate(dot(N, L));
 	float  sh = Shadow(i.wpos, N);
@@ -248,6 +337,8 @@ float4 PSComposite(FSOut i) : SV_Target
 			float         spec[4];
 			float         misc[4];
 			std::uint32_t has[4];
+			float         pbr[4];
+			std::uint32_t has2[4];
 		};
 
 		template <class T>
@@ -902,6 +993,9 @@ float4 PSComposite(FSOut i) : SV_Target
 			ob.has[1] = it.normal != nullptr;
 			ob.has[2] = it.env != nullptr;
 			ob.has[3] = it.envMask != nullptr;
+			ob.pbr[0] = it.rough;
+			ob.pbr[1] = it.metal;
+			ob.has2[0] = it.glow != nullptr;
 			Upload(c, g_cbObject, ob);
 			return true;
 		};
@@ -944,13 +1038,14 @@ float4 PSComposite(FSOut i) : SV_Target
 					}
 					ID3D11ShaderResourceView* t[4] = { it.diffuse, it.normal, it.env, it.envMask };
 					c->PSSetShaderResources(0, 4, t);
+					c->PSSetShaderResources(5, 1, &it.glow);
 					c->DrawIndexed(it.indexCount, 0, 0);
 				}
 			};
 			drawPass(false);
 			drawPass(true);
-			ID3D11ShaderResourceView* none[5]{};
-			c->PSSetShaderResources(0, 5, none);
+			ID3D11ShaderResourceView* none[6]{};
+			c->PSSetShaderResources(0, 6, none);
 			ID3D11RenderTargetView* noRT = nullptr;
 			c->OMSetRenderTargets(1, &noRT, nullptr);
 			if (g_msaa > 1) {

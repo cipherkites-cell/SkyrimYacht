@@ -842,6 +842,24 @@ namespace Scene
 			return SrvOf(src);
 		}
 
+		// Each set as the preview draws it (DICE_LOOK): roughness and metalness, and a glow map for the sets that glow
+		void DieLook(const std::string& a_set, Render3D::Item& a_it)
+		{
+			static const std::unordered_map<std::string, std::pair<float, float>> kLook = {
+				{ "bone", { 0.8f, 0.0f } }, { "dwemer", { 0.42f, 1.0f } }, { "ebony", { 0.22f, 1.0f } }, { "malachite", { 0.12f, 0.0f } },
+				{ "stalhrim", { 0.16f, 0.0f } }, { "dragonbone", { 0.65f, 0.0f } }, { "daedric", { 0.32f, 1.0f } }, { "iron", { 0.62f, 1.0f } },
+				{ "steel", { 0.34f, 1.0f } }, { "corundum", { 0.45f, 1.0f } }, { "orichalcum", { 0.5f, 1.0f } }, { "silver", { 0.24f, 1.0f } },
+				{ "quicksilver", { 0.06f, 1.0f } }, { "moonstone", { 0.3f, 1.0f } }, { "gold", { 0.24f, 1.0f } },
+			};
+			const auto it = kLook.find(a_set);
+			const auto look = it == kLook.end() ? std::pair{ 0.8f, 0.0f } : it->second;
+			a_it.rough = look.first;
+			a_it.metal = a_it.envMask ? look.second : 0.0f;  // no mask: no metal in it (as the preview)
+			if (a_set == "daedric" || a_set == "stalhrim") {
+				a_it.glow = SrvOfPath(("textures\\SkyrimYacht\\Dice_" + a_set + "_g.dds").c_str());
+			}
+		}
+
 		bool Visible(RE::NiAVObject* a_obj)
 		{
 			for (auto* o = a_obj; o; o = o->parent) {
@@ -1015,6 +1033,9 @@ namespace Scene
 							it.test = alpha->GetAlphaTesting();
 							it.alphaRef = alpha->alphaThreshold / 255.0f;
 						}
+					}
+					if (it.name == "Die") {  // the dice: the preview's material, metal where the mask says
+						DieLook(g_loadedSet, it);
 					}
 					f.items.push_back(it);
 					return RE::BSVisit::BSVisitControl::kContinue;

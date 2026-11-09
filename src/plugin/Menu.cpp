@@ -91,6 +91,8 @@ namespace Menu
 			Changed(UI::SliderFloat("Volume", &v.volume, 0.0f, 2.0f, "%.2f"));
 			Hint("The dice, the cups and the table.");
 			Changed(UI::SliderFloat("Fus Ro Dah", &v.shoutVolume, 0.0f, 2.0f, "%.2f"));
+			Changed(UI::SliderFloat("Effects", &v.effectsVolume, 0.0f, 2.0f, "%.2f"));
+			Hint("Menu clicks, coins, the quill.");
 			Changed(UI::SliderFloat("Music", &v.musicVolume, 0.0f, 1.0f, "%.2f"));
 			Hint("The tavern music while you play (0 for none).");
 			Changed(UI::SliderFloat("Interface size", &v.uiScale, 0.6f, 1.6f, "%.2f"));
@@ -107,6 +109,8 @@ namespace Menu
 			Hint("To check that clicks line up with the table.");
 			Changed(UI::Checkbox("Every dice set on sale for gold (no wins needed)", &v.allDiceForSale));
 			Hint("For testing the innkeepers' dice shop.");
+			Changed(UI::SliderInt("Best score counts as at least", &v.testBestScore, 0, 300));
+			Hint("For testing the cups (300 unlocks them all; 0 for the real rule).");
 			SaveRow();
 		}
 	}

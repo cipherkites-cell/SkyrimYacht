@@ -63,6 +63,7 @@ namespace Config
 		put("Play", "PauseGame", v.pauseGame ? "1" : "0");
 		put("Play", "MusicVolume", f(v.musicVolume));
 		put("Play", "ShoutVolume", f(v.shoutVolume));
+		put("Play", "EffectsVolume", f(v.effectsVolume));
 		put("Table", "Mode", std::to_string(v.mode));
 		put("Table", "Distance", f(v.distance));
 		put("Table", "Brightness", f(v.brightness));
@@ -73,6 +74,7 @@ namespace Config
 		put("Table", "FlipTilt", v.flipTilt ? "1" : "0");
 		put("Debug", "Overlay", v.debugOverlay ? "1" : "0");
 		put("Debug", "AllDiceForSale", v.allDiceForSale ? "1" : "0");
+		put("Debug", "TestBestScore", std::to_string(v.testBestScore));
 		spdlog::info("Settings saved");
 	}
 
@@ -97,9 +99,11 @@ namespace Config
 		v.pauseGame = Bool("Play", "PauseGame", v.pauseGame);
 		v.musicVolume = std::clamp(Float("Play", "MusicVolume", v.musicVolume), 0.0f, 1.0f);
 		v.shoutVolume = std::clamp(Float("Play", "ShoutVolume", v.shoutVolume), 0.0f, 2.0f);
+		v.effectsVolume = std::clamp(Float("Play", "EffectsVolume", v.effectsVolume), 0.0f, 2.0f);
 		v.debugOverlay = Bool("Debug", "Overlay", v.debugOverlay);
 		v.logInput = Bool("Debug", "LogInput", v.logInput);
 		v.allDiceForSale = Bool("Debug", "AllDiceForSale", v.allDiceForSale);
+		v.testBestScore = std::clamp(static_cast<int>(Float("Debug", "TestBestScore", static_cast<float>(v.testBestScore))), 0, 400);
 		g_values = v;
 		spdlog::info("Settings: {} table, tilt {} fit {} centre {},{} bets {}-{} reach {}", v.mode == 0 ? "drawn by the mod" : v.mode == 1 ? "item view" : "in the room", v.tiltDeg, v.fitWidth, v.centerX, v.centerY, v.minBet,
 			v.maxBet, v.tableReach);

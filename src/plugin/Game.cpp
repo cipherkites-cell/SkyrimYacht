@@ -408,7 +408,8 @@ namespace Game
 			{ "Dragonbone", 130, 1500, "Pale dragon bone, fibrous grain, pips stained dark red." },
 			{ "Daedric", 140, 2500, "Black and red, cut with runes, the pips smouldering like coals." },
 		};
-		bool CupUnlocked(int k) { return k >= 0 && k < 5 && g_bestScore >= kCups[k].need; }
+		int  BestScore() { return (std::max)(g_bestScore, Config::Get().testBestScore); }
+		bool CupUnlocked(int k) { return k >= 0 && k < 5 && BestScore() >= kCups[k].need; }
 		bool DiceOwned(int k) { return k >= 0 && k < 15 && (k == 0 || (g_ownedDice >> k) & 1u); }
 		bool DiceOnSale(int k) { return k > 0 && k < 15 && !DiceOwned(k) && (Config::Get().allDiceForSale || g_totalWins >= kDiceInfo[k].wins); }
 		int  DiceIndex(const std::string& a_set)
@@ -2152,7 +2153,7 @@ namespace Game
 			(void)H;
 			auto&       v = Config::Edit();
 			const float w = S(330), rowH = S(58), padX = S(26), padY = S(20);
-			const float h = padY * 2 + S(30) + rowH * 3 + S(40);
+			const float h = padY * 2 + S(30) + rowH * 4 + S(40);
 			const float x = std::clamp(g_soundKey.x - w * 0.5f, S(12), W - w - S(12)), y = g_soundKey.y - S(18) - h;
 			BeginArea("##sound", ImVec2(x, y), ImVec2(w, h));
 			auto* dl = ImGui::GetWindowDrawList();
@@ -2169,10 +2170,11 @@ namespace Game
 				float       max;
 				ImU32       tint;
 			};
-			const Row rows[3] = {
+			const Row rows[4] = {
 				{ "music", "Music", &v.musicVolume, 1.0f, IM_COL32(222, 196, 140, 255) },
 				{ "dice", "Dice & cups", &v.volume, 2.0f, kWhite },
 				{ "shout", "Fus Ro Dah", &v.shoutVolume, 2.0f, IM_COL32(185, 205, 234, 255) },
+				{ "effects", "Effects", &v.effectsVolume, 2.0f, kGrey },
 			};
 			const bool muted = Audio::Muted();
 			float      ry = y + padY + S(34);
@@ -2296,7 +2298,7 @@ namespace Game
 			y += F.skill->FontSize + S(9);
 			// the skill bar: best score toward the next cup
 			const float lo = static_cast<float>(kCups[rank].need), hi = rank < 4 ? static_cast<float>(kCups[rank + 1].need) : lo + 1;
-			const float f = rank < 4 ? std::clamp((g_bestScore - lo) / (hi - lo), 0.0f, 1.0f) : 1.0f;
+			const float f = rank < 4 ? std::clamp((BestScore() - lo) / (hi - lo), 0.0f, 1.0f) : 1.0f;
 			const ImVec2 ba(x0 + S(9), y), bb(x1 - S(9), y + S(7));
 			dl->AddRectFilled(ba, bb, IM_COL32(0, 0, 0, 153));
 			dl->AddLine(ba, ImVec2(bb.x, ba.y), Alpha(kWhite, 0.62f));

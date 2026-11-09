@@ -26,13 +26,15 @@ namespace Config
 		float uiScale = 1.0f;
 		float volume = 1.0f;        // dice and table sounds
 		float shoutVolume = 1.0f;   // the Thu'um
+		float effectsVolume = 1.0f; // the rest: menu clicks, coins, the quill
 		float musicVolume = 0.3f;   // the tavern music at the table (0 = none)
 		bool  pauseGame = false;    // pause the world while you play (the world table only draws while it runs)
 
 		// Diagnostics
 		bool debugOverlay = false;  // draws the projected tray outline over the 3D, to check picking
 		bool logInput = false;
-		bool allDiceForSale = true;  // testing: every set on sale for gold alone (no wins needed)
+		bool allDiceForSale = true;
+		int  testBestScore = 300;     // testing: your best score counts as at least this (300 = every cup)  // testing: every set on sale for gold alone (no wins needed)
 	};
 
 	const Values& Get();

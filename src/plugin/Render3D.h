@@ -31,6 +31,9 @@ namespace Render3D
 		ID3D11ShaderResourceView* envMask = nullptr;
 		float                     specColor[3]{ 1, 1, 1 };
 		float                     specScale = 1.0f, gloss = 30.0f, envScale = 0.0f, alpha = 1.0f, alphaRef = 0.0f;
+		float                     rough = -1.0f;  // >= 0: lit as the preview's dice (three.js standard material)
+		float                     metal = 0.0f;   // its metalness (times the env mask texture, where the die is metal)
+		ID3D11ShaderResourceView* glow = nullptr;  // the sets that glow (daedric pips, stalhrim)
 		bool                      blend = false;
 		bool                      test = false;
 	};

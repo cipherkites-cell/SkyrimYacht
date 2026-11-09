@@ -1,3 +1,4 @@
 build/
 local-assets/
 preview/yacht-local.html
+__pycache__/
