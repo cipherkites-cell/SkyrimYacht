@@ -2756,6 +2756,25 @@ namespace Game
 				spdlog::info("Dice: {} keeps no shop chest", a_keeper->GetDisplayFullName());
 				return;
 			}
+			// The game restocks a shop (empties the chest and refills it from its lists) when you open it, if two days
+			// have passed since the last time: that would throw our dice out again. So do the restock here, as the
+			// game would, and mark it done, then add the dice.
+			{
+				int days = 2;
+				if (auto* gs = RE::GameSettingCollection::GetSingleton()) {
+					if (const auto it = gs->settings.find("iDaysToRespawnVendor"); it != gs->settings.end() && it->second) {
+						days = it->second->GetSInt();
+					}
+				}
+				const auto* cal = RE::Calendar::GetSingleton();
+				const auto  today = cal ? static_cast<std::uint32_t>(cal->GetDaysPassed()) : 0u;
+				auto&       last = vendor->vendorData.lastDayReset;
+				if (cal && (last == 0 || today >= last + static_cast<std::uint32_t>(days))) {
+					spdlog::info("Dice: restocking {}'s shop (last {}, today {})", a_keeper->GetDisplayFullName(), last, today);
+					chest->ResetInventory(false);
+					last = (std::max)(today, 1u);
+				}
+			}
 			auto counts = chest->GetInventoryCounts([](RE::TESBoundObject& a_obj) {
 				for (int k = 1; k < 15; ++k) {
 					if (g_diceItem[k] == &a_obj) {
@@ -2781,7 +2800,15 @@ namespace Game
 				}
 				stocked += want;
 			}
-			spdlog::info("Dice: {}'s shop holds {} sets for sale", a_keeper->GetDisplayFullName(), stocked);
+			const auto after = chest->GetInventoryCounts([](RE::TESBoundObject& a_obj) {
+				for (int k = 1; k < 15; ++k) {
+					if (g_diceItem[k] == &a_obj) {
+						return true;
+					}
+				}
+				return false;
+			});
+			spdlog::info("Dice: {}'s shop chest {:08X} should hold {} sets, holds {}", a_keeper->GetDisplayFullName(), chest->GetFormID(), stocked, after.size());
 		}
 
 		// After a trade: any set in your pack is yours for good (and in use at the next table)
@@ -3009,6 +3036,23 @@ namespace Game
 			const bool  barter = ui->IsMenuOpen(RE::BarterMenu::MENU_NAME);
 			if (s_barter && !barter) {
 				ClaimBoughtDice();
+			}
+			if (barter && !s_barter) {
+				auto* mtm = RE::MenuTopicManager::GetSingleton();
+				auto  ref = mtm ? mtm->speaker.get() : nullptr;
+				auto* a = ref ? ref->As<RE::Actor>() : nullptr;
+				auto* vendor = a ? a->GetVendorFaction() : nullptr;
+				auto* chest = vendor ? vendor->vendorData.merchantContainer : nullptr;
+				int   dice = 0;
+				if (chest) {
+					for (const auto& [obj, n] : chest->GetInventoryCounts()) {
+						for (int k = 1; k < 15; ++k) {
+							dice += g_diceItem[k] == obj ? n : 0;
+						}
+					}
+				}
+				spdlog::info("Shop opened: {} (chest {:08X}): {} dice sets in it, last restock day {}", a ? a->GetDisplayFullName() : "?",
+					chest ? chest->GetFormID() : 0, dice, vendor ? vendor->vendorData.lastDayReset : 0);
 			}
 			s_barter = barter;
 		}
