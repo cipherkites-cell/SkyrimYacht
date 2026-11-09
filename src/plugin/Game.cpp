@@ -14,6 +14,7 @@
 
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui.h>
+#include <set>
 
 #undef GetObject  // wingdi.h turns it into GetObjectA, breaking BSScript::Variable::GetObject
 
@@ -2743,59 +2744,50 @@ namespace Game
 
 	namespace
 	{
-		// An innkeeper's shop: the sets you can buy now go in their merchant chest, the rest come out (so the Buy or
-		// Sell menu shows exactly what's on sale). Called as a conversation with them starts.
-		void StockDice(RE::Actor* a_keeper)
+		// The dice sets go in every innkeeper's shop chest itself (the chest's own list, so the game's restocks keep
+		// them): done once, as the game loads its data
+		void DiceIntoShops()
 		{
-			if (!a_keeper || !g_innkeeper || !a_keeper->IsInFaction(g_innkeeper)) {
+			if (!g_innkeeper) {
 				return;
 			}
-			auto* vendor = a_keeper->GetVendorFaction();
-			auto* chest = vendor ? vendor->vendorData.merchantContainer : nullptr;
-			if (!chest) {
-				spdlog::info("Dice: {} keeps no shop chest", a_keeper->GetDisplayFullName());
-				return;
-			}
-			auto counts = chest->GetInventoryCounts([](RE::TESBoundObject& a_obj) {
-				for (int k = 1; k < 15; ++k) {
-					if (g_diceItem[k] == &a_obj) {
-						return true;
-					}
-				}
-				return false;
-			});
-			std::lock_guard lk(g_mtx);
-			int stocked = 0;
-			for (int k = 1; k < 15; ++k) {
-				auto* item = g_diceItem[k];
-				if (!item) {
+			std::set<RE::TESObjectCONT*> chests;
+			for (auto* npc : RE::TESDataHandler::GetSingleton()->GetFormArray<RE::TESNPC>()) {
+				if (!npc) {
 					continue;
 				}
-				const auto it = counts.find(item);
-				const int  have = it == counts.end() ? 0 : it->second;
-				const int  want = DiceOnSale(k) ? 1 : 0;
-				if (have < want) {
-					chest->AddObjectToContainer(item, nullptr, want - have, nullptr);
-				} else if (have > want) {
-					chest->RemoveItem(item, have - want, RE::ITEM_REMOVE_REASON::kRemove, nullptr, nullptr);
+				bool keeper = false;
+				for (const auto& fr : npc->factions) {
+					keeper |= fr.faction == g_innkeeper;
 				}
-				stocked += want;
-			}
-			const auto after = chest->GetInventoryCounts([](RE::TESBoundObject& a_obj) {
-				for (int k = 1; k < 15; ++k) {
-					if (g_diceItem[k] == &a_obj) {
-						return true;
+				if (!keeper) {
+					continue;
+				}
+				for (const auto& fr : npc->factions) {
+					auto* ref = fr.faction && fr.faction->IsVendor() ? fr.faction->vendorData.merchantContainer : nullptr;
+					auto* base = ref ? ref->GetBaseObject() : nullptr;
+					if (auto* cont = base ? base->As<RE::TESObjectCONT>() : nullptr) {
+						chests.insert(cont);
 					}
 				}
-				return false;
-			});
-			spdlog::info("Dice: {}'s shop chest {:08X} should hold {} sets, holds {}", a_keeper->GetDisplayFullName(), chest->GetFormID(), stocked, after.size());
+			}
+			for (auto* cont : chests) {
+				for (int k = 1; k < 15; ++k) {
+					if (g_diceItem[k] && cont->CountObjectsInContainer(g_diceItem[k]) == 0) {
+						cont->AddObjectToContainer(g_diceItem[k], 1, nullptr);
+					}
+				}
+			}
+			spdlog::info("Dice: in {} innkeepers' shop chests", chests.size());
 		}
 
-		// Puts the sets on sale into a container (and takes the rest out)
-		void SyncDice(RE::TESObjectREFR* a_ref, const char* a_who)
+		// The sets not on sale yet (wins) or already yours come out of the shop as it opens
+		void HideUnsold(RE::TESObjectREFR* a_ref)
 		{
-			auto counts = a_ref->GetInventoryCounts([](RE::TESBoundObject& a_obj) {
+			if (!a_ref) {
+				return;
+			}
+			const auto counts = a_ref->GetInventoryCounts([](RE::TESBoundObject& a_obj) {
 				for (int k = 1; k < 15; ++k) {
 					if (g_diceItem[k] == &a_obj) {
 						return true;
@@ -2804,23 +2796,17 @@ namespace Game
 				return false;
 			});
 			std::lock_guard lk(g_mtx);
-			int stocked = 0;
+			int shown = 0;
 			for (int k = 1; k < 15; ++k) {
-				auto* item = g_diceItem[k];
-				if (!item) {
-					continue;
-				}
-				const auto it = counts.find(item);
+				const auto it = counts.find(g_diceItem[k]);
 				const int  have = it == counts.end() ? 0 : it->second;
-				const int  want = DiceOnSale(k) ? 1 : 0;
-				if (have < want) {
-					a_ref->AddObjectToContainer(item, nullptr, want - have, nullptr);
-				} else if (have > want) {
-					a_ref->RemoveItem(item, have - want, RE::ITEM_REMOVE_REASON::kRemove, nullptr, nullptr);
+				if (have > 0 && !DiceOnSale(k)) {
+					a_ref->RemoveItem(g_diceItem[k], have, RE::ITEM_REMOVE_REASON::kRemove, nullptr, nullptr);
+				} else {
+					shown += have > 0;
 				}
-				stocked += want;
 			}
-			spdlog::info("Dice: {} sets for sale on {} ({:08X})", stocked, a_who ? a_who : "?", a_ref->GetFormID());
+			spdlog::info("Dice: {} sets on show in {:08X}", shown, a_ref->GetFormID());
 		}
 
 		// After a trade: any set in your pack is yours for good (and in use at the next table)
@@ -2868,6 +2854,7 @@ namespace Game
 			}
 			spdlog::info("Dice for sale: {} of 14 items, innkeeper faction {}", found, g_innkeeper != nullptr);
 		}
+		DiceIntoShops();
 		g_diceShop = dh->LookupForm<RE::TESGlobal>(EspIds::kDiceShop, EspIds::kPlugin);
 		g_gold = RE::TESForm::LookupByID<RE::TESObjectMISC>(0x0000000F);
 		spdlog::info("Forms: faction {}, global {}, info {:X}, gold {}", g_faction != nullptr, g_canAfford != nullptr, g_infoPlay, g_gold != nullptr);
@@ -3020,7 +3007,6 @@ namespace Game
 				auto* mtm = RE::MenuTopicManager::GetSingleton();
 				auto  ref = mtm ? mtm->speaker.get() : nullptr;
 				auto* a = ref ? ref->As<RE::Actor>() : nullptr;
-				StockDice(a);
 				auto* quest = RE::TESDataHandler::GetSingleton()->LookupForm<RE::TESQuest>(EspIds::kQuest, EspIds::kPlugin);
 				if (a) {
 					auto* st = a->AsActorState();
@@ -3049,19 +3035,6 @@ namespace Game
 			const bool  barter = ui->IsMenuOpen(RE::BarterMenu::MENU_NAME);
 			if (s_barter && !barter) {
 				ClaimBoughtDice();
-				// what wasn't sold comes off again (we put fresh ones out each time)
-				if (auto keeper = RE::TESObjectREFR::LookupByHandle(s_barterTarget)) {
-					std::lock_guard lk(g_mtx);
-					for (int k = 1; k < 15; ++k) {
-						if (!g_diceItem[k]) {
-							continue;
-						}
-						const auto counts = keeper->GetInventoryCounts([k](RE::TESBoundObject& a_obj) { return &a_obj == g_diceItem[k]; });
-						if (const auto it = counts.find(g_diceItem[k]); it != counts.end() && it->second > 0) {
-							keeper->RemoveItem(g_diceItem[k], it->second, RE::ITEM_REMOVE_REASON::kRemove, nullptr, nullptr);
-						}
-					}
-				}
 				s_barterTarget = 0;
 			}
 			if (barter && !s_barter) {
@@ -3081,14 +3054,12 @@ namespace Game
 				auto target = RE::BarterMenu::GetTargetRefHandle();
 				s_barterTarget = target;
 				auto tref = RE::TESObjectREFR::LookupByHandle(target);
-				spdlog::info("Shop opened: {} (chest {:08X}, menu shows {:08X}): {} dice sets in it before ours", a ? a->GetDisplayFullName() : "?",
+				spdlog::info("Shop opened: {} (chest {:08X}, menu shows {:08X}): {} dice sets in the chest", a ? a->GetDisplayFullName() : "?",
 					chest ? chest->GetFormID() : 0, tref ? tref->GetFormID() : 0, dice);
-				// The game restocks the chest as the shop opens (which throws out what we put in on the way), so put the
-				// dice in now, then have the menu read the chest again
-				// While you trade, the game moves the shop chest's goods onto the innkeeper (the menu shows them, not the
-				// chest), restocking the chest first: so the dice go on the innkeeper, then the menu reads its list again
-				if (a && g_innkeeper && a->IsInFaction(g_innkeeper) && tref) {
-					SyncDice(tref.get(), a->GetDisplayFullName());
+				// what isn't on sale yet comes out (wherever the shop's goods are while you trade), then the list reloads
+				if (a && g_innkeeper && a->IsInFaction(g_innkeeper)) {
+					HideUnsold(chest);
+					HideUnsold(tref.get());
 					SKSE::GetTaskInterface()->AddUITask([]() {
 						if (auto menu = RE::UI::GetSingleton()->GetMenu<RE::BarterMenu>()) {
 							if (auto* list = menu->GetRuntimeData().itemList) {
