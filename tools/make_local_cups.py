@@ -32,6 +32,13 @@ CUPS = {
     "silver": {"nif": "silvergoblet01", "floor": 7.8, "top": 19.3, "inner": 5.2, "room": 1.1,
                "map": "katariahclutter01", "normal": "sovngardeclutter01_n", "metalness": 0.6, "roughness": 0.32,
                "tint": "#e6ecff"},
+    # Thieves Guild golden goblet: a glassy layer plus two gold parts. Per-shape materials; textures are optional.
+    "golden": {"nif": "tggoldengoblet01", "floor": 8.3, "top": 20.34, "inner": 4.19, "room": 1.1, "metalness": 1.0, "roughness": 0.25,
+               "shape_mats": [
+                   {"color": "#c9a24a", "metalness": 0.2, "roughness": 0.08, "opacity": 0.35},
+                   {"color": "#e8b84a", "metalness": 1.0, "roughness": 0.25, "map": "gold01", "normal": "gold01_n"},
+                   {"color": "#f0c860", "metalness": 1.0, "roughness": 0.2, "map": "goldtrim01", "normal": "goldtrim01_n"},
+               ]},
 }
 CUP_RADIUS = 1.9  # DiceSpec::cupRadius
 
@@ -78,6 +85,17 @@ def main(folder):
                     entry[key] = png_uri(tex)
                 else:
                     print(f"{cid}: {c[key]}.dds not found, left out")
+        if "shape_mats" in c:
+            mats = []
+            for m in c["shape_mats"]:
+                mm = {k: v for k, v in m.items() if k not in ("map", "normal")}
+                for key in ("map", "normal"):
+                    if key in m:
+                        tex = find(folder, m[key], ".dds")
+                        if tex:
+                            mm[key] = png_uri(tex)
+                mats.append(mm)
+            entry["mats"] = mats
         for s in entry["shapes"]:
             s.pop("textures", None)
         cups[cid] = entry

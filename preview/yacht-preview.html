@@ -102,6 +102,7 @@ canvas#view.over-die { cursor: pointer; }
   font: inherit; font-size: 13px; text-align: left; color: var(--parchment); background: rgba(0, 0, 0, 0.18);
   border: 1px solid var(--oak-edge); border-radius: 6px; padding: 6px 8px; cursor: pointer; display: flex; flex-direction: column; gap: 1px;
 }
+.cup-chip:last-child:nth-child(odd) { grid-column: 1 / -1; }
 .cup-chip small { font-size: 11px; color: var(--muted); letter-spacing: 0.04em; }
 .cup-chip[aria-pressed="true"] { border-color: var(--brass); background: rgba(202, 164, 87, 0.14); }
 .cup-chip:disabled { cursor: default; color: var(--muted); opacity: 0.7; }
@@ -340,6 +341,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     { id: "dwemer", name: "Dwemer Cup", rank: "Apprentice", need: 150 },
     { id: "goblet", name: "Goblet", rank: "Adept", need: 200 },
     { id: "silver", name: "Silver Goblet", rank: "Expert", need: 250 },
+    { id: "golden", name: "Golden Goblet", rank: "Master", need: 300 },
   ];
   const cupGroup = new THREE.Group();
   world.add(cupGroup);
@@ -362,7 +364,18 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     if (c.map) mat.map = gameTex(c.map, true);
     if (c.normal) mat.normalMap = gameTex(c.normal, false);
     if (c.metal) mat.metalnessMap = gameTex(c.metal, false);
-    for (const sh of c.shapes) {
+    const shapeMat = (k) => {
+      const m = c.mats && c.mats[k];
+      if (!m) return mat;
+      const sm = new THREE.MeshStandardMaterial({ color: m.color || "#ffffff", roughness: m.roughness, metalness: m.metalness,
+        side: THREE.DoubleSide, transparent: m.opacity !== undefined && m.opacity < 1, opacity: m.opacity === undefined ? 1 : m.opacity,
+        depthWrite: !(m.opacity < 1) });
+      if (m.map) sm.map = gameTex(m.map, true);
+      if (m.normal) sm.normalMap = gameTex(m.normal, false);
+      return sm;
+    };
+    const used = [];
+    c.shapes.forEach((sh, k) => {
       const g = new THREE.BufferGeometry();
       g.setAttribute("position", new THREE.Float32BufferAttribute(sh.positions, 3));
       if (sh.normals.length) g.setAttribute("normal", new THREE.Float32BufferAttribute(sh.normals, 3));
@@ -370,11 +383,14 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
       g.setIndex(sh.indices);
       g.scale(c.scale, c.scale, c.scale);
       g.translate(0, 0, c.z);
-      const m = new THREE.Mesh(g, mat);
-      m.castShadow = m.receiveShadow = true;
+      const sm = shapeMat(k);
+      used.push(sm);
+      const m = new THREE.Mesh(g, sm);
+      m.castShadow = !sm.transparent;
+      m.receiveShadow = true;
       cupGroup.add(m);
-    }
-    glowMats = [mat];
+    });
+    glowMats = used.filter((m) => !m.transparent);
   }
 
   function lathe(points, segments, mat, flat) {
@@ -428,9 +444,11 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
       parts.push(ring((O + 0.2) * k, 0.07, H * 0.5, dark, 8));
       glowMats = [bronze];
     } else {
-      // Goblets: a straight bowl on a knotted stem and a wide foot. The silver one is brighter and more ornate.
-      const silver = id === "silver";
-      const mat = silver ? metal(0xf2f3f7, 0.26, 0.9) : metal(0x8c8070, 0.45, 0.8);
+      // Goblets: a straight bowl on a knotted stem and a wide foot. Silver and gold are brighter and more ornate.
+      const silver = id === "silver" || id === "golden";
+      const gold = id === "golden";
+      const mat = gold ? metal(0xe8b84a, 0.22, 1.0) : silver ? metal(0xf2f3f7, 0.26, 0.9) : metal(0x8c8070, 0.45, 0.8);
+      if (gold) mat.envMapIntensity = 1.6;
       if (silver) mat.envMapIntensity = 1.8;
       parts.push(lathe([[0.01, 0], [R, 0], [R, H], [R + 0.1, H + 0.06], [O + 0.08, H], [O + 0.02, H * 0.55], [O - 0.12, 0.35],
         [1.35, -0.4], [0.55, -0.85], [0.34, -1.25], [0.55, -1.5], [0.34, -1.75], [0.3, -2.4], [1.15, -2.75], [1.55, -2.95],
@@ -438,7 +456,8 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
       if (silver) {
         parts.push(ring(O + 0.07, 0.07, H - 0.25, mat), ring(O - 0.02, 0.05, H * 0.35, mat), ring(0.56, 0.08, -1.5, mat),
           ring(1.5, 0.06, -2.98, mat));
-        const gemMat = new THREE.MeshStandardMaterial({ color: 0x6a1020, roughness: 0.15, metalness: 0.2, emissive: 0x200006 });
+        const gemMat = gold ? new THREE.MeshStandardMaterial({ color: 0x1c5a3a, roughness: 0.12, metalness: 0.2, emissive: 0x04140a })
+          : new THREE.MeshStandardMaterial({ color: 0x6a1020, roughness: 0.15, metalness: 0.2, emissive: 0x200006 });
         for (let g = 0; g < 4; g++) {
           const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.16), gemMat);
           const a = g * Math.PI / 2;
