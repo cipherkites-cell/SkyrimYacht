@@ -3,6 +3,10 @@ name: build
 on:
   push:
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write   # the plugin job pushes its logs and package to the ci-logs and dist branches
 
 jobs:
   tests:
@@ -24,3 +28,139 @@ jobs:
         with:
           name: yacht-preview
           path: preview/yacht-preview.html
+
+  plugin:
+    runs-on: windows-2022   # has Visual Studio 2022 (windows-latest moved on)
+    env:
+      # Current vcpkg checkout for its helper scripts/download URLs; the package versions
+      # come from builtin-baseline in vcpkg.json (vcpkg 2024.01.12), to match CommonLibSSE-NG 3.7.0.
+      VCPKG_COMMIT: 9e593bb18ea69cc5095e012465dcd675a822ed0d   # vcpkg 2026.07.29
+      VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg-bincache
+      VCPKG_DEFAULT_TRIPLET: x64-windows-static-md
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Restore vcpkg binary cache
+        uses: actions/cache@v4
+        with:
+          path: vcpkg-bincache
+          key: vcpkg-${{ env.VCPKG_COMMIT }}-${{ hashFiles('vcpkg.json') }}
+          restore-keys: vcpkg-${{ env.VCPKG_COMMIT }}-
+
+      # CommonLibSSE-NG takes ~11 of the ~12 build minutes, and only changes when its submodule does: keep the whole build
+      # folder between runs (keyed on that commit), and date the library's sources long ago so MSBuild sees its objects as
+      # up to date. Only SkyrimYacht's own sources compile then.
+      - name: CommonLib commit
+        id: clib
+        shell: pwsh
+        run: echo "sha=$(git -C extern/CommonLibSSE-NG rev-parse HEAD)" >> $env:GITHUB_OUTPUT
+
+      - name: Restore build folder
+        uses: actions/cache@v4
+        with:
+          path: build
+          key: build-v1-${{ steps.clib.outputs.sha }}-${{ hashFiles('vcpkg.json', 'CMakeLists.txt') }}
+          restore-keys: build-v1-${{ steps.clib.outputs.sha }}-
+
+      - name: Date CommonLib's sources back
+        shell: pwsh
+        run: |
+          $old = Get-Date "2000-01-01"
+          Get-ChildItem extern -Recurse -File | ForEach-Object { $_.LastWriteTime = $old }
+
+      - name: Set up vcpkg
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "$env:VCPKG_DEFAULT_BINARY_CACHE" | Out-Null
+          git clone https://github.com/microsoft/vcpkg "$env:VCPKG_ROOT"
+          git -C "$env:VCPKG_ROOT" checkout $env:VCPKG_COMMIT
+          & "$env:VCPKG_ROOT/bootstrap-vcpkg.bat" -disableMetrics
+
+      - name: Configure
+        id: configure
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path logs | Out-Null
+          cmake -S . -B build -G "Visual Studio 17 2022" -A x64 `
+            -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" `
+            -DVCPKG_TARGET_TRIPLET=x64-windows-static-md `
+            "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded`$<`$<CONFIG:Debug>:Debug>DLL" 2>&1 | Tee-Object -FilePath logs/configure.txt
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      - name: Build
+        id: build
+        if: steps.configure.outcome == 'success'
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          cmake --build build --config Release --parallel -- /p:CL_MPCount=4 /nologo /v:minimal 2>&1 | Tee-Object -FilePath logs/build.txt
+          $code = $LASTEXITCODE
+          Select-String -Path logs/build.txt -Pattern ': (fatal )?error ' | Select-Object -First 40 | ForEach-Object { Write-Output "::error::$($_.Line.Trim())" }
+          if ($code -ne 0) { exit 1 }
+
+      - name: Publish logs to ci-logs branch
+        if: always()
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path logs | Out-Null
+          if (Test-Path "$env:VCPKG_ROOT/buildtrees") {
+            Get-ChildItem "$env:VCPKG_ROOT/buildtrees" -Recurse -Filter *.log -ErrorAction SilentlyContinue |
+              ForEach-Object { Copy-Item $_.FullName ("logs/vcpkg-" + $_.Directory.Name + "-" + $_.Name) }
+          }
+          if (Test-Path build/vcpkg-manifest-install.log) { Copy-Item build/vcpkg-manifest-install.log logs/ }
+          if (Test-Path build/CMakeFiles/CMakeOutput.log) { Copy-Item build/CMakeFiles/CMakeOutput.log logs/ }
+          "run ${{ github.run_id }} sha ${{ github.sha }} configure=${{ steps.configure.outcome }} build=${{ steps.build.outcome }}" | Out-File logs/STATUS.txt
+          Copy-Item -Recurse logs $env:RUNNER_TEMP/logs-out
+          cd $env:RUNNER_TEMP/logs-out
+          git init -q -b ci-logs
+          git config user.name "ci"; git config user.email "ci@users.noreply.github.com"
+          git add -A; git commit -q -m "logs for run ${{ github.run_id }}"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" ci-logs
+
+      - name: Fail if configure/build failed
+        if: steps.configure.outcome != 'success' || steps.build.outcome != 'success'
+        shell: pwsh
+        run: exit 1
+
+      - name: Package
+        shell: pwsh
+        run: |
+          $out = "package"
+          New-Item -ItemType Directory -Force -Path "$out/Data/SKSE/Plugins/SkyrimYacht" | Out-Null
+          Copy-Item build/Release/SkyrimYacht.dll "$out/Data/SKSE/Plugins/"
+          Copy-Item SkyrimYacht.ini "$out/Data/SKSE/Plugins/"
+          Copy-Item SkyrimYacht.esp "$out/Data/"
+          Copy-Item -Recurse assets/meshes "$out/Data/meshes"
+          Copy-Item -Recurse assets/textures "$out/Data/textures"
+          Copy-Item LICENSE.txt "$out/Data/SKSE/Plugins/SkyrimYacht/"
+          Copy-Item assets/download/README.txt "$out/Data/SKSE/Plugins/SkyrimYacht/"
+          Get-ChildItem -Recurse $out | Format-Table FullName, Length
+
+      - name: Publish package to dist branch
+        shell: pwsh
+        run: |
+          Copy-Item -Recurse package $env:RUNNER_TEMP/dist-out
+          if (Test-Path build/Release/SkyrimYacht.pdb) { Copy-Item build/Release/SkyrimYacht.pdb $env:RUNNER_TEMP/dist-out/ }
+          "run ${{ github.run_id }} sha ${{ github.sha }}" | Out-File $env:RUNNER_TEMP/dist-out/BUILD.txt
+          cd $env:RUNNER_TEMP/dist-out
+          git init -q -b dist
+          git config user.name "ci"; git config user.email "ci@users.noreply.github.com"
+          git add -A; git commit -q -m "SkyrimYacht build ${{ github.run_id }}"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" dist
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: SkyrimYacht
+          path: package/
+
+      - name: Upload PDB
+        uses: actions/upload-artifact@v4
+        with:
+          name: SkyrimYacht-pdb
+          path: build/Release/SkyrimYacht.pdb
+          if-no-files-found: ignore

@@ -2607,6 +2607,29 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
 
   // Hooks for automated checks of the preview.
   window.__yacht = {
+    // The tray's and the dice sets' textures as PNG data URLs, for tools/make_meshes.py (the game's meshes use the same art).
+    exportTextures: () => {
+      const out = {};
+      const put = (name, c) => { out[name] = c.toDataURL("image/png"); };
+      for (const [name, t] of [["linen", linen], ["wood", wood], ["woodLong", woodLong], ["rack", rackWood], ["iron", iron]]) {
+        put(name, t.canvas); put(name + "_h", t.bumpCanvas);
+      }
+      // Dice: a 3 x 2 atlas, faces in the order the meshes use (+x 1, -x 6, +y 2, -y 5, +z 3, -z 4).
+      const order = [1, 6, 2, 5, 3, 4], W = 512;
+      for (const d of DICE) {
+        const atl = document.createElement("canvas"), bmp = document.createElement("canvas"), met = document.createElement("canvas");
+        for (const c of [atl, bmp, met]) { c.width = W * 3; c.height = W * 2; }
+        const a = atl.getContext("2d"), b = bmp.getContext("2d"), m = met.getContext("2d");
+        m.fillStyle = "#000"; m.fillRect(0, 0, W * 3, W * 2);
+        order.forEach((n, k) => {
+          const t = diceFace(d.id, n, W), x = (k % 3) * W, y = Math.floor(k / 3) * W;
+          a.drawImage(t.canvas, x, y); b.drawImage(t.bumpCanvas, x, y);
+          if (t.metal) m.drawImage(t.metal.image, x, y);
+        });
+        put("dice_" + d.id, atl); put("dice_" + d.id + "_h", bmp); put("dice_" + d.id + "_m", met);
+      }
+      return out;
+    },
     audioStats: () => ({ voices, state: audio && audio.state, peak: statPeak }),
     // Renders a sound offline, for checking the synthesis: "shout", or a hit type 0-3 with a dice style.
     renderSound: async (what, style, dry) => {
