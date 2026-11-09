@@ -524,7 +524,15 @@ float4 PSComposite(FSOut i) : SV_Target
 			}
 			const auto flags = static_cast<std::uint16_t>(a_desc >> 44);
 			auto       off = [&](int attr) { return static_cast<UINT>((a_desc >> (4 * attr + 2)) & 0x3C); };
-			const bool full = (flags & 0x400) != 0;
+			// full precision positions take 16 bytes (the flag isn't always set on the renderer's copy): see where the next
+			// attribute starts
+			UINT next = static_cast<UINT>(a_desc & 0xF) * 4;
+			for (int attr : { 1, 3, 4, 5 }) {
+				if (flags & (1 << attr)) {
+					next = (std::min)(next, off(attr));
+				}
+			}
+			const bool full = (flags & 0x400) != 0 || next >= 16;
 			D3D11_INPUT_ELEMENT_DESC e[4]{};
 			e[0] = { "POSITION", 0, full ? DXGI_FORMAT_R32G32B32A32_FLOAT : DXGI_FORMAT_R16G16B16A16_FLOAT, 0, off(0), D3D11_INPUT_PER_VERTEX_DATA, 0 };
 			e[1] = (flags & (1 << 1)) ? D3D11_INPUT_ELEMENT_DESC{ "TEXCOORD", 0, DXGI_FORMAT_R16G16_FLOAT, 0, off(1), D3D11_INPUT_PER_VERTEX_DATA, 0 }
