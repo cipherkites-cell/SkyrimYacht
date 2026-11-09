@@ -102,6 +102,11 @@ canvas#view.over-die { cursor: pointer; }
   font: inherit; font-size: 13px; text-align: left; color: var(--parchment); background: rgba(0, 0, 0, 0.18);
   border: 1px solid var(--oak-edge); border-radius: 6px; padding: 6px 8px; cursor: pointer; display: flex; flex-direction: column; gap: 1px;
 }
+.test-row { display: flex; gap: 12px; padding: 8px 4px 0; }
+.test-btn { font: inherit; font-size: 12px; color: var(--muted); background: none; border: none; padding: 0; cursor: pointer;
+  text-decoration: underline; text-underline-offset: 2px; }
+.test-btn:hover { color: var(--parchment); }
+.test-btn:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
 .cup-chip:last-child:nth-child(odd) { grid-column: 1 / -1; }
 .cup-chip small { font-size: 11px; color: var(--muted); letter-spacing: 0.04em; }
 .cup-chip[aria-pressed="true"] { border-color: var(--brass); background: rgba(202, 164, 87, 0.14); }
@@ -147,6 +152,10 @@ canvas#view.over-die { cursor: pointer; }
       <div class="section-label">Rank</div>
       <div class="rank-line"><span class="rank-name" id="rankName">Novice</span><span class="rank-next" id="rankNext"></span></div>
       <div class="cup-chips" id="cupChips" role="group" aria-label="Choose a cup"></div>
+      <div class="test-row">
+        <button class="test-btn" id="unlockAll" type="button">Unlock all (test)</button>
+        <button class="test-btn" id="resetRank" type="button">Reset rank</button>
+      </div>
     </div>
     <div class="help">
       <b>Hold</b> the left button and <b>move</b> to pick up the cup and shake it. <b>Let go</b> to flick the dice out the
@@ -778,6 +787,13 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     saveRanks();
     updateRanks();
   }
+  // Testing: every cup at once, or back to Novice.
+  $("unlockAll").addEventListener("click", () => {
+    ranks.best = Math.max(ranks.best, CUPS[CUPS.length - 1].need); saveRanks(); updateRanks(); toast("All cups unlocked");
+  });
+  $("resetRank").addEventListener("click", () => {
+    ranks.best = 0; ranks.selected = "tankard"; saveRanks(); buildCup("tankard"); updateRanks(); toast("Back to Novice");
+  });
   if (!CUPS.some((c) => c.id === ranks.selected && unlocked(c))) ranks.selected = "tankard";
   buildCup(ranks.selected);
   updateRanks();
