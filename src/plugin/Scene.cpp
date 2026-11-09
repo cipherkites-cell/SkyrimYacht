@@ -362,7 +362,7 @@ namespace Scene
 
 	void Register()
 	{
-		g_tray = RE::TESDataHandler::GetSingleton()->LookupForm<RE::TESBoundObject>(EspIds::kTray, EspIds::kPlugin);
+		g_tray = RE::TESDataHandler::GetSingleton()->LookupForm<RE::TESObjectMISC>(EspIds::kTray, EspIds::kPlugin);
 		if (!g_tray) {
 			spdlog::error("YA_Tray not found in {} - is the plugin enabled?", EspIds::kPlugin);
 		}

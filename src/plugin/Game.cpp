@@ -228,7 +228,19 @@ namespace Game
 		}
 
 		RE::PlayerCharacter* Player() { return RE::PlayerCharacter::GetSingleton(); }
-		int GoldHeld() { return Player() ? Player()->GetGoldAmount() : 0; }
+		// (not Actor::GetGoldAmount: it goes through the default-object table, which crashed on 1.5.97)
+		int GoldHeld()
+		{
+			auto* p = Player();
+			if (!p || !g_gold) {
+				return 0;
+			}
+			const auto inv = p->GetInventory([](RE::TESBoundObject& a_obj) { return a_obj.GetFormID() == 0x0000000F; });
+			for (const auto& [obj, data] : inv) {
+				return data.first;
+			}
+			return 0;
+		}
 		void Sound(const char* a_id) { RE::PlaySound(a_id); }
 
 		const CupInfo& CupById(const std::string& a_id)
@@ -1511,7 +1523,8 @@ namespace Game
 		g_faction = dh->LookupForm<RE::TESFaction>(EspIds::kTableFaction, EspIds::kPlugin);
 		g_canAfford = dh->LookupForm<RE::TESGlobal>(EspIds::kCanAfford, EspIds::kPlugin);
 		g_infoPlay = dh->LookupFormID(EspIds::kInfoPlay, EspIds::kPlugin);
-		g_gold = RE::TESForm::LookupByID<RE::TESBoundObject>(0x0000000F);
+		g_gold = RE::TESForm::LookupByID<RE::TESObjectMISC>(0x0000000F);
+		spdlog::info("Forms: faction {}, global {}, info {:X}, gold {}", g_faction != nullptr, g_canAfford != nullptr, g_infoPlay, g_gold != nullptr);
 		if (!g_faction || !g_canAfford || !g_infoPlay) {
 			spdlog::error("{} records missing (faction {}, global {}, info {:X}) - is the plugin enabled?", EspIds::kPlugin, g_faction != nullptr,
 				g_canAfford != nullptr, g_infoPlay);
