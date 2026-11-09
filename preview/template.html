@@ -1233,8 +1233,11 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
       hitBank = { click: DICE_HITS.index.click.map(cutOut), knock: DICE_HITS.index.knock.map(cutOut) };
     }).catch(() => {});
   }
-  // Harder materials sound a little higher.
-  const MAT_PITCH = { bone: 1, metal: 1.12, precious: 1.06, stone: 0.95, ice: 1.15 };
+  // Bone, stone and stalhrim play the recordings almost as they are. Metal dice are heavy: pitched down, with the
+  // low end lifted for weight, a little presence around 2 kHz for the metallic clank, and the fizz on top taken out
+  // so they never sound tinny. Gold and silver are heaviest of all.
+  const MAT_PITCH = { bone: 1, metal: 0.88, precious: 0.84, stone: 0.95, ice: 1.15 };
+  const METAL_TONE = { metal: { low: 5, clank: 2.5, top: -7 }, precious: { low: 6, clank: 2, top: -8 } };
   const SURF_GAIN = [0.3, 0.55, 0.6, 0.35];
   const lastHit = new Float64Array(24).fill(-1);
   const activeCupId = () => (turn === "npc" ? "tankard" : ranks.selected);
@@ -1255,7 +1258,23 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     const f = audio.createBiquadFilter(); f.type = "lowpass"; f.Q.value = 0.5;
     f.frequency.value = (type === 1 ? 1400 + 3000 * v : 2500 + 12000 * v * v);
     const g = audio.createGain(); g.gain.value = Math.pow(v, 1.6) * SURF_GAIN[type];
-    src.connect(f); f.connect(g);
+    const tone = METAL_TONE[DIE_MAT[curDiceStyle]];
+    if (tone) {
+      const lo = audio.createBiquadFilter(); lo.type = "lowshelf"; lo.frequency.value = 260; lo.gain.value = tone.low;
+      const cl = audio.createBiquadFilter(); cl.type = "peaking"; cl.frequency.value = 2100; cl.Q.value = 1.4; cl.gain.value = tone.clank;
+      const hi = audio.createBiquadFilter(); hi.type = "highshelf"; hi.frequency.value = 5500; hi.gain.value = tone.top;
+      src.connect(lo); lo.connect(cl); cl.connect(hi); hi.connect(f);
+      // In the cup, a metal die is a dull clunk, not a click: a table knock under the click gives it its weight.
+      const inside = type === 3 || (type === 0 && die >= 0 && inCup(state(), die));
+      if (inside) {
+        const k = audio.createBufferSource(); k.buffer = hitBank.knock[(Math.random() * hitBank.knock.length) | 0];
+        k.playbackRate.value = src.playbackRate.value * 0.95;
+        const kg = audio.createGain(); kg.gain.value = 0.8;
+        k.connect(kg); kg.connect(lo); k.start(now);
+        f.frequency.value = Math.min(f.frequency.value, 2200 + 4500 * v);
+      }
+    } else src.connect(f);
+    f.connect(g);
     let out = g;
     if (audio.createStereoPanner) {
       const p = audio.createStereoPanner();
