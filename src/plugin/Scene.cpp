@@ -202,6 +202,37 @@ namespace Scene
 			return f;
 		}
 
+		bool IsA(RE::NiAVObject* a_obj, std::string_view a_rtti)
+		{
+			const auto* rtti = a_obj ? a_obj->GetRTTI() : nullptr;
+			return rtti && rtti->name && a_rtti == rtti->name;
+		}
+
+		// The world's shadow scene node (what the room's lights light): found by climbing from the player's own 3D,
+		// or among the world root's children, and only trusted if it really is one.
+		RE::NiNode* FindSceneNode()
+		{
+			if (auto* pc = RE::PlayerCharacter::GetSingleton()) {
+				for (auto* o = pc->Get3D() ? pc->Get3D()->parent : nullptr; o; o = o->parent) {
+					if (IsA(o, "ShadowSceneNode")) {
+						spdlog::info("Table: hung under the shadow scene node (from the player)");
+						return o;
+					}
+				}
+			}
+			if (auto* root = reinterpret_cast<RE::NiNode*>(RE::Main::WorldRootNode())) {  // a Scenegraph is a NiNode
+				for (auto& child : root->GetChildren()) {
+					if (child && IsA(child.get(), "ShadowSceneNode")) {
+						spdlog::info("Table: hung under the shadow scene node (from the world root)");
+						return child->AsNode();
+					}
+				}
+				spdlog::warn("Table: no shadow scene node found; hanging it from the world root");
+				return root;
+			}
+			return nullptr;
+		}
+
 		// Lifts the table out of a dark room: a little light of its own on every surface.
 		void Brighten(RE::NiAVObject* a_obj)
 		{
@@ -523,8 +554,7 @@ namespace Scene
 				if (g_scene && !TryTeardown()) {
 					g_scene = false;
 				}
-				auto& state = RE::BSShaderManager::State::GetSingleton();
-				auto* ssn = state.shadowSceneNode[0];
+				auto* ssn = FindSceneNode();
 				auto  tray = Instance("SkyrimYacht\\Tray.nif");
 				if (!ssn || !tray) {
 					spdlog::error("Table: couldn't put the tray in the world (scene node {}, mesh {})", ssn != nullptr, tray != nullptr);
