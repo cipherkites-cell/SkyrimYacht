@@ -1956,7 +1956,25 @@ namespace Game
 			std::snprintf(id, sizeof(id), "##ledger%d", a_card);
 			BeginArea(id, pos, ImVec2(w, h));
 			auto* dl = ImGui::GetWindowDrawList();
-			Shadow(dl, ImVec2(pos.x + S(6), pos.y + S(8)), ImVec2(pos.x + w - S(6), pos.y + h - S(4)), S(active ? 22 : 16), active ? 0.75f : 0.6f);
+			// The shadow follows the torn edge: the parchment itself, in black, smeared in rings (a cheap blur), drawn
+			// outside the window's clip so it isn't cut off into a box.
+			dl->PushClipRectFullScreen();
+			if (g_parchment[a_card]) {
+				const float r = S(active ? 14 : 10), a = active ? 0.55f : 0.42f;
+				const ImVec2 drop(S(4), S(7));
+				for (int ring = 1; ring <= 3; ++ring) {
+					const float rr = r * ring / 3.0f;
+					for (int k = 0; k < 8; ++k) {
+						const float ang = k * 0.785398f + ring * 0.39f;
+						const ImVec2 o(drop.x + std::cos(ang) * rr, drop.y + std::sin(ang) * rr);
+						dl->AddImage(reinterpret_cast<ImTextureID>(g_parchment[a_card]), ImVec2(pos.x + o.x, pos.y + o.y), ImVec2(pos.x + w + o.x, pos.y + h + o.y),
+							ImVec2(0, 0), ImVec2(1, 1), Alpha(IM_COL32(0, 0, 0, 255), a / 8.0f * (1.4f - ring * 0.25f)));
+					}
+				}
+			} else {
+				Shadow(dl, ImVec2(pos.x + S(6), pos.y + S(8)), ImVec2(pos.x + w - S(6), pos.y + h - S(4)), S(active ? 22 : 16), active ? 0.75f : 0.6f);
+			}
+			dl->PopClipRect();
 			const ImU32 tint = active ? IM_COL32(255, 255, 255, 255) : IM_COL32(150, 140, 128, 255);
 			if (g_parchment[a_card]) {
 				dl->AddImage(reinterpret_cast<ImTextureID>(g_parchment[a_card]), pos, ImVec2(pos.x + w, pos.y + h), ImVec2(0, 0), ImVec2(1, 1), tint);
