@@ -75,12 +75,13 @@ namespace yacht
 	{
 		const double h = _spec.dieSize * 0.5;
 		// Three on the base, two above them.
+		// Two on the base, two above them, one on top (the cup is narrow).
 		const double spots[kDice][3] = {
-			{ 90.0, 1.15, h + 0.04 },
-			{ 210.0, 1.15, h + 0.04 },
-			{ 330.0, 1.15, h + 0.04 },
-			{ 30.0, 0.95, h * 3.0 + 0.15 },
-			{ 210.0, 0.95, h * 3.0 + 0.15 }
+			{ 0.0, 0.9, h + 0.04 },
+			{ 180.0, 0.9, h + 0.04 },
+			{ 90.0, 0.9, h * 3.0 + 0.12 },
+			{ 270.0, 0.9, h * 3.0 + 0.12 },
+			{ 45.0, 0.3, h * 5.0 + 0.2 }
 		};
 
 		int slot = 0;
@@ -98,7 +99,10 @@ namespace yacht
 			d.vel = {};
 			d.spin = {};
 			const int  face = 1 + static_cast<int>(_rng.Uniform() * 6.0);
-			const Quat yaw = Quat::FromAxisAngle({ 0, 0, 1 }, _rng.Range(0.0, 2.0 * m::kPi));
+			// Any quarter-turn about the vertical (all 24 orientations equally likely), lined up with the cup wall.
+			const double quarter = static_cast<int>(_rng.Uniform() * 4.0) * (m::kPi * 0.5);
+			const Quat   yaw = Quat::FromAxisAngle({ 0, 0, 1 }, spots[slot - 1][0] * m::kPi / 180.0 + quarter + _rng.Range(-0.2, 0.2));
+			d.frozen = false;
 			d.rot = _cupRot * yaw * FaceUp(face > 6 ? 6 : face);
 			d.rot.Normalize();
 			d.restTime = 0.0;
@@ -124,11 +128,46 @@ namespace yacht
 		d.state = DieState::kActive;
 		d.pos = a_pos;
 		d.rot = FaceUp(a_face);
+		d.frozen = false;
 		d.vel = {};
 		d.spin = {};
 		d.restTime = 0.0;
 		d.settled = false;
 		d.nudges = 0;
+	}
+
+	void DiceSim::SetFrozen(int a_index, bool a_frozen)
+	{
+		Die& d = _dice[a_index];
+		d.frozen = a_frozen;
+		d.vel = {};
+		d.spin = {};
+		if (a_frozen) {
+			d.settled = true;
+			if (_drag == a_index) {
+				_drag = -1;
+			}
+		}
+	}
+
+	void DiceSim::AddToCup(int a_index)
+	{
+		Die& d = _dice[a_index];
+		if (_drag == a_index) {
+			_drag = -1;
+		}
+		d.state = DieState::kActive;
+		d.frozen = false;
+		d.settled = false;
+		d.restTime = 0.0;
+		d.nudges = 0;
+		// Let go just inside the mouth, so it settles onto the others instead of bouncing back out.
+		d.pos = _cupPos + _cupRot.Rotate({ _rng.Range(-0.15, 0.15), _rng.Range(-0.15, 0.15), _spec.cupHeight - _spec.dieSize * 0.3 });
+		d.vel = _cupRot.Rotate({ 0.0, 0.0, -4.0 });
+		d.spin = { _rng.Range(-2.0, 2.0), _rng.Range(-2.0, 2.0), _rng.Range(-2.0, 2.0) };
+		const Quat a = Quat::FromAxisAngle({ _rng.Range(-1.0, 1.0), _rng.Range(-1.0, 1.0), _rng.Range(0.1, 1.0) }, _rng.Range(0.0, 2.0 * m::kPi));
+		d.rot = _cupRot * a;
+		d.rot.Normalize();
 	}
 
 	void DiceSim::Drag(int a_index, const Vec3& a_target)
@@ -233,7 +272,7 @@ namespace yacht
 		}
 
 		for (auto& d : _dice) {
-			if (d.state == DieState::kActive) {
+			if (d.state == DieState::kActive && !d.frozen) {
 				d.vel.z -= _spec.gravity * a_dt;
 			}
 		}
@@ -275,7 +314,7 @@ namespace yacht
 		_contactCount = 0;
 		for (int i = 0; i < kDice; ++i) {
 			_onFelt[i] = false;
-			if (_dice[i].state != DieState::kActive) {
+			if (_dice[i].state != DieState::kActive || _dice[i].frozen) {
 				continue;
 			}
 			CollideStatic(i);
@@ -286,7 +325,7 @@ namespace yacht
 				continue;
 			}
 			for (int b = a + 1; b < kDice; ++b) {
-				if (_dice[b].state != DieState::kActive) {
+				if (_dice[b].state != DieState::kActive || (_dice[a].frozen && _dice[b].frozen)) {
 					continue;
 				}
 				const double reach = _spec.dieSize * 1.8;
@@ -474,9 +513,6 @@ namespace yacht
 
 	void DiceSim::Prepare([[maybe_unused]] double a_dt)
 	{
-		const double invM = 1.0 / _spec.dieMass;
-		const double invI = 1.0 / Inertia();
-
 		for (int i = 0; i < _contactCount; ++i) {
 			Contact& c = _contacts[i];
 			Tangents(c.n, c.t1, c.t2);
@@ -485,9 +521,9 @@ namespace yacht
 			const Vec3 rB = c.b >= 0 ? c.p - _dice[c.b].pos : Vec3{};
 
 			auto mass = [&](const Vec3& a_dir) {
-				double k = invM + rA.Cross(a_dir).LengthSq() * invI;
+				double k = InvMass(c.a) + rA.Cross(a_dir).LengthSq() * InvInertia(c.a);
 				if (c.b >= 0) {
-					k += invM + rB.Cross(a_dir).LengthSq() * invI;
+					k += InvMass(c.b) + rB.Cross(a_dir).LengthSq() * InvInertia(c.b);
 				}
 				return k > 0.0 ? 1.0 / k : 0.0;
 			};
@@ -508,17 +544,14 @@ namespace yacht
 
 	void DiceSim::Solve()
 	{
-		const double invM = 1.0 / _spec.dieMass;
-		const double invI = 1.0 / Inertia();
-
 		auto apply = [&](const Contact& a_c, const Vec3& a_impulse) {
 			Die& A = _dice[a_c.a];
-			A.vel += a_impulse * invM;
-			A.spin += (a_c.p - A.pos).Cross(a_impulse) * invI;
+			A.vel += a_impulse * InvMass(a_c.a);
+			A.spin += (a_c.p - A.pos).Cross(a_impulse) * InvInertia(a_c.a);
 			if (a_c.b >= 0) {
 				Die& B = _dice[a_c.b];
-				B.vel -= a_impulse * invM;
-				B.spin -= (a_c.p - B.pos).Cross(a_impulse) * invI;
+				B.vel -= a_impulse * InvMass(a_c.b);
+				B.spin -= (a_c.p - B.pos).Cross(a_impulse) * InvInertia(a_c.b);
 			}
 		};
 
@@ -561,11 +594,21 @@ namespace yacht
 				continue;
 			}
 			if (c.b >= 0) {
-				const Vec3 half = c.n * (excess * 0.5 * kCorrection);
-				push[c.a] += half;
-				push[c.b] -= half;
-				++count[c.a];
-				++count[c.b];
+				// Split the push by mass; a frozen die doesn't move.
+				const double wa = _dice[c.a].frozen ? 0.0 : 1.0;
+				const double wb = _dice[c.b].frozen ? 0.0 : 1.0;
+				if (wa + wb <= 0.0) {
+					continue;
+				}
+				const Vec3 push1 = c.n * (excess * kCorrection / (wa + wb));
+				if (wa > 0.0) {
+					push[c.a] += push1;
+					++count[c.a];
+				}
+				if (wb > 0.0) {
+					push[c.b] -= push1;
+					++count[c.b];
+				}
 			} else {
 				push[c.a] += c.n * (excess * kCorrection);
 				++count[c.a];
@@ -585,7 +628,7 @@ namespace yacht
 	{
 		for (int i = 0; i < kDice; ++i) {
 			Die& d = _dice[i];
-			if (d.state != DieState::kActive) {
+			if (d.state != DieState::kActive || d.frozen) {
 				continue;
 			}
 
@@ -615,7 +658,7 @@ namespace yacht
 	{
 		for (int i = 0; i < kDice; ++i) {
 			Die& d = _dice[i];
-			if (d.state != DieState::kActive) {
+			if (d.state != DieState::kActive || d.frozen) {
 				continue;
 			}
 			if (InCup(i) || i == _drag) {

@@ -20,11 +20,11 @@ namespace
 
 	constexpr double kFrame = 1.0 / 60.0;
 
-	// Where the cup stands when it's put down: on the side table to the right of the tray.
+	// Where the cup floats when it's not in use: to the right of the tray.
 	Vec3 SideTable(const DiceSim& a_sim)
 	{
 		const DiceSpec& s = a_sim.Spec();
-		return { s.trayHalfX + s.trayWallThick + 5.2, -s.trayHalfY + 3.2, s.cupWall };
+		return { s.trayHalfX + s.trayWallThick + 3.6, -1.0, 3.0 };
 	}
 
 	Quat Tilt(double a_degrees)  // tips the cup's mouth towards +x
@@ -82,7 +82,7 @@ namespace
 	{
 		DiceSim sim({}, a_seed);
 		const Vec3 side = SideTable(sim);
-		const Vec3 home{ -4.0, 0.0, 6.0 };
+		const Vec3 home{ -3.0, 0.0, 5.6 };
 		sim.PlaceCup(side, {});
 		sim.LoadCup(0x1F);
 
@@ -137,24 +137,40 @@ namespace
 		sim.SetLid(false);
 		// Pour: tip 125 degrees over 0.35 s while sweeping forward, then lift away.
 		const Vec3 start = sim.CupPos();
-		const Vec3 pourAt{ -2.0, 0.0, 6.5 };
-		double     p = 0.0;
-		while (p < 0.35) {
-			p += kFrame;
-			const double k = p / 0.35;
-			sim.Step(kFrame, start + (pourAt - start) * k, Tilt(125.0 * k));
+		const Vec3 pourAt{ -1.5, 0.0, 4.4 };
+		const Vec3 windUp = pourAt + Vec3{ 5.0, 0.0, 0.8 };  // pull back, then fling towards -x while tipping
+		for (int i = 1; i <= 7; ++i) {
+			sim.Step(kFrame, start + (windUp - start) * (i / 7.0), {});
+		}
+		for (int i = 1; i <= 9; ++i) {
+			const double k = i / 9.0;
+			const double f = k * k;  // accelerating forward
+			sim.Step(kFrame, windUp + (pourAt - windUp) * f, Tilt(-125.0 * f));
 		}
 		for (int i = 0; i < 40; ++i) {
-			sim.Step(kFrame, pourAt, Tilt(125.0));
+			sim.Step(kFrame, pourAt, Tilt(-125.0));
 		}
 		const Vec3 above{ side.x, side.y, 7.0 };
 		for (int i = 0; i < 30; ++i) {
 			const double k = (i + 1) / 30.0;
-			sim.Step(kFrame, pourAt + (above - pourAt) * k, Tilt(125.0 * (1.0 - k)));
+			sim.Step(kFrame, pourAt + (above - pourAt) * k, Tilt(-125.0 * (1.0 - k)));
 		}
 		const Vec3 away = side;
 		for (int i = 0; i < 15; ++i) {
 			sim.Step(kFrame, above + (side - above) * ((i + 1) / 15.0), {});
+		}
+
+		// Like the game: a die wedged in the cup gets the cup tipped again.
+		for (int retry = 0; retry < 3 && sim.AnyInCup(); ++retry) {
+			for (int i = 1; i <= 20; ++i) {
+				sim.Step(kFrame, side + (pourAt - side) * (i / 20.0), Tilt(130.0 * (i / 20.0)));
+			}
+			for (int i = 0; i < 40; ++i) {
+				sim.Step(kFrame, pourAt, Tilt(130.0 + (i % 6) * 3.0));
+			}
+			for (int i = 1; i <= 20; ++i) {
+				sim.Step(kFrame, pourAt + (side - pourAt) * (i / 20.0), Tilt(130.0 * (1.0 - i / 20.0)));
+			}
 		}
 
 		double wait = 0.0;
@@ -197,7 +213,7 @@ namespace
 		double worst = 0.0;
 		double total = 0.0;
 		int    nudges = 0;
-		const int runs = 200;
+		const int runs = 400;
 		for (unsigned int seed = 1; seed <= runs; ++seed) {
 			int    faces[5];
 			double settle = 0.0;
@@ -222,6 +238,14 @@ namespace
 		}
 		std::printf("\n");
 		Check(bad == 0, "every throw ends cleanly");
+		// Chi-square against a fair die: 5 degrees of freedom, 15.1 is the 1% critical value.
+		double chi = 0.0;
+		for (int f = 1; f <= 6; ++f) {
+			const double e = good / 6.0;
+			chi += (counts[f] - e) * (counts[f] - e) / e;
+		}
+		std::printf("chi-square %.1f\n", chi);
+		Check(chi < 15.1, "faces are fair (chi-square)");
 		for (int f = 1; f <= 6; ++f) {
 			const double share = static_cast<double>(counts[f]) / good;
 			Check(share > 0.12 && share < 0.215, "faces come up evenly");
@@ -254,6 +278,52 @@ namespace
 		Check(sim.DieAt(1).pos.x > 3.0, "pushed die was shoved ahead");
 	}
 
+	void TestKeepers()
+	{
+		// Dice left on the felt are frozen while the rest roll: poured dice bounce off them without moving them.
+		DiceSim sim({}, 7);
+		sim.PlaceDie(0, { -2.0, 0.0, 0.6 }, 6);
+		sim.PlaceDie(1, { -0.5, 0.4, 0.6 }, 6);
+		sim.SetFrozen(0, true);
+		sim.SetFrozen(1, true);
+		const Vec3 p0 = sim.DieAt(0).pos;
+		sim.PlaceCup({ -1.2, 0.2, 3.5 }, {});
+		sim.LoadCup(0x1C);
+		for (int i = 0; i < 20; ++i) {
+			sim.Step(kFrame, sim.CupPos(), sim.CupRot());
+		}
+		const Quat tip = Quat::FromAxisAngle({ 0, 1, 0 }, -2.2);  // pour straight onto the keepers
+		for (int i = 1; i <= 20; ++i) {
+			sim.Step(kFrame, sim.CupPos(), Quat::Nlerp({}, tip, i / 20.0));
+		}
+		for (int i = 0; i < 300 && !sim.AllSettled(); ++i) {
+			sim.Step(kFrame, { 15, 0, 6 }, {});
+		}
+		Check(sim.AllSettled(), "a roll around keepers settles");
+		Check((sim.DieAt(0).pos - p0).Length() < 1e-9, "a keeper doesn't move");
+		Check(sim.TopFace(0) == 6 && sim.TopFace(1) == 6, "keepers keep their faces");
+		Check(!Overlapping(sim), "rolled dice don't end up inside keepers");
+	}
+
+	void TestAddToCup()
+	{
+		DiceSim sim;
+		sim.PlaceCup(SideTable(sim), {});
+		sim.LoadCup(0x0F);
+		sim.PlaceDie(4, { 0.0, 0.0, 0.6 }, 3);
+		for (int i = 0; i < 20; ++i) {
+			sim.Step(kFrame, sim.CupPos(), sim.CupRot());
+		}
+		sim.AddToCup(4);
+		for (int i = 0; i < 90; ++i) {
+			sim.Step(kFrame, sim.CupPos(), sim.CupRot());
+		}
+		for (int i = 0; i < DiceSim::kDice; ++i) {
+			Check(sim.InCup(i), "a die dropped in joins the others in the cup");
+		}
+		Check(!Overlapping(sim), "dice in the cup don't overlap");
+	}
+
 	void TestSideTable()
 	{
 		// The cup can stand on the side table with dice in it without the tray walls grabbing them.
@@ -274,6 +344,8 @@ int main()
 {
 	TestDrag();
 	TestSideTable();
+	TestKeepers();
+	TestAddToCup();
 	TestFaces();
 	TestDrop();
 	TestThrows();

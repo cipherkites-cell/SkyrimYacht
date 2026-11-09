@@ -100,7 +100,7 @@ canvas#view.over-die { cursor: pointer; }
 
 <div class="app">
   <div class="stage" id="stage">
-    <canvas id="view" aria-label="Dice tray. Hold the left mouse button and move to pick up and shake the cup, release to pour."></canvas>
+    <canvas id="view" aria-label="Dice tray. Hold the left mouse button and move to pick up and shake the cup, release to throw."></canvas>
     <div class="hud">
       <h1>Yacht</h1>
       <div class="rolls" id="rolls" aria-live="polite"><span>Roll</span><i></i><i></i><i></i></div>
@@ -118,8 +118,9 @@ canvas#view.over-die { cursor: pointer; }
     <button class="newgame" id="newgame" type="button" hidden>New game</button>
     <div class="help">
       <b>Hold</b> the left button and <b>move</b> to pick up the cup and shake it; a click alone does nothing.
-      <b>Let go</b> and it tips the way you last moved it. <b>Drag dice</b> around the felt, or onto the rack to keep
-      them (a click keeps one too). After up to three rolls, <b>pick a box</b> to score.
+      <b>Let go</b> and it throws the dice the way you last moved it. Dice left on the pad are kept: <b>drag</b> or
+      <b>click</b> a die to put it back in the cup for the next roll, or click it in the cup to take it out again.
+      After up to three rolls, <b>pick a box</b> to score.
     </div>
   </aside>
 </div>
@@ -145,6 +146,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   const S = { die: sp[0], round: sp[1], X: sp[2], Yh: sp[3], R: sp[4], W: sp[5], H: sp[6] };
   const half = S.die / 2;
 
+
   // ------------------------------------------------------------------ scene
   const canvas = $("view");
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -157,7 +159,6 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x15100c);
-  scene.fog = new THREE.Fog(0x15100c, 40, 85);
   const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 200);
 
   // Everything below lives in simulation space (z up); this group turns it into three.js space (y up).
@@ -165,17 +166,17 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   world.rotation.x = -Math.PI / 2;
   scene.add(world);
 
-  scene.add(new THREE.HemisphereLight(0xffe2b8, 0x20140c, 0.45));
+  scene.add(new THREE.HemisphereLight(0xffe2b8, 0x20140c, 0.5));
   const key = new THREE.DirectionalLight(0xffd29a, 1.5);
   key.position.set(-10, 30, 14);
   key.castShadow = true;
   key.shadow.mapSize.set(2048, 2048);
-  Object.assign(key.shadow.camera, { left: -18, right: 18, top: 18, bottom: -18, near: 5, far: 70 });
+  Object.assign(key.shadow.camera, { left: -20, right: 20, top: 18, bottom: -18, near: 5, far: 70 });
   key.shadow.bias = -0.0004;
   key.shadow.radius = 3;
   scene.add(key);
-  const candle = new THREE.PointLight(0xff9a4a, 0.9, 40, 2);
-  candle.position.set(14, 8, -6);
+  const candle = new THREE.PointLight(0xff9a4a, 0.8, 40, 2);
+  candle.position.set(16, 8, -4);
   scene.add(candle);
 
   function canvasTex(w, h, draw, repeat) {
@@ -202,29 +203,15 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     g.putImageData(img, 0, 0);
   }
 
-  const feltTex = canvasTex(256, 256, (g, w, h) => noise(g, w, h, "#5a1f1d", 26, false), [4, 3]);
-  const woodTex = canvasTex(256, 256, (g, w, h) => noise(g, w, h, "#5b3a22", 18, true), [2, 1]);
-  const tableTex = canvasTex(512, 512, (g, w, h) => noise(g, w, h, "#3a2617", 14, true), [3, 3]);
-  const feltMat = new THREE.MeshStandardMaterial({ map: feltTex, roughness: 0.97 });
-  const woodMat = new THREE.MeshStandardMaterial({ map: woodTex, roughness: 0.62 });
-  const tableMat = new THREE.MeshStandardMaterial({ map: tableTex, roughness: 0.75 });
+  const feltMat = new THREE.MeshStandardMaterial({ map: canvasTex(256, 256, (g, w, h) => noise(g, w, h, "#5a1f1d", 26, false), [4, 3]), roughness: 0.97 });
+  const woodMat = new THREE.MeshStandardMaterial({ map: canvasTex(256, 256, (g, w, h) => noise(g, w, h, "#5b3a22", 18, true), [2, 1]), roughness: 0.62 });
   const brassMat = new THREE.MeshStandardMaterial({ color: 0xcaa457, metalness: 0.85, roughness: 0.35 });
 
-  const floorTex = canvasTex(512, 512, (g, w, h) => noise(g, w, h, "#24180f", 12, true), [8, 8]);
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.9 }));
-  floor.position.z = -16;
-  floor.receiveShadow = true;
-  world.add(floor);
-
+  // The tray: a felt pad inside four wooden walls, on a thin wooden base.
+  const wallH = 1.7, wallT = 0.8;
   const felt = new THREE.Mesh(new THREE.PlaneGeometry(S.X * 2, S.Yh * 2), feltMat);
   felt.receiveShadow = true;
   world.add(felt);
-  const base = new THREE.Mesh(new THREE.BoxGeometry(S.X * 2 + 1.6, S.Yh * 2 + 1.6, 0.5), woodMat);
-  base.position.z = -0.26;
-  base.receiveShadow = true;
-  world.add(base);
-
-  const wallH = 1.7, wallT = 0.8;
   function box(w, d, h, x, y, z, mat) {
     const m = new THREE.Mesh(new THREE.BoxGeometry(w, d, h), mat);
     m.position.set(x, y, z);
@@ -232,47 +219,14 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     world.add(m);
     return m;
   }
+  box(S.X * 2 + wallT * 2, S.Yh * 2 + wallT * 2, 0.5, 0, 0, -0.26, woodMat);
   box(S.X * 2 + wallT * 2, wallT, wallH, 0, S.Yh + wallT / 2, wallH / 2 - 0.2, woodMat);
   box(S.X * 2 + wallT * 2, wallT, wallH, 0, -S.Yh - wallT / 2, wallH / 2 - 0.2, woodMat);
   box(wallT, S.Yh * 2, wallH, S.X + wallT / 2, 0, wallH / 2 - 0.2, woodMat);
   box(wallT, S.Yh * 2, wallH, -S.X - wallT / 2, 0, wallH / 2 - 0.2, woodMat);
-  // Brass corner caps.
   for (const sx of [-1, 1]) for (const sy of [-1, 1]) {
     box(wallT + 0.12, wallT + 0.12, 0.25, sx * (S.X + wallT / 2), sy * (S.Yh + wallT / 2), wallH - 0.08, brassMat);
   }
-  // The rack for kept dice, along the near edge.
-  const rackY = -S.Yh - wallT - 1.6, rackTop = 0.0;
-  box(13.5, 2.4, 0.5, 0, rackY, rackTop - 0.25, woodMat);
-  box(13.5, 0.25, 0.7, 0, rackY - 1.15, rackTop + 0.1, woodMat);
-  const rackX = (slot) => (slot - 2) * 2.4;
-
-  // The gaming table under the tray, and the round side table to its right where the cup is set down.
-  const tLeft = -S.X - wallT - 3.2, tRight = S.X + wallT + 0.6, tFront = rackY - 2.2, tBack = S.Yh + wallT + 2.6;
-  box(tRight - tLeft, tBack - tFront, 1.2, (tLeft + tRight) / 2, (tFront + tBack) / 2, -1.1, tableMat);
-  const SIDE_X = S.X + wallT + 5.2, SIDE_Y = -S.Yh + 3.2, SIDE_R = 4.0;
-  function disc(radius, height, x, y, zTop, mat) {
-    const g = new THREE.CylinderGeometry(radius, radius, height, 48);
-    g.rotateX(Math.PI / 2);
-    const m = new THREE.Mesh(g, mat);
-    m.position.set(x, y, zTop - height / 2);
-    m.castShadow = m.receiveShadow = true;
-    world.add(m);
-    return m;
-  }
-  disc(SIDE_R, 0.55, SIDE_X, SIDE_Y, 0, tableMat);
-  disc(SIDE_R + 0.12, 0.12, SIDE_X, SIDE_Y, -0.5, brassMat);
-  disc(0.7, 15.5, SIDE_X, SIDE_Y, -0.55, woodMat);
-  disc(2.4, 0.5, SIDE_X, SIDE_Y, -15.5, woodMat);
-
-  // Shows which way the cup will tip while you shake it.
-  const arrowShape = new THREE.Shape();
-  arrowShape.moveTo(0, 1.1); arrowShape.lineTo(0.7, 0); arrowShape.lineTo(0.25, 0); arrowShape.lineTo(0.25, -1.0);
-  arrowShape.lineTo(-0.25, -1.0); arrowShape.lineTo(-0.25, 0); arrowShape.lineTo(-0.7, 0); arrowShape.closePath();
-  const arrow = new THREE.Mesh(new THREE.ShapeGeometry(arrowShape),
-    new THREE.MeshBasicMaterial({ color: 0xcaa457, transparent: true, opacity: 0.55, depthWrite: false }));
-  arrow.position.z = 0.02;
-  arrow.visible = false;
-  world.add(arrow);
 
   // ------------------------------------------------------------------ dice
   const PIPS = {
@@ -323,11 +277,13 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
 
   // ------------------------------------------------------------------ cup
   const cupGroup = new THREE.Group();
+  const rimMat = brassMat.clone();
+  const cupParts = [];
   {
     const R = S.R, W = S.W, H = S.H;
     const pts = [
-      [0.01, 0.0], [R, 0.0], [R, H - 0.1], [R + 0.03, H], [R + W * 0.5, H + 0.12], [R + W + 0.05, H],
-      [R + W + 0.02, H - 0.6], [R + W - 0.04, 0.4], [R + W + 0.06, 0.05], [R + W + 0.04, -W], [0.01, -W],
+      [0.01, 0.0], [R, 0.0], [R, H - 0.08], [R + 0.02, H], [R + W * 0.5, H + 0.08], [R + W + 0.04, H],
+      [R + W + 0.02, H - 0.4], [R + W - 0.03, 0.3], [R + W + 0.05, 0.04], [R + W + 0.03, -W], [0.01, -W],
     ].map(([x, y]) => new THREE.Vector2(x, y));
     const geo = new THREE.LatheGeometry(pts, 48);
     geo.rotateX(Math.PI / 2);
@@ -338,10 +294,11 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     const cupMesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: leather, roughness: 0.82, side: THREE.DoubleSide }));
     cupMesh.castShadow = cupMesh.receiveShadow = true;
     cupGroup.add(cupMesh);
-    const rim = new THREE.Mesh(new THREE.TorusGeometry(R + W * 0.5, 0.11, 10, 48), brassMat);
-    rim.position.z = H + 0.06;
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(R + W * 0.5, 0.08, 10, 48), rimMat);
+    rim.position.z = H + 0.04;
     rim.castShadow = true;
     cupGroup.add(rim);
+    cupParts.push(cupMesh, rim);
   }
   world.add(cupGroup);
 
@@ -350,15 +307,15 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     const r = canvas.parentElement.getBoundingClientRect();
     renderer.setSize(r.width, r.height, false);
     camera.aspect = r.width / Math.max(1, r.height);
-    // Keep the whole tray and rack in view at any aspect.
-    const needW = 46, needD = 31, cx = 4.6;
+    // Keep the tray and the cup beside it in view at any aspect.
+    const needW = 42, needD = 25, cx = 3.6;
     const vFov = 38 * Math.PI / 180;
     const distForH = (needD / 2) / Math.tan(vFov / 2);
     const distForW = (needW / 2) / (Math.tan(vFov / 2) * camera.aspect);
-    const dist = Math.max(distForH, distForW) * 0.92;
-    const tilt = 0.86; // radians down from horizontal
-    camera.position.set(cx, Math.sin(tilt) * dist, Math.cos(tilt) * dist - 2.5);
-    camera.lookAt(cx, 0, -2.5);
+    const dist = Math.max(distForH, distForW) * 0.95;
+    const tilt = 0.9; // radians down from horizontal
+    camera.position.set(cx, Math.sin(tilt) * dist, Math.cos(tilt) * dist - 0.5);
+    camera.lookAt(cx, 0, -0.5);
     camera.updateProjectionMatrix();
   }
   window.addEventListener("resize", resize);
@@ -401,61 +358,62 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   });
 
   // ------------------------------------------------------------------ game state
-  const REST = { x: SIDE_X, y: SIDE_Y, z: S.W };  // standing on the side table
-  const SHAKE_Z = 7.6;
-  const cup = { x: REST.x, y: REST.y, z: REST.z, q: new THREE.Quaternion() };
+  const REST = { x: S.X + wallT + 3.6, y: -1.0, z: 3.0 };  // floating to the right of the tray
+  const SHAKE_Z = 5.6;
+  const cup = { x: REST.x, y: REST.y, z: REST.z, vx: 0, vy: 0, vz: 0, q: new THREE.Quaternion() };
   const cupTarget = { x: REST.x, y: REST.y };
-  let lastCup = { x: cup.x, y: cup.y };
   Y.y_place_cup(cup.x, cup.y, cup.z, 1, 0, 0, 0);
 
   let phase = "ready";      // ready, shaking, pouring, rolling, choose, over
   let rollsUsed = 0;
-  const held = [false, false, false, false, false];
-  const faces = [0, 0, 0, 0, 0];
-  const rackSlot = [-1, -1, -1, -1, -1];
-  const anim = [null, null, null, null, null];  // per-die visual tweens: {from, to, t, dur, quatFrom, quatTo}
+  const faces = [0, 0, 0, 0, 0];             // last face each die showed on the pad (0 before the first roll)
+  const lastSpot = [null, null, null, null, null];  // where each die lay before it went back in the cup
+  const anim = [null, null, null, null, null];      // per-die visual tweens
+  let rolled = 0;           // dice in this roll (bit mask)
   let pour = null, rollingTime = 0, shakeTime = 0, pourPending = false;
-  // Smoothed direction of the cup's recent movement: the cup tips this way when you let go.
-  const aim = { x: -1, y: 0.35 };
-  let drag = null;  // { i, x0, y0, moved, fromRack, rawY }
+  const aim = { x: -1, y: 0.2 };  // smoothed direction of the cup's movement: it tips this way on release
+  let press = null;         // { id, x0, y0, kind: "die" | "cup", i, moved, fromCup }
 
-  function startTurn() {
-    for (let i = 0; i < 5; i++) { held[i] = false; rackSlot[i] = -1; faces[i] = 0; }
+  const state = () => f64(Y.y_state(), 62);
+  const inCup = (st, i) => st[i * 11 + 8] > 0;
+  function anyInCup() { const st = state(); for (let i = 0; i < 5; i++) if (inCup(st, i)) return true; return false; }
+  const posOf = (st, i) => new THREE.Vector3(st[i * 11], st[i * 11 + 1], st[i * 11 + 2]);
+  const quatOf = (st, i) => new THREE.Quaternion(st[i * 11 + 4], st[i * 11 + 5], st[i * 11 + 6], st[i * 11 + 3]);
+
+  function tweenFrom(i, st, dur) { anim[i] = { from: posOf(st, i), fromQ: quatOf(st, i), t: 0, dur: dur || 0.25 }; }
+
+  function startTurn(animate) {
+    const st = state();
+    for (let i = 0; i < 5; i++) {
+      Y.y_set_frozen(i, 0);
+      if (animate && st[i * 11 + 7] && !inCup(st, i)) tweenFrom(i, st, 0.3);
+      faces[i] = 0;
+      lastSpot[i] = null;
+    }
+    Y.y_load(0x1f);
     rollsUsed = 0;
-    cup.x = REST.x; cup.y = REST.y; cup.z = REST.z; cup.q.identity();
-    Y.y_place_cup(cup.x, cup.y, cup.z, 1, 0, 0, 0);
-    scoopIntoCup(0x1f, false);
     phase = "ready";
     updateUI();
   }
 
-  function scoopIntoCup(mask, animate) {
-    const st0 = f64(Y.y_state(), 62);
-    const from = [];
-    for (let i = 0; i < 5; i++) from.push([st0[i * 11], st0[i * 11 + 1], st0[i * 11 + 2], st0[i * 11 + 7]]);
-    Y.y_load(mask);
-    if (!animate) return;
-    const st = f64(Y.y_state(), 62);
-    for (let i = 0; i < 5; i++) {
-      if (!(mask & (1 << i)) || !from[i][3]) continue;
-      anim[i] = { from: new THREE.Vector3(from[i][0], from[i][1], from[i][2]), t: 0, dur: 0.22, follow: true };
-    }
-  }
-
-  function canRoll() { return phase === "ready" || (phase === "choose" && rollsUsed < 3 && held.some((h) => !h)); }
+  function canRoll() { return (phase === "ready" || phase === "choose") && rollsUsed < 3 && anyInCup(); }
 
   function beginShake() {
     if (!canRoll()) return false;
-    if (phase === "choose") {
-      let mask = 0;
-      for (let i = 0; i < 5; i++) if (!held[i]) mask |= 1 << i;
-      scoopIntoCup(mask, true);
+    // Dice left on the pad are kept: lock them so the roll can't knock them over.
+    const st = state();
+    rolled = 0;
+    for (let i = 0; i < 5; i++) {
+      if (inCup(st, i)) rolled |= 1 << i;
+      else Y.y_set_frozen(i, 1);
     }
     phase = "shaking";
     shakeTime = 0;
     pourPending = false;
     Y.y_set_lid(1);
     canvas.classList.add("shaking");
+    const l = Math.hypot(cup.x, cup.y) || 1;
+    aim.x = -cup.x / l; aim.y = -cup.y / l;
     updateUI();
     return true;
   }
@@ -465,49 +423,51 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     canvas.classList.remove("shaking");
     Y.y_set_lid(0);
     // Tip the way the cup was last moving, from a spot where the mouth stays over the felt.
-    let dx = aim.x, dy = aim.y;
-    const len = Math.hypot(dx, dy) || 1;
-    dx /= len; dy /= len;
-    const reach = 5.2;
-    const px = THREE.MathUtils.clamp(cup.x, -S.X + 3, S.X - 3), py = THREE.MathUtils.clamp(cup.y, -S.Yh + 3, S.Yh - 3);
-    const tipX = THREE.MathUtils.clamp(px + dx * reach, -S.X + 2, S.X - 2) - dx * reach;
-    const tipY = THREE.MathUtils.clamp(py + dy * reach, -S.Yh + 2, S.Yh - 2) - dy * reach;
+    const len = Math.hypot(aim.x, aim.y) || 1;
+    const dx = aim.x / len, dy = aim.y / len;
+    const reach = S.H * 0.85;
+    const px = THREE.MathUtils.clamp(cup.x, -S.X + 2, S.X - 2), py = THREE.MathUtils.clamp(cup.y, -S.Yh + 2, S.Yh - 2);
+    const tipX = THREE.MathUtils.clamp(px + dx * reach, -S.X + 1.5, S.X - 1.5) - dx * reach;
+    const tipY = THREE.MathUtils.clamp(py + dy * reach, -S.Yh + 1.5, S.Yh - 1.5) - dy * reach;
     const axis = new THREE.Vector3(-dy, dx, 0).normalize();
-    pour = { t: 0, start: { x: cup.x, y: cup.y, z: cup.z }, q0: cup.q.clone(), at: { x: tipX, y: tipY, z: 6.6 }, axis };
+    // Wind up behind the tip spot, then fling forward while tipping, so the dice leave the cup moving and tumble.
+    const windX = THREE.MathUtils.clamp(tipX - dx * 5, -S.X + 2, S.X - 2), windY = THREE.MathUtils.clamp(tipY - dy * 5, -S.Yh + 2, S.Yh - 2);
+    pour = { t: 0, start: { x: cup.x, y: cup.y, z: cup.z }, q0: cup.q.clone(), wind: { x: windX, y: windY, z: 5.2 },
+      at: { x: tipX, y: tipY, z: 4.4 }, axis };
     phase = "pouring";
     updateUI();
   }
 
   function finishRoll() {
-    const st = f64(Y.y_state(), 62);
-    for (let i = 0; i < 5; i++) if (!held[i]) faces[i] = st[i * 11 + 10];
+    const st = state();
+    for (let i = 0; i < 5; i++) {
+      if (rolled & (1 << i)) faces[i] = st[i * 11 + 10];
+      Y.y_set_frozen(i, 0);
+    }
     rollsUsed++;
     phase = "choose";
     updateUI();
   }
 
-  function toggleHold(i) {
+  function putInCup(i) {
     if (phase !== "choose") return;
-    const st = f64(Y.y_state(), 62);
-    const from = new THREE.Vector3(st[i * 11], st[i * 11 + 1], st[i * 11 + 2]);
-    const fromQ = new THREE.Quaternion(st[i * 11 + 4], st[i * 11 + 5], st[i * 11 + 6], st[i * 11 + 3]);
-    if (!held[i]) {
-      held[i] = true;
-      const used = new Set(rackSlot.filter((s) => s >= 0));
-      let slot = 0;
-      while (used.has(slot)) slot++;
-      rackSlot[i] = slot;
-      Y.y_set_active(i, 0);
-      anim[i] = { from, fromQ, t: 0, dur: 0.25, toRack: true };
-    } else {
-      held[i] = false;
-      const x = rackX(rackSlot[i]);
-      rackSlot[i] = -1;
-      // Back onto the felt near the front, same face up; the physics nudges it clear of any neighbour.
-      Y.y_place_die(i, THREE.MathUtils.clamp(x, -S.X + 1, S.X - 1), -S.Yh + 1.2, half + 0.02, faces[i]);
-      anim[i] = { from, fromQ, t: 0, dur: 0.25, follow: true };
-    }
-    if (audio) hit(0, 30);
+    if (rollsUsed >= 3) { toast("No rolls left"); return; }
+    const st = state();
+    if (inCup(st, i)) return;
+    lastSpot[i] = { x: st[i * 11], y: st[i * 11 + 1] };
+    tweenFrom(i, st, 0.22);
+    Y.y_add_to_cup(i);
+    hit(3, 25);
+    updateUI();
+  }
+
+  function takeOut(i, x, y) {
+    if (phase !== "choose") return;
+    const st = state();
+    if (!inCup(st, i)) return;
+    tweenFrom(i, st, 0.22);
+    Y.y_place_die(i, THREE.MathUtils.clamp(x, -S.X + half, S.X - half), THREE.MathUtils.clamp(y, -S.Yh + half, S.Yh - half), half + 0.02, faces[i] || 1);
+    hit(1, 25);
     updateUI();
   }
 
@@ -517,16 +477,8 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     const pts = Y.y_card_fill(cat);
     if (pts < 0) return;
     toast(pts > 0 ? `+${pts}` : "Scratched");
-    if (Y.y_card_full()) { phase = "over"; updateUI(); toast(`Final score ${Y.y_card_total()}`); return; }
-    // All five go back in the cup; kept dice fly in from the rack.
-    const fromRack = [];
-    for (let i = 0; i < 5; i++) fromRack.push(held[i] ? new THREE.Vector3(rackX(rackSlot[i]), rackY, rackTop + half) : null);
-    for (let i = 0; i < 5; i++) { held[i] = false; rackSlot[i] = -1; }
-    rollsUsed = 0;
-    scoopIntoCup(0x1f, true);
-    for (let i = 0; i < 5; i++) if (fromRack[i]) anim[i] = { from: fromRack[i], t: 0, dur: 0.3 };
-    phase = "ready";
-    updateUI();
+    if (Y.y_card_full()) { phase = "over"; updateUI(); setTimeout(() => toast(`Final score ${Y.y_card_total()}`), 900); return; }
+    startTurn(true);
   }
 
   let toastTimer = 0;
@@ -551,17 +503,17 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     rowsEl.appendChild(b);
     rowEls.push(b);
   });
-  $("newgame").addEventListener("click", () => { Y.y_card_reset(); $("newgame").hidden = true; startTurn(); });
+  $("newgame").addEventListener("click", () => { Y.y_card_reset(); $("newgame").hidden = true; startTurn(true); });
 
   function updateUI() {
-    const rolled = phase === "choose";
+    const rolledOnce = phase === "choose";
     Y.y_dice(faces[0], faces[1], faces[2], faces[3], faces[4]);
     rowEls.forEach((el, c) => {
       const box = Y.y_card_box(c);
       const v = el.querySelector(".val");
       el.className = "row";
       if (box >= 0) { el.classList.add("filled"); v.textContent = box; el.disabled = true; return; }
-      const p = rolled ? Y.y_card_preview(c) : -1;
+      const p = rolledOnce ? Y.y_card_preview(c) : -1;
       el.classList.add("open");
       if (p >= 0) { el.classList.add("pickable"); if (p === 0) el.classList.add("zero"); v.textContent = p; el.disabled = false; }
       else { el.classList.add("locked"); v.textContent = "–"; el.disabled = true; }
@@ -577,15 +529,16 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     else if (phase === "shaking") hint.textContent = "Shake it, then let go: it tips the way you last moved.";
     else if (phase === "pouring" || phase === "rolling") hint.textContent = "Rolling…";
     else if (phase === "choose") {
-      hint.textContent = rollsUsed < 3
-        ? (held.every((h) => h) ? "All five kept. Pick a box to score." : "Drag dice onto the rack to keep them, hold and move to roll again, or pick a box.")
-        : "Pick a box on the scorecard to score this roll.";
+      if (rollsUsed >= 3) hint.textContent = "Pick a box on the scorecard to score this roll.";
+      else if (anyInCup()) hint.textContent = "Shake the cup to roll what's in it. Dice left on the pad are kept.";
+      else hint.textContent = "Drop dice into the cup to roll them again, or pick a box to score.";
     } else hint.textContent = "Game over. Start a new game from the scorecard.";
   }
 
   // ------------------------------------------------------------------ input
   const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
   const shakePlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -SHAKE_Z);
+  const feltPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -half);
   const hitPt = new THREE.Vector3();
   function setRay(e) {
     const r = canvas.getBoundingClientRect();
@@ -596,23 +549,35 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     const hits = ray.intersectObjects(dice, false);
     return hits.length ? hits[0].object.userData.index : -1;
   }
+  function feltPoint() {
+    return ray.ray.intersectPlane(feltPlane, hitPt) ? { x: hitPt.x, y: -hitPt.z } : null;
+  }
   function aimCup() {
     if (ray.ray.intersectPlane(shakePlane, hitPt)) {
-      const m = S.R + S.W + 0.4;
+      const m = S.R + S.W + 0.6;
       cupTarget.x = THREE.MathUtils.clamp(hitPt.x, -S.X + m, S.X - m);
       cupTarget.y = THREE.MathUtils.clamp(-hitPt.z, -S.Yh + m, S.Yh - m);
     }
   }
-
-  // One press at a time. A press on a die drags it (or keeps it, if you just click). A press anywhere else picks
-  // the cup up only once the pointer moves while the button is held: a plain click does nothing.
-  let press = null;  // { id, x0, y0, kind: "die" | "cup", i, moved, fromRack, rawY }
-  const feltPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -half);
-  function feltPoint() {
-    if (!ray.ray.intersectPlane(feltPlane, hitPt)) return null;
-    return { x: hitPt.x, y: -hitPt.z };
+  // Whether a screen point is over the cup (its mouth or body), for dropping dice in.
+  const tmpA = new THREE.Vector3(), tmpB = new THREE.Vector3();
+  function overCup(clientX, clientY) {
+    const r = canvas.getBoundingClientRect();
+    const toScreen = (v) => { v.project(camera); return [r.left + (v.x + 1) / 2 * r.width, r.top + (1 - v.y) / 2 * r.height]; };
+    let best = Infinity, rad = 0;
+    for (const z of [S.H, S.H * 0.5]) {
+      tmpA.set(0, 0, z).applyMatrix4(cupGroup.matrixWorld);
+      tmpB.set(S.R + S.W, 0, z).applyMatrix4(cupGroup.matrixWorld);
+      const a = toScreen(tmpA), b = toScreen(tmpB);
+      rad = Math.max(rad, Math.hypot(b[0] - a[0], b[1] - a[1]));
+      best = Math.min(best, Math.hypot(clientX - a[0], clientY - a[1]));
+    }
+    return best < Math.max(28, rad * 1.5);
   }
+  function setCupGlow(on) { rimMat.emissive.setHex(on ? 0x6a4a10 : 0x000000); }
 
+  // A press on a die moves it (a click sends it into the cup, or back out). A press anywhere else picks the cup up
+  // only once the pointer moves while the button is held: a plain click does nothing.
   canvas.addEventListener("pointerdown", (e) => {
     if (e.button !== 0 || press) return;
     initAudio();
@@ -621,7 +586,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     if (phase === "choose") {
       const i = pickDie();
       if (i >= 0) {
-        press = { id: e.pointerId, x0: e.clientX, y0: e.clientY, kind: "die", i, moved: false, fromRack: held[i], rawY: 0 };
+        press = { id: e.pointerId, x0: e.clientX, y0: e.clientY, kind: "die", i, moved: false, fromCup: inCup(state(), i) };
         canvas.setPointerCapture(e.pointerId);
         return;
       }
@@ -643,35 +608,25 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
       if (!press.moved && dist > 10) {
         press.moved = true;
         aimCup();
-        if (beginShake()) {
-          // Start the tip direction off pointing from the cup to the middle of the tray.
-          const l = Math.hypot(cup.x, cup.y) || 1;
-          aim.x = -cup.x / l; aim.y = -cup.y / l;
-        }
+        beginShake();
       }
       if (press.moved && phase === "shaking") aimCup();
       return;
     }
 
-    // Moving a die by hand.
+    // Carrying a die by hand.
     if (!press.moved && dist > 6) {
       press.moved = true;
-      if (press.fromRack) {
-        const pt = feltPoint();
-        held[press.i] = false;
-        rackSlot[press.i] = -1;
-        const x = pt ? THREE.MathUtils.clamp(pt.x, -S.X + half, S.X - half) : 0;
-        Y.y_place_die(press.i, x, -S.Yh + half + 0.1, half + 0.02, faces[press.i]);
+      if (press.fromCup) {
+        const pt = feltPoint() || { x: S.X - 2, y: 0 };
+        takeOut(press.i, pt.x, pt.y);
         anim[press.i] = null;
-        updateUI();
       }
     }
     if (press.moved) {
       const pt = feltPoint();
-      if (pt) {
-        press.rawY = pt.y;
-        Y.y_drag(press.i, THREE.MathUtils.clamp(pt.x, -S.X + half, S.X - half), THREE.MathUtils.clamp(pt.y, -S.Yh + half, S.Yh - half), half);
-      }
+      if (pt) Y.y_drag(press.i, THREE.MathUtils.clamp(pt.x, -S.X + half, S.X - half), THREE.MathUtils.clamp(pt.y, -S.Yh + half, S.Yh - half), half);
+      setCupGlow(rollsUsed < 3 && overCup(e.clientX, e.clientY));
     }
   });
 
@@ -679,153 +634,139 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     if (!press || e.pointerId !== press.id) return;
     const p = press;
     press = null;
+    setCupGlow(false);
     if (p.kind === "cup") {
-      if (p.moved && phase === "shaking") pourPending = true;  // pours once the cup is up over the tray
+      if (p.moved && phase === "shaking") pourPending = true;  // pours once the cup is over the tray
       return;
     }
-    if (!p.moved) { toggleHold(p.i); return; }
+    if (!p.moved) {
+      if (p.fromCup) {
+        const spot = lastSpot[p.i] || { x: S.X - 2, y: -S.Yh + 1.5 };
+        takeOut(p.i, spot.x, spot.y);
+      } else putInCup(p.i);
+      return;
+    }
     Y.y_drag_end();
-    // Let go over the rack: keep it.
-    if (p.rawY < -S.Yh - 0.4 && !held[p.i]) toggleHold(p.i);
+    if (overCup(e.clientX, e.clientY)) putInCup(p.i);
   };
   canvas.addEventListener("pointerup", release);
   canvas.addEventListener("pointercancel", release);
 
   // ------------------------------------------------------------------ loop
-  const up = new THREE.Vector3(0, 0, 1);
-  const tmpQ = new THREE.Quaternion(), tmpV = new THREE.Vector3();
+  const tmpQ = new THREE.Quaternion(), tmpV = new THREE.Vector3(), ident = new THREE.Quaternion();
   const ease = (t) => t * t * (3 - 2 * t);
   let last = performance.now();
 
-  function faceUpQuat(face, out) {
-    const q = Math.PI / 2;
-    const map = { 1: [[0, 1, 0], -q], 6: [[0, 1, 0], q], 2: [[1, 0, 0], q], 5: [[1, 0, 0], -q], 4: [[1, 0, 0], Math.PI], 3: [[0, 0, 1], 0] };
-    const [a, ang] = map[face] || map[3];
-    return out.setFromAxisAngle(tmpV.set(a[0], a[1], a[2]), ang);
+  // The cup follows its target on a damped spring, so it carries weight and swings instead of snapping.
+  function springCup(tx, ty, tz, dt, stiffness) {
+    const w = stiffness, z = 0.72, steps = Math.max(1, Math.ceil(dt / 0.008)), h = dt / steps;
+    for (let s = 0; s < steps; s++) {
+      cup.vx += (w * w * (tx - cup.x) - 2 * z * w * cup.vx) * h;
+      cup.vy += (w * w * (ty - cup.y) - 2 * z * w * cup.vy) * h;
+      cup.vz += (w * w * (tz - cup.z) - 2 * z * w * cup.vz) * h;
+      cup.x += cup.vx * h; cup.y += cup.vy * h; cup.z += cup.vz * h;
+    }
+  }
+  function leanCup(dt, maxLean) {
+    const sp = Math.hypot(cup.vx, cup.vy);
+    const lean = Math.min(maxLean, sp * 0.012);
+    if (sp > 0.3) tmpQ.setFromAxisAngle(tmpV.set(-cup.vy / sp, cup.vx / sp, 0), lean); else tmpQ.identity();
+    cup.q.slerp(tmpQ, 1 - Math.exp(-dt * 9));
   }
 
   function frame(now) {
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
     recent = Math.max(0, recent - dt * 120);
+    const t = now / 1000;
 
-    // Move the cup.
     if (phase === "shaking") {
       shakeTime += dt;
-      // Lift straight up off the side table before swinging over the tray wall.
-      const lifted = THREE.MathUtils.clamp((cup.z - 2.5) / 3, 0, 1);
-      const k = (1 - Math.exp(-dt * 28)) * lifted;
-      cup.x += (cupTarget.x - cup.x) * k;
-      cup.y += (cupTarget.y - cup.y) * k;
-      cup.z += (SHAKE_Z - cup.z) * Math.min(1, dt * 14);
-      // Lean into the motion, and remember which way it's going.
-      const vx = (cup.x - lastCup.x) / Math.max(dt, 1e-3), vy = (cup.y - lastCup.y) / Math.max(dt, 1e-3);
-      const sp = Math.hypot(vx, vy), lean = Math.min(0.32, sp * 0.0045);
-      if (sp > 4 && lifted >= 1) {
-        const w = 1 - Math.exp(-dt * 14);
-        aim.x += (vx / sp - aim.x) * w;
-        aim.y += (vy / sp - aim.y) * w;
+      springCup(cupTarget.x, cupTarget.y, SHAKE_Z, dt, 22);
+      leanCup(dt, 0.4);
+      const sp = Math.hypot(cup.vx, cup.vy);
+      if (sp > 4) {
+        const k = 1 - Math.exp(-dt * 12);
+        aim.x += (cup.vx / sp - aim.x) * k;
+        aim.y += (cup.vy / sp - aim.y) * k;
       }
-      const al = Math.hypot(aim.x, aim.y);
-      arrow.visible = lifted >= 1 && al > 0.2;
-      if (arrow.visible) {
-        const reach = 6.4;
-        arrow.position.x = THREE.MathUtils.clamp(cup.x + aim.x / al * reach, -S.X + 1, S.X - 1);
-        arrow.position.y = THREE.MathUtils.clamp(cup.y + aim.y / al * reach, -S.Yh + 1, S.Yh - 1);
-        arrow.rotation.z = Math.atan2(aim.y, aim.x) - Math.PI / 2;
+      if (pourPending && Math.abs(cup.x) < S.X - 2 && Math.abs(cup.y) < S.Yh - 2 && cup.z > SHAKE_Z - 1) {
+        pourPending = false;
+        beginPour();
       }
-      if (sp > 0.5) tmpQ.setFromAxisAngle(tmpV.set(-vy / sp, vx / sp, 0), lean); else tmpQ.identity();
-      cup.q.slerp(tmpQ, Math.min(1, dt * 12));
     } else if (phase === "pouring" && pour) {
       pour.t += dt;
-      const t = pour.t;
-      if (t < 0.32) {
-        const k = ease(t / 0.32);
-        cup.x = pour.start.x + (pour.at.x - pour.start.x) * k;
-        cup.y = pour.start.y + (pour.at.y - pour.start.y) * k;
-        cup.z = pour.start.z + (pour.at.z - pour.start.z) * k;
-        tmpQ.setFromAxisAngle(pour.axis, THREE.MathUtils.degToRad(128) * k);
+      const p = pour.t;
+      if (p < 0.13) {
+        // Wind up: draw back with the mouth leaning away.
+        const k = ease(p / 0.13);
+        cup.x = pour.start.x + (pour.wind.x - pour.start.x) * k;
+        cup.y = pour.start.y + (pour.wind.y - pour.start.y) * k;
+        cup.z = pour.start.z + (pour.wind.z - pour.start.z) * k;
+        tmpQ.setFromAxisAngle(pour.axis, THREE.MathUtils.degToRad(-12));
         cup.q.copy(pour.q0).slerp(tmpQ, k);
-      } else if (t < 0.95) {
-        tmpQ.setFromAxisAngle(pour.axis, THREE.MathUtils.degToRad(128 + Math.sin((t - 0.32) * 18) * 4));
-        cup.q.copy(tmpQ);
-      } else if (t < 1.5) {
-        const k = ease((t - 0.95) / 0.55);
-        cup.x = pour.at.x + (REST.x - pour.at.x) * k;
-        cup.y = pour.at.y + (REST.y - pour.at.y) * k;
-        cup.z = pour.at.z + (7.5 - pour.at.z) * k;
-        tmpQ.setFromAxisAngle(pour.axis, THREE.MathUtils.degToRad(128));
-        cup.q.copy(tmpQ).slerp(new THREE.Quaternion(), k);
-      } else if (t < 1.8) {
-        const k = ease((t - 1.5) / 0.3);
-        cup.x = REST.x; cup.y = REST.y; cup.z = 7.5 + (REST.z - 7.5) * k;
-        cup.q.identity();
+      } else if (p < 0.28) {
+        // Fling: accelerate forward and tip over.
+        const f = Math.pow((p - 0.13) / 0.15, 2);
+        cup.x = pour.wind.x + (pour.at.x - pour.wind.x) * f;
+        cup.y = pour.wind.y + (pour.at.y - pour.wind.y) * f;
+        cup.z = pour.wind.z + (pour.at.z - pour.wind.z) * f;
+        cup.q.setFromAxisAngle(pour.axis, THREE.MathUtils.degToRad(-12 + 142 * f));
+      } else if (p < 0.7) {
+        cup.q.setFromAxisAngle(pour.axis, THREE.MathUtils.degToRad(130 + Math.sin((p - 0.28) * 18) * 4));
       } else {
-        cup.x = REST.x; cup.y = REST.y; cup.z = REST.z; cup.q.identity();
         pour = null;
+        cup.vx = cup.vy = cup.vz = 0;
         phase = "rolling";
         rollingTime = 0;
         updateUI();
       }
+    } else {
+      // Drift back to its spot beside the tray and float there.
+      springCup(REST.x, REST.y, REST.z + Math.sin(t * 1.4) * 0.15, dt, 7);
+      leanCup(dt, 0.25);
+      tmpQ.setFromAxisAngle(tmpV.set(1, 0.3, 0).normalize(), Math.sin(t * 0.9) * 0.04);
+      if (phase === "rolling") cup.q.slerp(ident, 1 - Math.exp(-dt * 5));
+      else cup.q.multiply(tmpQ.slerp(ident, 0.92));
     }
-    if (phase !== "shaking") arrow.visible = false;
-    if (phase === "shaking" && pourPending && cup.z > SHAKE_Z - 0.6 &&
-        Math.abs(cup.x) < S.X - 2 && Math.abs(cup.y) < S.Yh - 2) {
-      pourPending = false;
-      beginPour();
-    }
-    lastCup = { x: cup.x, y: cup.y };
 
     const n = Y.y_step(dt, cup.x, cup.y, cup.z, cup.q.w, cup.q.x, cup.q.y, cup.q.z);
     if (n > 0) {
       const ev = f64(Y.y_events(), n * 3);
-      for (let i = 0; i < n; i++) {
-        const type = ev[i * 3], speed = ev[i * 3 + 2];
-        hit(type === 0 ? 0 : type === 1 ? 1 : type === 2 ? 2 : 3, speed);
-      }
+      for (let i = 0; i < n; i++) hit(ev[i * 3], ev[i * 3 + 2]);
     }
 
     if (phase === "rolling") {
       rollingTime += dt;
-      if (Y.y_any_in_cup() && rollingTime > 0.5) {
-        // A die stayed in the cup: tip it again.
-        phase = "shaking"; Y.y_set_lid(1); shakeTime = 0; beginPour();
-      } else if (Y.y_all_settled() && rollingTime > 0.25) {
+      if (anyInCup() && rollingTime > 1.0) {
+        // A die stayed in the cup: tip it out again.
+        phase = "shaking"; pourPending = true;
+      } else if (Y.y_all_settled() && rollingTime > 0.3) {
         finishRoll();
       }
     }
 
-    // Dice moved by hand (or knocked by one) count as they now lie.
-    if (phase === "choose" && !(press && press.kind === "die" && press.moved) && Y.y_all_settled()) {
-      const now5 = f64(Y.y_state(), 62);
+    // Dice moved by hand count as they now lie.
+    const st = state();
+    if (phase === "choose" && !(press && press.kind === "die" && press.moved)) {
       let changed = false;
       for (let i = 0; i < 5; i++) {
-        if (held[i]) continue;
-        const f = now5[i * 11 + 10];
-        if (f && f !== faces[i]) { faces[i] = f; changed = true; }
+        const o = i * 11;
+        if (inCup(st, i) || !st[o + 9] || !st[o + 10]) continue;
+        if (st[o + 10] !== faces[i]) { faces[i] = st[o + 10]; changed = true; }
       }
       if (changed) updateUI();
     }
 
     // Draw.
-    const st = f64(Y.y_state(), 62);
     for (let i = 0; i < 5; i++) {
-      const m = dice[i], o = i * 11;
-      let target, targetQ;
-      if (held[i]) {
-        target = tmpV.set(rackX(rackSlot[i]), rackY, rackTop + half).clone();
-        targetQ = faceUpQuat(faces[i], new THREE.Quaternion());
-      } else {
-        target = new THREE.Vector3(st[o], st[o + 1], st[o + 2]);
-        targetQ = new THREE.Quaternion(st[o + 4], st[o + 5], st[o + 6], st[o + 3]);
-      }
-      const a = anim[i];
+      const m = dice[i], target = posOf(st, i), targetQ = quatOf(st, i), a = anim[i];
       if (a) {
         a.t += dt;
         const k = ease(Math.min(1, a.t / a.dur));
         m.position.copy(a.from).lerp(target, k);
         m.position.z += Math.sin(k * Math.PI) * 1.2;
-        if (a.fromQ) m.quaternion.copy(a.fromQ).slerp(targetQ, k); else m.quaternion.copy(targetQ);
+        m.quaternion.copy(a.fromQ).slerp(targetQ, k);
         if (a.t >= a.dur) anim[i] = null;
       } else {
         m.position.copy(target);
@@ -840,10 +781,19 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   }
 
   // Hooks for automated checks of the preview.
-  window.__yacht = { state: () => Array.from(f64(Y.y_state(), 62)), phase: () => phase, faces: () => faces.slice(), settled: () => Y.y_all_settled(),
-    screen: (i) => { const v = dice[i].getWorldPosition(new THREE.Vector3()).project(camera); const r = canvas.getBoundingClientRect();
-      return [r.left + (v.x + 1) / 2 * r.width, r.top + (1 - v.y) / 2 * r.height]; } };
-  startTurn();
+  window.__yacht = {
+    state: () => Array.from(state()), phase: () => phase, faces: () => faces.slice(), rolls: () => rollsUsed,
+    screen: (i) => {
+      const v = dice[i].getWorldPosition(new THREE.Vector3()).project(camera); const r = canvas.getBoundingClientRect();
+      return [r.left + (v.x + 1) / 2 * r.width, r.top + (1 - v.y) / 2 * r.height];
+    },
+    cupScreen: () => {
+      const v = cupGroup.localToWorld(new THREE.Vector3(0, 0, S.H * 0.5)).project(camera); const r = canvas.getBoundingClientRect();
+      return [r.left + (v.x + 1) / 2 * r.width, r.top + (1 - v.y) / 2 * r.height];
+    },
+  };
+
+  startTurn(false);
   $("loading").remove();
   requestAnimationFrame(frame);
 })().catch((err) => {

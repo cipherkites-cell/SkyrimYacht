@@ -29,21 +29,21 @@ namespace yacht
 
 		double dragSpeed{ 45.0 };        // fastest a die follows the player's hand when moved on the table
 
-		double cupRadius{ 2.6 };         // inside radius
+		double cupRadius{ 1.9 };         // inside radius
 		double cupWall{ 0.22 };          // wall thickness
-		double cupHeight{ 6.2 };         // base to rim, inside
+		double cupHeight{ 4.0 };         // base to rim, inside
 
-		double feltFriction{ 0.45 };
-		double feltRestitution{ 0.32 };
+		double feltFriction{ 0.6 };      // grippy felt tips sliding dice over their edges
+		double feltRestitution{ 0.4 };
 		double wallRestitution{ 0.45 };
 		double dieFriction{ 0.30 };
-		double dieRestitution{ 0.45 };
+		double dieRestitution{ 0.5 };
 		double cupFriction{ 0.35 };
 		double cupRestitution{ 0.40 };
 
 		double maxSpeed{ 260.0 };        // units/s
 		double maxSpin{ 70.0 };          // rad/s
-		double rollDamping{ 0.6 };       // per second, spin lost while touching the felt
+		double rollDamping{ 0.3 };       // per second, spin lost while touching the felt
 
 		double settleSpeed{ 1.5 };       // a die below this speed (and spin) ...
 		double settleSpin{ 2.0 };
@@ -66,6 +66,7 @@ namespace yacht
 		DieState state{ DieState::kOff };
 		double   restTime{ 0.0 };
 		bool     settled{ false };
+		bool     frozen{ false };  // a kept die: nothing moves it (other dice bounce off it)
 		int      nudges{ 0 };
 	};
 
@@ -114,6 +115,10 @@ namespace yacht
 		void LoadCup(unsigned int a_mask);
 		// Takes a die out of play (to the rack) or back in.
 		void SetActive(int a_index, bool a_active);
+		// Locks a die where it lies (the dice the player keeps while the rest are rolled), or unlocks it.
+		void SetFrozen(int a_index, bool a_frozen);
+		// Drops a die into the cup through its mouth.
+		void AddToCup(int a_index);
 		// Puts a die at rest at a_pos, face a_face (1..6) up.
 		void PlaceDie(int a_index, const Vec3& a_pos, int a_face);
 
@@ -175,6 +180,8 @@ namespace yacht
 
 		Vec3 VelocityAt(int a_index, const Vec3& a_p) const;
 		double Inertia() const;
+		double InvMass(int a_index) const { return _dice[a_index].frozen ? 0.0 : 1.0 / _spec.dieMass; }
+		double InvInertia(int a_index) const { return _dice[a_index].frozen ? 0.0 : 1.0 / Inertia(); }
 		double HalfInner() const { return _spec.dieSize * 0.5 - Radius(); }
 		double Radius() const { return _spec.dieSize * _spec.dieRound; }
 

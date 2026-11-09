@@ -161,7 +161,15 @@ namespace yacht
 	{
 		unsigned int state{ 0x9E3779B9u };
 
-		explicit Rng(unsigned int a_seed = 1) : state(a_seed ? a_seed : 0x9E3779B9u) {}
+		// The seed is mixed first (splitmix-style), so nearby seeds (1, 2, 3...) give unrelated sequences.
+		explicit Rng(unsigned int a_seed = 1)
+		{
+			unsigned int z = a_seed + 0x9E3779B9u;
+			z = (z ^ (z >> 16)) * 0x85EBCA6Bu;
+			z = (z ^ (z >> 13)) * 0xC2B2AE35u;
+			z ^= z >> 16;
+			state = z ? z : 0x9E3779B9u;
+		}
 
 		unsigned int Next()
 		{
