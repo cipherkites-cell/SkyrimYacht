@@ -134,6 +134,7 @@ jobs:
           Copy-Item build/Release/SkyrimYacht.dll "$out/Data/SKSE/Plugins/"
           Copy-Item SkyrimYacht.ini "$out/Data/SKSE/Plugins/"
           Copy-Item SkyrimYacht.esp "$out/Data/"
+          Copy-Item -Recurse assets/seq "$out/Data/Seq"
           Copy-Item -Recurse assets/meshes "$out/Data/meshes"
           Copy-Item -Recurse assets/textures "$out/Data/textures"
           Copy-Item LICENSE.txt "$out/Data/SKSE/Plugins/SkyrimYacht/"

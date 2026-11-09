@@ -1594,6 +1594,44 @@ namespace Game
 		Scene::Register();
 	}
 
+	namespace
+	{
+		enum class QuestFix { Idle, Stopping, Starting };
+		QuestFix                              g_questFix = QuestFix::Idle;
+		std::chrono::steady_clock::time_point g_questFixAt{};
+
+		void QuestFixTick()
+		{
+			if (g_questFix == QuestFix::Idle) {
+				return;
+			}
+			auto*      dh = RE::TESDataHandler::GetSingleton();
+			auto*      quest = dh->LookupForm<RE::TESQuest>(EspIds::kQuest, EspIds::kPlugin);
+			auto*      topic = dh->LookupForm<RE::TESTopic>(EspIds::kTopicPlay, EspIds::kPlugin);
+			const auto now = std::chrono::steady_clock::now();
+			if (!quest) {
+				g_questFix = QuestFix::Idle;
+				return;
+			}
+			if (g_questFix == QuestFix::Stopping) {
+				if (!quest->IsRunning() && !quest->IsStopping()) {
+					Call(quest, "Start");
+					g_questFix = QuestFix::Starting;
+					g_questFixAt = now;
+				} else if (now - g_questFixAt > 10s) {
+					spdlog::warn("Dialogue quest: didn't stop");
+					g_questFix = QuestFix::Idle;
+				}
+				return;
+			}
+			if ((quest->IsRunning() && !quest->IsStarting()) || now - g_questFixAt > 10s) {
+				spdlog::info("Dialogue quest: {}, {} responses loaded, play line {}", quest->IsRunning() ? "running" : "NOT running",
+					topic ? topic->numTopicInfos : 0, dh->LookupForm<RE::TESTopicInfo>(EspIds::kInfoPlay, EspIds::kPlugin) != nullptr);
+				g_questFix = QuestFix::Idle;
+			}
+		}
+	}
+
 	void OnGameLoaded()
 	{
 		// The dialogue's quest starts with the game; in a save made before the mod was added it may not be running yet.
@@ -1601,11 +1639,22 @@ namespace Game
 		if (!quest) {
 			spdlog::error("YA_Quest is missing - no dialogue. Is {} enabled?", EspIds::kPlugin);
 		} else {
+			// A quest the game started by itself (Start Game Enabled, added to an existing save) can be running
+			// without its dialogue loaded - the responses only come in when the quest is started properly.
+			// So if they're missing, stop it and start it again (FrameTick waits for the stop to finish).
+			auto*      topic = RE::TESDataHandler::GetSingleton()->LookupForm<RE::TESTopic>(EspIds::kTopicPlay, EspIds::kPlugin);
+			const auto loaded = topic ? topic->numTopicInfos : 0;
 			const bool running = quest->IsRunning();
-			spdlog::info("Dialogue quest: {}", running ? "running" : "NOT running - starting it");
+			spdlog::info("Dialogue quest: {}, {} responses loaded", running ? "running" : "not running", loaded);
 			if (!running) {
 				Call(quest, "Start");
+				g_questFix = QuestFix::Starting;
+			} else if (loaded == 0) {
+				spdlog::info("Dialogue quest: restarting it so its dialogue loads");
+				Call(quest, "Stop");
+				g_questFix = QuestFix::Stopping;
 			}
+			g_questFixAt = std::chrono::steady_clock::now();
 		}
 		g_tagged.clear();
 		if (Scene::IsOpen()) {
@@ -1617,6 +1666,7 @@ namespace Game
 	void FrameTick()
 	{
 		Scene::TeardownTick();
+		QuestFixTick();
 		auto* ui = RE::UI::GetSingleton();
 		if (!ui) {
 			return;
