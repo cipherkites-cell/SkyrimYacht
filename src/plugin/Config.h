@@ -25,6 +25,7 @@ namespace Config
 		float mouseSpeed = 1.0f;
 		float uiScale = 1.0f;
 		float volume = 1.0f;        // dice and table sounds
+		bool  pauseGame = false;    // pause the world while you play (the world table only draws while it runs)
 
 		// Diagnostics
 		bool debugOverlay = false;  // draws the projected tray outline over the 3D, to check picking

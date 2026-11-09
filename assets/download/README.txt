@@ -1,4 +1,4 @@
-SkyrimYacht 0.3.0
+SkyrimYacht 0.3.1
 =================
 
 A game of Yacht (Yahtzee) you play against Skyrim's NPCs, with a cup you shake and dice that tumble.
@@ -7,7 +7,7 @@ Requirements: SKSE64 and Address Library for SKSE Plugins, for your game version
 every 1.6 release (Steam and GOG). The plugin is ESL-flagged.
 
 How to play: find someone sitting near a table in an inn and ask "Care for a Yacht game?". Choose your cup and
-dice and bet 25 to 100 septims. The game pauses while you play and the table sits in front of you.
+dice and bet 25 to 100 septims. The table sits in front of you; your controls are held while you play.
   - Hold the left mouse button and move to shake the cup; let go to throw.
   - Click a die to keep it on your rack; drag dice back into the cup to roll them again.
   - Click a box on your card to score.  Z: Fus Ro Dah (shouts the dice back into the cup).  Tab or Esc: forfeit.

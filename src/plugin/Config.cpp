@@ -64,6 +64,7 @@ namespace Config
 		v.mouseSpeed = std::clamp(Float("Play", "MouseSpeed", v.mouseSpeed), 0.1f, 5.0f);
 		v.uiScale = std::clamp(Float("Play", "UiScale", v.uiScale), 0.5f, 2.0f);
 		v.volume = std::clamp(Float("Play", "Volume", v.volume), 0.0f, 2.0f);
+		v.pauseGame = Bool("Play", "PauseGame", v.pauseGame);
 		v.debugOverlay = Bool("Debug", "Overlay", v.debugOverlay);
 		v.logInput = Bool("Debug", "LogInput", v.logInput);
 		g_values = v;

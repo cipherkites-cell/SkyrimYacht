@@ -154,7 +154,7 @@ namespace Scene
 
 		// The game's own camera. Forward is the axis whose point ahead lands in the middle of the screen; up is the one
 		// nearest the world's up.
-		CamFrame FindWorldCamera(RE::NiCamera* a_cam)
+		CamFrame FindWorldCamera(RE::NiCamera* a_cam, bool a_log = true)
 		{
 			CamFrame f;
 			if (!a_cam) {
@@ -197,7 +197,8 @@ namespace Scene
 			}
 			f.right = Cross(f.fwd, f.up);
 			f.ok = true;
-			spdlog::info("Table: game camera at ({:.0f}, {:.0f}, {:.0f}), forward axis {}{} (centre error {:.3f}), forward ({:.2f}, {:.2f}, {:.2f})",
+			if (a_log)
+				spdlog::info("Table: game camera at ({:.0f}, {:.0f}, {:.0f}), forward axis {}{} (centre error {:.3f}), forward ({:.2f}, {:.2f}, {:.2f})",
 				f.t.x, f.t.y, f.t.z, bestSign < 0 ? "-" : "+", best, bestErr, f.fwd.x, f.fwd.y, f.fwd.z);
 			return f;
 		}
@@ -212,6 +213,17 @@ namespace Scene
 		// or among the world root's children, and only trusted if it really is one.
 		RE::NiNode* FindSceneNode()
 		{
+			// Beside the player: the node that holds the player's own 3D is drawn whenever the player's room is,
+			// so the table is too (room-and-portal culling indoors skips nodes outside the rooms).
+			if (auto* pc = RE::PlayerCharacter::GetSingleton(); pc && pc->Get3D() && pc->Get3D()->parent) {
+				std::string chain;
+				for (auto* o = pc->Get3D()->parent; o; o = o->parent) {
+					chain += fmt::format(" < {} '{}'", o->GetRTTI() ? o->GetRTTI()->name : "?", o->name.c_str());
+				}
+				spdlog::info("Table: the player's 3D sits in{}", chain);
+				spdlog::info("Table: hung beside the player");
+				return pc->Get3D()->parent;
+			}
 			if (auto* pc = RE::PlayerCharacter::GetSingleton()) {
 				for (auto* o = pc->Get3D() ? pc->Get3D()->parent : nullptr; o; o = o->parent) {
 					if (IsA(o, "ShadowSceneNode")) {
@@ -450,8 +462,12 @@ namespace Scene
 			{
 				using Flag = RE::UI_MENU_FLAGS;
 				auto* m = new YachtMenu();
-				m->menuFlags.set(Flag::kPausesGame, Flag::kDisablePauseMenu, Flag::kUsesMenuContext, Flag::kCustomRendering,
-					Flag::kRequiresUpdate);
+				m->menuFlags.set(Flag::kDisablePauseMenu, Flag::kUsesMenuContext, Flag::kCustomRendering, Flag::kRequiresUpdate);
+				// Paused, the world stops drawing new things; the table (in the world) needs it running. Your controls are
+				// held by the table either way, and the opponent stays in their seat.
+				if (Config::Get().pauseGame || Config::Get().mode == 1) {
+					m->menuFlags.set(Flag::kPausesGame);
+				}
 				m->depthPriority = 10;
 				return m;
 			}
@@ -724,6 +740,11 @@ namespace Scene
 			g_cam = FindWorldCamera(RE::Main::WorldRootCamera());
 			s_depth = cfg.distance;
 			spdlog::info("Table: frustum L {:.3f} R {:.3f} T {:.3f} B {:.3f}", g_frustum.fLeft, g_frustum.fRight, g_frustum.fTop, g_frustum.fBottom);
+		} else if (g_world) {
+			// the world keeps running: follow the camera if it drifts (idle sway), so the table stays put on screen
+			if (auto fresh = FindWorldCamera(RE::Main::WorldRootCamera(), false); fresh.ok) {
+				g_cam = fresh;
+			}
 		} else if (!g_placed) {
 			g_cam = FindCamera(model->world.translate);
 			const float ahead = g_cam.ok ? Dot(g_cam.fwd, model->world.translate - g_cam.t) : 0.0f;
