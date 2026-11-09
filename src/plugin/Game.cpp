@@ -190,6 +190,8 @@ namespace Game
 		constexpr double kShoutCooldown = 4.0;
 		constexpr double kWordAt[3] = { 0.0, 0.56, 0.98 };  // FUS, RO, DAH
 		bool            g_help = false;
+		bool            g_soundMenu = false;  // the little volume panel over the Sound key
+		ImVec2          g_soundKey{};         // that key's top middle, to hang the panel from
 		double          g_fillAt[2][yacht::kCategories]{};  // when each box was written in (the ink runs in)
 		double          g_turnAt = 0;        // when the turn changed (the compass label settles)
 
@@ -2100,7 +2102,10 @@ namespace Game
 				ImGui::PushID(k);
 				const bool pressed = Clicked("key", ImVec2(x, bottom - h - S(2)), ImVec2(x + widths[k], bottom + S(2)), &hov, key.enabled);
 				ImGui::PopID();
-				const ImU32 col = !key.enabled ? (k == 0 ? IM_COL32(76, 88, 106, 255) : kDimC) : hov ? key.hot : key.col;
+				if (key.act == 2) {
+					g_soundKey = ImVec2(x + widths[k] * 0.5f, bottom - h);
+				}
+				const ImU32 col = !key.enabled ? (k == 0 ? IM_COL32(76, 88, 106, 255) : kDimC) : (hov || (key.act == 2 && g_soundMenu)) ? key.hot : key.col;
 				const float kw = (std::max)(S(26), Measure(F.sansSemi, key.key, 0.04f) + S(10));
 				const ImVec2 ka(x, bottom - h), kb(x + kw, bottom);
 				dl->AddRectFilled(ka, kb, IM_COL32(0, 0, 0, 90), S(4));
@@ -2123,7 +2128,10 @@ namespace Game
 					} else if (key.act == 1) {
 						g_help = !g_help;
 					} else if (key.act == 2) {
-						Audio::SetMuted(!Audio::Muted());
+						if (g_soundMenu) {
+							Config::Save();
+						}
+						g_soundMenu = !g_soundMenu;
 					} else {
 						Post(UiAct::Forfeit);
 					}
@@ -2131,6 +2139,93 @@ namespace Game
 				x += widths[k] + S(26);
 			}
 			ImGui::End();
+		}
+
+		// The sound panel: three sliders (the music, the dice, the Thu'um) and a mute, hung over the Sound key. Saved to the
+		// INI when it closes.
+		void SoundMenu(float W, float H)
+		{
+			(void)H;
+			auto&       v = Config::Edit();
+			const float w = S(330), rowH = S(58), padX = S(26), padY = S(20);
+			const float h = padY * 2 + S(30) + rowH * 3 + S(40);
+			const float x = std::clamp(g_soundKey.x - w * 0.5f, S(12), W - w - S(12)), y = g_soundKey.y - S(18) - h;
+			BeginArea("##sound", ImVec2(x, y), ImVec2(w, h));
+			auto* dl = ImGui::GetWindowDrawList();
+			MsgBox(dl, ImVec2(x, y), ImVec2(x + w, y + h));
+			// a little pointer down to the key
+			const float px = std::clamp(g_soundKey.x, x + S(20), x + w - S(20));
+			dl->AddTriangleFilled(ImVec2(px - S(9), y + h), ImVec2(px + S(9), y + h), ImVec2(px, y + h + S(9)), IM_COL32(0, 0, 0, 199));
+			TextC(dl, F.sansSemi, x + w * 0.5f, y + padY, kWhite, "SOUND", 0.3f);
+			struct Row
+			{
+				const char* id;
+				const char* label;
+				float*      val;
+				float       max;
+				ImU32       tint;
+			};
+			const Row rows[3] = {
+				{ "music", "Music", &v.musicVolume, 1.0f, IM_COL32(222, 196, 140, 255) },
+				{ "dice", "Dice & cups", &v.volume, 2.0f, kWhite },
+				{ "shout", "Fus Ro Dah", &v.shoutVolume, 2.0f, IM_COL32(185, 205, 234, 255) },
+			};
+			const bool muted = Audio::Muted();
+			float      ry = y + padY + S(34);
+			for (const auto& r : rows) {
+				const float tx0 = x + padX, tx1 = x + w - padX, ty = ry + S(34);
+				const float f = std::clamp(*r.val / r.max, 0.0f, 1.0f);
+				ImGui::PushID(r.id);
+				ImGui::SetCursorScreenPos(ImVec2(tx0 - S(8), ty - S(14)));
+				ImGui::InvisibleButton("track", ImVec2(tx1 - tx0 + S(16), S(28)));
+				const bool hov = ImGui::IsItemHovered(), act = ImGui::IsItemActive();
+				if (act) {
+					const float nf = std::clamp((ImGui::GetIO().MousePos.x - tx0) / (tx1 - tx0), 0.0f, 1.0f);
+					*r.val = std::round(nf * r.max * 100.0f) / 100.0f;
+				}
+				if (ImGui::IsItemDeactivated()) {
+					Ui(std::string_view(r.id) == "dice" ? "ui_equip" : "ui_select");
+				}
+				ImGui::PopID();
+				const ImU32 lab = muted ? kDimC : (hov || act) ? kWhite : kGrey;
+				Text(dl, F.sans, ImVec2(tx0, ry), lab, Upper(r.label), 0.14f);
+				const std::string pct = fmt::format("{}%", static_cast<int>(std::round(*r.val * 100.0f)));
+				Text(dl, F.sans, ImVec2(tx1 - Measure(F.sans, pct, 0.0f), ry), lab, pct);
+				const float hx = tx0 + (tx1 - tx0) * f;
+				dl->AddRectFilled(ImVec2(tx0, ty - S(1.5f)), ImVec2(tx1, ty + S(1.5f)), IM_COL32(255, 255, 255, 38), S(2));
+				dl->AddRectFilled(ImVec2(tx0, ty - S(1.5f)), ImVec2(hx, ty + S(1.5f)), muted ? kDimC : Alpha(r.tint, 0.85f), S(2));
+				if (r.max > 1.0f) {  // the usual level, for reference
+					const float mx = tx0 + (tx1 - tx0) * (1.0f / r.max);
+					dl->AddLine(ImVec2(mx, ty - S(5)), ImVec2(mx, ty + S(5)), IM_COL32(255, 255, 255, 70), 1.0f);
+				}
+				Diamond(dl, ImVec2(hx, ty), S(act ? 8 : hov ? 7 : 6), IM_COL32(0, 0, 0, 255), muted ? kDimC : (hov || act) ? kWhite : r.tint);
+				ry += rowH;
+			}
+			// mute everything, or not
+			{
+				const std::string lbl = muted ? "UNMUTE" : "MUTE ALL";
+				bool              hov = false;
+				const float       bw = Measure(F.sans, lbl, 0.16f) + S(24), by = y + h - padY - S(22);
+				if (Clicked("mute", ImVec2(x + w * 0.5f - bw * 0.5f, by - S(4)), ImVec2(x + w * 0.5f + bw * 0.5f, by + S(22)), &hov)) {
+					Audio::SetMuted(!muted);
+				}
+				TextC(dl, F.sans, x + w * 0.5f, by, hov ? kWhite : kGrey, lbl, 0.16f);
+				if (hov) {
+					dl->AddLine(ImVec2(x + w * 0.5f - bw * 0.5f, by + S(21)), ImVec2(x + w * 0.5f + bw * 0.5f, by + S(21)), Alpha(kWhite, 0.5f));
+				}
+			}
+			ImGui::End();
+			// a click anywhere else puts it away
+			const auto& io = ImGui::GetIO();
+			if (ImGui::IsMouseClicked(0)) {
+				const ImVec2 m = io.MousePos;
+				const bool   inside = m.x >= x && m.x <= x + w && m.y >= y && m.y <= y + h + S(10);
+				const bool   onKey = std::abs(m.x - g_soundKey.x) < S(60) && m.y >= g_soundKey.y - S(6) && m.y <= g_soundKey.y + S(34);
+				if (!inside && !onKey) {
+					g_soundMenu = false;
+					Config::Save();
+				}
+			}
 		}
 
 		// A message box: smoke black between two rules, with brackets at the sides.
@@ -2234,6 +2329,11 @@ namespace Game
 			if (g_phase != Phase::Over) {
 				Hint(bg, W, H);
 				KeyBar(W, H);
+				if (g_soundMenu) {
+					SoundMenu(W, H);
+				}
+			} else {
+				g_soundMenu = false;
 			}
 			auto* fg = ImGui::GetForegroundDrawList();
 			Words(fg, W, H);

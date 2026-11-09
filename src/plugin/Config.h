@@ -25,6 +25,7 @@ namespace Config
 		float mouseSpeed = 1.0f;
 		float uiScale = 1.0f;
 		float volume = 1.0f;        // dice and table sounds
+		float shoutVolume = 1.0f;   // the Thu'um
 		float musicVolume = 0.3f;   // the tavern music at the table (0 = none)
 		bool  pauseGame = false;    // pause the world while you play (the world table only draws while it runs)
 

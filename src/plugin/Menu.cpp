@@ -89,7 +89,8 @@ namespace Menu
 			UI::SeparatorText("Controls and sound");
 			Changed(UI::SliderFloat("Mouse speed", &v.mouseSpeed, 0.2f, 3.0f, "%.2f"));
 			Changed(UI::SliderFloat("Volume", &v.volume, 0.0f, 2.0f, "%.2f"));
-			Hint("The dice, the cups and the Shout.");
+			Hint("The dice, the cups and the table.");
+			Changed(UI::SliderFloat("Fus Ro Dah", &v.shoutVolume, 0.0f, 2.0f, "%.2f"));
 			Changed(UI::SliderFloat("Music", &v.musicVolume, 0.0f, 1.0f, "%.2f"));
 			Hint("The tavern music while you play (0 for none).");
 			Changed(UI::SliderFloat("Interface size", &v.uiScale, 0.6f, 1.6f, "%.2f"));

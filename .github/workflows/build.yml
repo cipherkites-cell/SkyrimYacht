@@ -155,7 +155,7 @@ jobs:
           New-Item -ItemType Directory -Force -Path "$out/Data/SKSE/Plugins/SkyrimYacht/UI" | Out-Null
           Copy-Item assets/ui/*.rgba "$out/Data/SKSE/Plugins/SkyrimYacht/UI/"
           New-Item -ItemType Directory -Force -Path "$out/Data/SKSE/Plugins/SkyrimYacht/Music" | Out-Null
-          Copy-Item assets/music/*.ogg "$out/Data/SKSE/Plugins/SkyrimYacht/Music/"
+          Copy-Item assets/music/* "$out/Data/SKSE/Plugins/SkyrimYacht/Music/"
           Copy-Item SkyrimYacht.esp "$out/Data/"
           Copy-Item -Recurse assets/seq "$out/Data/Seq"
           Copy-Item -Recurse assets/meshes "$out/Data/meshes"

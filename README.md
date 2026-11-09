@@ -93,6 +93,9 @@ player's own game.
 
 ## Credits
 
-- Tavern music: "The Old Tower Inn" and "Medieval Kings Feast" by RandomMind, CC0 (OpenGameArt.org).
+- Music: 43 tracks, two for each inn, by RandomMind, Tad Miller, Matthew Pablo, InspectorJ, Otto Halmén, Angus Macnaughton,
+  Alex McCulloch, Geomancer, Omri Lahav (0 A.D., Wildfire Games), Mattias Westlund, Timothy Pinkham, Ryan Reilly and
+  Scott Buckley (Battle for Wesnoth) and Storyteller (Stendhal), under CC0, CC BY, CC BY-SA and GPL. Each is listed in
+  `assets/music/CREDITS.txt`. Which tracks play where is set in `Music/Music.ini`.
 - Ogg decoding: stb_vorbis by Sean Barrett (public domain / MIT).
 - Settings page: SKSE Menu Framework header (MIT).
