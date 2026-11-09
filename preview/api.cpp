@@ -137,6 +137,7 @@ EXPORT double* y_state()
 
 EXPORT int y_all_settled() { return g_sim.AllSettled() ? 1 : 0; }
 EXPORT int y_any_in_cup() { return g_sim.AnyInCup() ? 1 : 0; }
+EXPORT int y_any_off_table() { return g_sim.AnyOffTable() ? 1 : 0; }
 
 // Scorecard. Dice values are passed in with y_dice first.
 EXPORT void y_dice(int a, int b, int c, int d, int e)

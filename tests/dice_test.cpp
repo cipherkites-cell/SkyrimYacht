@@ -363,6 +363,58 @@ namespace
 		Check(!Overlapping(sim), "dice placed inside each other separate");
 	}
 
+	// Shakes then flicks the cup from a_from towards a_dir; returns how many dice fell off the table.
+	int FlickFrom(unsigned int a_seed, const Vec3& a_from, const Vec3& a_dir, double a_speed)
+	{
+		DiceSim sim({}, a_seed);
+		sim.PlaceCup(a_from, {});
+		sim.LoadCup(0x1F);
+		sim.SetLid(true);
+		for (int i = 0; i < 40; ++i) {
+			const double a = i * 0.5;
+			sim.Step(kFrame, a_from + Vec3{ std::cos(a) * 0.8, std::sin(a * 1.3) * 0.8, 0.0 }, {});
+		}
+		sim.SetLid(false);
+		// A hard flick: a short shove (a_speed sets how far, as the game keeps the cup clear of the barriers) while the
+		// cup snaps over fast, so the dice come out at full speed.
+		const Vec3 axis{ -a_dir.y, a_dir.x, 0.0 };
+		Vec3       pos = sim.CupPos();
+		for (int i = 1; i <= 20; ++i) {
+			pos += a_dir * (a_speed * kFrame * (1.0 - i / 20.0));
+			sim.Step(kFrame, pos, Quat::FromAxisAngle(axis, 2.6 * m::Min(1.0, i / 5.0)));
+		}
+		for (int i = 0; i < 240; ++i) {
+			sim.Step(kFrame, pos + Vec3{ 0, 0, 3 }, {});
+		}
+		int off = 0;
+		for (int i = 0; i < DiceSim::kDice; ++i) {
+			off += sim.OffTable(i) ? 1 : 0;
+		}
+		return off;
+	}
+
+	void TestBarriers()
+	{
+		const DiceSpec s{};
+		int offLeft = 0, offFar = 0, offRight = 0, inFromOutside = 0;
+		for (unsigned int seed = 1; seed <= 20; ++seed) {
+			// Hard flicks at the left and far walls from inside the tray: the invisible barriers hold everything.
+			const double edge = s.cupRadius + s.cupWall + 0.4;  // the closest the game lets the cup get to a barrier
+			offLeft += FlickFrom(seed, { -s.trayHalfX + edge + 1.5, 0.0, 5.6 }, { -1, 0, 0 }, 15.0);
+			offFar += FlickFrom(seed, { 0.0, s.trayHalfY - edge - 1.5, 5.6 }, { 0, 1, 0 }, 15.0);
+			// Flicked away from the table from outside the right edge: the dice fall off.
+			offRight += FlickFrom(seed, { s.trayHalfX + 4.0, 0.0, 5.6 }, { 1, 0, 0 }, 80.0);
+			// Flicked towards the tray from outside the right edge: they clear the wall and land on the pad.
+			inFromOutside += FlickFrom(seed, { s.trayHalfX + 3.0, 0.0, 6.0 }, { -1, 0, 0 }, 80.0) == 0 ? 1 : 0;
+		}
+		std::printf("barriers: off left %d, off far %d, off right %d/100, clean throws in from outside %d/20\n", offLeft, offFar, offRight,
+			inFromOutside);
+		Check(offLeft == 0, "nothing leaves over the left barrier");
+		Check(offFar == 0, "nothing leaves over the far barrier");
+		Check(offRight > 50, "dice thrown off the open side fall off the table");
+		Check(inFromOutside >= 18, "a throw from outside into the tray lands on the pad");
+	}
+
 	void TestSideTable()
 	{
 		// The cup can stand on the side table with dice in it without the tray walls grabbing them.
@@ -384,6 +436,7 @@ int main()
 	TestDrag();
 	TestSideTable();
 	TestKeepers();
+	TestBarriers();
 	TestDropManyAtOnce();
 	TestUnjam();
 	TestAddToCup();

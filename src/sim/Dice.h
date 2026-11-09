@@ -26,6 +26,12 @@ namespace yacht
 		double trayHalfY{ 7.5 };
 		double trayWallHeight{ 1.5 };    // walls stop dice below this; higher up only dice already over the tray
 		double trayWallThick{ 0.8 };
+		// Invisible walls that go up forever on these sides (left = -x, far = +y). The open sides are where the cup
+		// waits and where the player sits; a die thrown off the table there falls away.
+		bool barrierLeft{ true };
+		bool barrierFar{ true };
+		bool barrierRight{ false };
+		bool barrierNear{ false };
 
 		double dragSpeed{ 45.0 };        // fastest a die follows the player's hand when moved on the table
 
@@ -132,6 +138,9 @@ namespace yacht
 		bool AnyInCup() const;
 		// Every active die outside the cup has settled flat; none is in the cup.
 		bool AllSettled() const;
+		// A die that has fallen off the table (below it). The throw should be redone.
+		bool OffTable(int a_index) const;
+		bool AnyOffTable() const;
 		// The face pointing up (1..6), or 0 if the die isn't lying flat.
 		int TopFace(int a_index) const;
 

@@ -130,11 +130,10 @@ canvas#view.over-die { cursor: pointer; }
     <div class="sub"><span>Yacht bonuses</span><span id="ybonus">0</span></div>
     <button class="newgame" id="newgame" type="button" hidden>New game</button>
     <div class="help">
-      <b>Fus Ro Dah</b> shouts every die on the pad back into the cup.
-      <b>Hold</b> the left button and <b>move</b> to pick up the cup and shake it; a click alone does nothing.
-      <b>Let go</b> to flick the dice out the way you last moved it. <b>Click</b> a die to set it on the rack (click
-      again to put it back). <b>Drag</b> a die to lift it and carry it into the cup for the next roll. The cup
-      stays put until the pad is clear. After up to three rolls, <b>pick a box</b> to score.
+      <b>Hold</b> the left button and <b>move</b> to pick up the cup and shake it. <b>Let go</b> to flick the dice out the
+      way you last moved. A die that lands off the table means throw again.
+      <b>Click</b> a die to keep it on the rack; <b>drag</b> one into the cup to roll it again. The cup waits until the
+      pad is clear. <b>Fus Ro Dah</b> shouts the pad's dice back into the cup.
     </div>
   </aside>
 </div>
@@ -455,9 +454,9 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     const len = Math.hypot(aim.x, aim.y) || 1;
     const dx = aim.x / len, dy = aim.y / len;
     const reach = S.H * 0.85;
-    const px = THREE.MathUtils.clamp(cup.x, -S.X + 2, S.X - 2), py = THREE.MathUtils.clamp(cup.y, -S.Yh + 2, S.Yh - 2);
-    const tipX = THREE.MathUtils.clamp(px + dx * reach, -S.X + 2.6, S.X - 2.6) - dx * reach;
-    const tipY = THREE.MathUtils.clamp(py + dy * reach, -S.Yh + 2.6, S.Yh - 2.6) - dy * reach;
+    // Wherever it is: off the table is allowed (that throw gets redone); only keep the mouth off the barrier sides.
+    const tipX = Math.max(cup.x + dx * reach, -S.X + 1.5) - dx * reach;
+    const tipY = Math.min(cup.y + dy * reach, S.Yh - 1.5) - dy * reach;
     const axis = new THREE.Vector3(-dy, dx, 0).normalize();
     // A flick of the wrist: the cup keeps the swing it had from shaking, gets a push the way it was going, and snaps
     // over with a burst of spin. The spin is what throws the dice out.
@@ -466,6 +465,22 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     cup.vx += dx * 22; cup.vy += dy * 22;
     phase = "pouring";
     updateUI();
+  }
+
+  // A die went off the table: the throw doesn't count. The thrown dice come back to the cup to go again.
+  function redoThrow() {
+    phase = "redo";
+    toast("Off the table! Throw again");
+    updateUI();
+    setTimeout(() => {
+      for (let i = 0; i < 5; i++) {
+        if (rolled & (1 << i)) { tweenFrom(i, 0.45); anim[i].arc = 5; Y.y_add_to_cup(i); }
+        Y.y_set_frozen(i, 0);
+      }
+      hit(3, 30);
+      phase = rollsUsed === 0 ? "ready" : "choose";
+      updateUI();
+    }, 900);
   }
 
   function finishRoll() {
@@ -627,6 +642,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     if (phase === "ready") hint.textContent = "Hold the left button and move to pick up the cup.";
     else if (phase === "shaking") hint.textContent = "Shake it, then let go: it tips the way you last moved.";
     else if (phase === "pouring" || phase === "rolling") hint.textContent = "Rolling…";
+    else if (phase === "redo") hint.textContent = "That one doesn't count.";
     else if (phase === "choose") {
       if (rollsUsed >= 3) hint.textContent = "Pick a box on the scorecard to score this roll.";
       else if (diceOnPad()) hint.textContent = "Click dice to keep them on the rack, drag the rest into the cup.";
@@ -656,9 +672,10 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   function aimCup() {
     const pt = onPlane(shakePlane);
     if (pt) {
-      const m = S.R + S.W + 0.6;
-      cupTarget.x = THREE.MathUtils.clamp(pt.x, -S.X + m, S.X - m);
-      cupTarget.y = THREE.MathUtils.clamp(pt.y, -S.Yh + m, S.Yh - m);
+      // Free to leave the table on the right and the near side; the left and far sides have the invisible walls.
+      const m = S.R + S.W + 0.4;
+      cupTarget.x = THREE.MathUtils.clamp(pt.x, -S.X + m, REST.x + 1.5);
+      cupTarget.y = THREE.MathUtils.clamp(pt.y, -S.Yh - 7, S.Yh - m);
     }
   }
   // Whether a screen point is over the cup (its mouth or body), for dropping dice in.
@@ -840,7 +857,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
         aim.x += (cup.vx / sp - aim.x) * k;
         aim.y += (cup.vy / sp - aim.y) * k;
       }
-      if (pourPending && Math.abs(cup.x) < S.X - 2 && Math.abs(cup.y) < S.Yh - 2 && cup.z > SHAKE_Z - 1) {
+      if (pourPending && cup.z > SHAKE_Z - 1) {
         pourPending = false;
         beginPour();
       }
@@ -879,7 +896,9 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
 
     if (phase === "rolling") {
       rollingTime += dt;
-      if (anyInCup() && rollingTime > 1.0) {
+      if (Y.y_any_off_table()) {
+        redoThrow();
+      } else if (anyInCup() && rollingTime > 1.0) {
         // A die stayed in the cup: tip it out again.
         phase = "shaking"; pourPending = true; tilt = null;
       } else if (Y.y_all_settled() && rollingTime > 0.3) {

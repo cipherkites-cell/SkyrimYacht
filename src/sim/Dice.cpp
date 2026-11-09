@@ -394,39 +394,59 @@ namespace yacht
 		const double r = Radius();
 		const double X = _spec.trayHalfX;
 		const double Y = _spec.trayHalfY;
+		const double T = _spec.trayWallThick;
+		const bool   overTray = m::Abs(d.pos.x) < X && m::Abs(d.pos.y) < Y;
 
 		for (const auto& corner : kCorners) {
 			const Vec3 s = d.pos + d.rot.Rotate(Offset(corner, e));
 
-			if (s.z < r) {
+			// The tray is all there is: past its outer edge there is no floor, and a die falls off the table.
+			if (s.z < r && m::Abs(s.x) < X + T && m::Abs(s.y) < Y + T) {
 				const Vec3 n{ 0.0, 0.0, 1.0 };
 				AddContact(a_index, -1, s - n * r, n, r - s.z, _spec.feltFriction, _spec.feltRestitution, {}, DiceEvent::Type::kDieFelt);
 				_onFelt[a_index] = true;
 			}
 
+			// Walls are trayWallHeight tall, except above the tray itself (dice bouncing high stay in). The left and far
+			// walls also carry an invisible barrier that goes up forever, so nothing leaves the table that way. A sphere
+			// more than a wall's thickness past a wall is on the far side and is left alone.
 			const struct
 			{
 				double gap;
 				Vec3   n;
+				bool   barrier;
 			} walls[4] = {
-				{ X - s.x, { -1.0, 0.0, 0.0 } },
-				{ X + s.x, { 1.0, 0.0, 0.0 } },
-				{ Y - s.y, { 0.0, -1.0, 0.0 } },
-				{ Y + s.y, { 0.0, 1.0, 0.0 } }
+				{ X - s.x, { -1.0, 0.0, 0.0 }, _spec.barrierRight },
+				{ X + s.x, { 1.0, 0.0, 0.0 }, _spec.barrierLeft },
+				{ Y - s.y, { 0.0, -1.0, 0.0 }, _spec.barrierFar },
+				{ Y + s.y, { 0.0, 1.0, 0.0 }, _spec.barrierNear }
 			};
-			// Walls are trayWallHeight tall, except above the tray itself (dice bouncing high stay in). A sphere more than
-			// a wall's thickness past it is on the far side (a die in the cup over the side table) and is left alone.
-			const bool overTray = m::Abs(d.pos.x) < X && m::Abs(d.pos.y) < Y;
-			if (s.z >= _spec.trayWallHeight && !overTray) {
-				continue;
-			}
 			for (const auto& w : walls) {
-				if (w.gap < r && w.gap > -_spec.trayWallThick) {
+				if (!(w.barrier || overTray || s.z < _spec.trayWallHeight)) {
+					continue;
+				}
+				if (w.gap < r && w.gap > -T) {
 					AddContact(a_index, -1, s - w.n * r, w.n, r - w.gap, _spec.feltFriction * 0.7, _spec.wallRestitution, {},
 						DiceEvent::Type::kDieWall);
 				}
 			}
 		}
+	}
+
+	bool DiceSim::OffTable(int a_index) const
+	{
+		const Die& d = _dice[a_index];
+		return d.state == DieState::kActive && !d.frozen && d.pos.z < -2.0;
+	}
+
+	bool DiceSim::AnyOffTable() const
+	{
+		for (int i = 0; i < kDice; ++i) {
+			if (OffTable(i)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	void DiceSim::CollideCup(int a_index, const Vec3& a_cupVel, const Vec3& a_cupSpin)
