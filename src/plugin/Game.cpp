@@ -2792,6 +2792,37 @@ namespace Game
 			spdlog::info("Dice: {}'s shop chest {:08X} should hold {} sets, holds {}", a_keeper->GetDisplayFullName(), chest->GetFormID(), stocked, after.size());
 		}
 
+		// Puts the sets on sale into a container (and takes the rest out)
+		void SyncDice(RE::TESObjectREFR* a_ref, const char* a_who)
+		{
+			auto counts = a_ref->GetInventoryCounts([](RE::TESBoundObject& a_obj) {
+				for (int k = 1; k < 15; ++k) {
+					if (g_diceItem[k] == &a_obj) {
+						return true;
+					}
+				}
+				return false;
+			});
+			std::lock_guard lk(g_mtx);
+			int stocked = 0;
+			for (int k = 1; k < 15; ++k) {
+				auto* item = g_diceItem[k];
+				if (!item) {
+					continue;
+				}
+				const auto it = counts.find(item);
+				const int  have = it == counts.end() ? 0 : it->second;
+				const int  want = DiceOnSale(k) ? 1 : 0;
+				if (have < want) {
+					a_ref->AddObjectToContainer(item, nullptr, want - have, nullptr);
+				} else if (have > want) {
+					a_ref->RemoveItem(item, have - want, RE::ITEM_REMOVE_REASON::kRemove, nullptr, nullptr);
+				}
+				stocked += want;
+			}
+			spdlog::info("Dice: {} sets for sale on {} ({:08X})", stocked, a_who ? a_who : "?", a_ref->GetFormID());
+		}
+
 		// After a trade: any set in your pack is yours for good (and in use at the next table)
 		void ClaimBoughtDice()
 		{
@@ -3014,9 +3045,24 @@ namespace Game
 		// a trade just closed: claim any dice bought
 		{
 			static bool s_barter = false;
+			static RE::RefHandle s_barterTarget = 0;
 			const bool  barter = ui->IsMenuOpen(RE::BarterMenu::MENU_NAME);
 			if (s_barter && !barter) {
 				ClaimBoughtDice();
+				// what wasn't sold comes off again (we put fresh ones out each time)
+				if (auto keeper = RE::TESObjectREFR::LookupByHandle(s_barterTarget)) {
+					std::lock_guard lk(g_mtx);
+					for (int k = 1; k < 15; ++k) {
+						if (!g_diceItem[k]) {
+							continue;
+						}
+						const auto counts = keeper->GetInventoryCounts([k](RE::TESBoundObject& a_obj) { return &a_obj == g_diceItem[k]; });
+						if (const auto it = counts.find(g_diceItem[k]); it != counts.end() && it->second > 0) {
+							keeper->RemoveItem(g_diceItem[k], it->second, RE::ITEM_REMOVE_REASON::kRemove, nullptr, nullptr);
+						}
+					}
+				}
+				s_barterTarget = 0;
 			}
 			if (barter && !s_barter) {
 				auto* mtm = RE::MenuTopicManager::GetSingleton();
@@ -3033,13 +3079,16 @@ namespace Game
 					}
 				}
 				auto target = RE::BarterMenu::GetTargetRefHandle();
+				s_barterTarget = target;
 				auto tref = RE::TESObjectREFR::LookupByHandle(target);
 				spdlog::info("Shop opened: {} (chest {:08X}, menu shows {:08X}): {} dice sets in it before ours", a ? a->GetDisplayFullName() : "?",
 					chest ? chest->GetFormID() : 0, tref ? tref->GetFormID() : 0, dice);
 				// The game restocks the chest as the shop opens (which throws out what we put in on the way), so put the
 				// dice in now, then have the menu read the chest again
-				if (a && g_innkeeper && a->IsInFaction(g_innkeeper)) {
-					StockDice(a);
+				// While you trade, the game moves the shop chest's goods onto the innkeeper (the menu shows them, not the
+				// chest), restocking the chest first: so the dice go on the innkeeper, then the menu reads its list again
+				if (a && g_innkeeper && a->IsInFaction(g_innkeeper) && tref) {
+					SyncDice(tref.get(), a->GetDisplayFullName());
 					SKSE::GetTaskInterface()->AddUITask([]() {
 						if (auto menu = RE::UI::GetSingleton()->GetMenu<RE::BarterMenu>()) {
 							if (auto* list = menu->GetRuntimeData().itemList) {
