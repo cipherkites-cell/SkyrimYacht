@@ -408,7 +408,7 @@ namespace Game
 		};
 		bool CupUnlocked(int k) { return k >= 0 && k < 5 && g_bestScore >= kCups[k].need; }
 		bool DiceOwned(int k) { return k >= 0 && k < 15 && (k == 0 || (g_ownedDice >> k) & 1u); }
-		bool DiceOnSale(int k) { return k > 0 && k < 15 && !DiceOwned(k) && g_totalWins >= kDiceInfo[k].wins; }
+		bool DiceOnSale(int k) { return k > 0 && k < 15 && !DiceOwned(k) && (Config::Get().allDiceForSale || g_totalWins >= kDiceInfo[k].wins); }
 		int  DiceIndex(const std::string& a_set)
 		{
 			for (int k = 0; k < 15; ++k) {
@@ -2932,7 +2932,7 @@ namespace Game
 		}
 		if (g_diceShop) {
 			std::lock_guard lk(g_mtx);
-			g_diceShop->value = g_games == 0 && g_totalWins == 0 ? 0.0f : AnyDiceOnSale() ? 2.0f : 1.0f;
+			g_diceShop->value = g_games == 0 && g_totalWins == 0 && !Config::Get().allDiceForSale ? 0.0f : AnyDiceOnSale() ? 2.0f : 1.0f;
 		}
 		TagSeated();
 	}

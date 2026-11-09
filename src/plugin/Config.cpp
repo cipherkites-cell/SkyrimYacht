@@ -72,6 +72,7 @@ namespace Config
 		put("Table", "CenterY", f(v.centerY));
 		put("Table", "FlipTilt", v.flipTilt ? "1" : "0");
 		put("Debug", "Overlay", v.debugOverlay ? "1" : "0");
+		put("Debug", "AllDiceForSale", v.allDiceForSale ? "1" : "0");
 		spdlog::info("Settings saved");
 	}
 
@@ -98,6 +99,7 @@ namespace Config
 		v.shoutVolume = std::clamp(Float("Play", "ShoutVolume", v.shoutVolume), 0.0f, 2.0f);
 		v.debugOverlay = Bool("Debug", "Overlay", v.debugOverlay);
 		v.logInput = Bool("Debug", "LogInput", v.logInput);
+		v.allDiceForSale = Bool("Debug", "AllDiceForSale", v.allDiceForSale);
 		g_values = v;
 		spdlog::info("Settings: {} table, tilt {} fit {} centre {},{} bets {}-{} reach {}", v.mode == 0 ? "drawn by the mod" : v.mode == 1 ? "item view" : "in the room", v.tiltDeg, v.fitWidth, v.centerX, v.centerY, v.minBet,
 			v.maxBet, v.tableReach);
