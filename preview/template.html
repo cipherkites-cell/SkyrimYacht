@@ -54,6 +54,17 @@ canvas#view.over-die { cursor: pointer; }
   border-radius: 6px; padding: 5px 10px; cursor: pointer;
 }
 .icon-btn:hover { border-color: var(--brass); }
+.shout-btn {
+  position: relative; overflow: hidden; pointer-events: auto; cursor: pointer;
+  font-family: var(--display); font-size: 16px; letter-spacing: 0.04em; color: var(--brass);
+  background: rgba(43, 32, 23, 0.85); border: 1px solid var(--brass); border-radius: 6px; padding: 4px 12px;
+}
+.shout-btn:hover:not(:disabled) { background: rgba(202, 164, 87, 0.16); }
+.shout-btn:disabled { cursor: default; color: var(--muted); border-color: var(--oak-edge); }
+.shout-btn:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+.shout-btn .cool { position: absolute; left: 0; bottom: 0; height: 2px; width: 0; background: var(--brass); }
+.toast.shout { font-family: var(--display); font-size: 64px; letter-spacing: 0.06em; color: var(--parchment);
+  text-shadow: 0 0 24px rgba(160, 200, 255, 0.55), 0 2px 18px rgba(0, 0, 0, 0.9); }
 .icon-btn:focus-visible, .row:focus-visible, .newgame:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
 
 .ledger {
@@ -106,6 +117,7 @@ canvas#view.over-die { cursor: pointer; }
       <h1>Yacht</h1>
       <div class="rolls" id="rolls" aria-live="polite"><span>Roll</span><i></i><i></i><i></i></div>
       <button class="icon-btn" id="sound" type="button" aria-pressed="true">Sound on</button>
+      <button class="shout-btn" id="shout" type="button" title="Shout the dice on the pad back into the cup">Fus Ro Dah<span class="cool" id="shoutCool"></span></button>
     </div>
     <div class="hint" id="hint">Loading…</div>
     <div class="toast" id="toast"></div>
@@ -118,6 +130,7 @@ canvas#view.over-die { cursor: pointer; }
     <div class="sub"><span>Yacht bonuses</span><span id="ybonus">0</span></div>
     <button class="newgame" id="newgame" type="button" hidden>New game</button>
     <div class="help">
+      <b>Fus Ro Dah</b> shouts every die on the pad back into the cup.
       <b>Hold</b> the left button and <b>move</b> to pick up the cup and shake it; a click alone does nothing.
       <b>Let go</b> to flick the dice out the way you last moved it. <b>Click</b> a die to set it on the rack (click
       again to put it back). <b>Drag</b> a die to lift it and carry it into the cup for the next roll. The cup
@@ -494,6 +507,58 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     hit(3, 25);
     updateUI();
   }
+  // ---- Fus Ro Dah: an easter egg that shouts every die on the pad back into the cup.
+  const wave = new THREE.Mesh(new THREE.RingGeometry(0.85, 1, 64),
+    new THREE.MeshBasicMaterial({ color: 0x9fc2ff, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending }));
+  wave.position.set(0, -S.Yh - wallT, 0.05);
+  world.add(wave);
+  let waveT = -1, shakeT = 0, shouting = false, shoutReady = 0;
+  const SHOUT_COOLDOWN = 4;
+
+  function shoutSound() {
+    if (!audio || !soundOn) return;
+    const t = audio.currentTime;
+    // A deep thrum that drops away, under a burst of rushing air.
+    const o = audio.createOscillator(), og = audio.createGain();
+    o.type = "sawtooth"; o.frequency.setValueAtTime(110, t); o.frequency.exponentialRampToValueAtTime(38, t + 0.9);
+    const lp = audio.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 420;
+    og.gain.setValueAtTime(0.0001, t); og.gain.exponentialRampToValueAtTime(0.7, t + 0.05); og.gain.exponentialRampToValueAtTime(0.0005, t + 1.1);
+    o.connect(lp); lp.connect(og); og.connect(master); o.start(t); o.stop(t + 1.2);
+    const n = audio.createBufferSource(); n.buffer = noiseBuf; n.loop = true;
+    const bp = audio.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.setValueAtTime(1400, t); bp.frequency.exponentialRampToValueAtTime(300, t + 0.8); bp.Q.value = 0.8;
+    const ng = audio.createGain(); ng.gain.setValueAtTime(0.0001, t); ng.gain.exponentialRampToValueAtTime(0.5, t + 0.04); ng.gain.exponentialRampToValueAtTime(0.0005, t + 0.9);
+    n.connect(bp); bp.connect(ng); ng.connect(master); n.start(t); n.stop(t + 1.0);
+  }
+
+  function shout() {
+    initAudio();
+    if (audio && audio.state === "suspended") audio.resume();
+    if (shouting || performance.now() / 1000 < shoutReady) return;
+    if (phase !== "choose" || carry) { toast("Nothing to shout at yet"); return; }
+    if (rollsUsed >= 3) { toast("No rolls left"); return; }
+    const st = state(), targets = [];
+    for (let i = 0; i < 5; i++) if (active(st, i) && !inCup(st, i)) targets.push(i);
+    if (!targets.length) { toast("The pad is already clear"); return; }
+
+    shouting = true;
+    shoutReady = performance.now() / 1000 + SHOUT_COOLDOWN;
+    toast("FUS RO DAH!");
+    shoutSound();
+    waveT = 0; shakeT = 0.6;
+    // Farthest dice from the shout go last, so the blast reads as a wave rolling across the pad.
+    targets.sort((a, b) => st[a * 11 + 1] - st[b * 11 + 1]);
+    targets.forEach((i, n) => {
+      const delay = 0.08 + n * 0.07;
+      anim[i] = { from: dice[i].position.clone(), fromQ: dice[i].quaternion.clone(), t: -delay, dur: 0.75, arc: 6 + n,
+        spin: new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize() };
+      Y.y_add_to_cup(i);
+    });
+    setTimeout(() => { shouting = false; updateUI(); }, 1100);
+    updateUI();
+  }
+  $("shout").addEventListener("click", shout);
+
   function frontSpot(i) { return lastSpot[i] || { x: kept[i] ? rackX(rackSlot[i]) : S.X - 2, y: -S.Yh + 1.4 }; }
 
   // A click: a die on the pad goes to the rack, a racked die goes back on the pad.
@@ -517,7 +582,8 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   function toast(text) {
     const t = $("toast");
     t.textContent = text;
-    t.classList.toggle("long", text.length > 16);
+    t.classList.toggle("long", text.length > 16 && !text.startsWith("FUS"));
+    t.classList.toggle("shout", text.startsWith("FUS"));
     t.classList.add("show");
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => t.classList.remove("show"), 1300);
@@ -631,7 +697,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     initAudio();
     if (audio && audio.state === "suspended") audio.resume();
     setRay(e);
-    if (phase === "choose") {
+    if (phase === "choose" && !shouting) {
       const i = pickDie();
       if (i >= 0) {
         press = { id: e.pointerId, x0: e.clientX, y0: e.clientY, kind: "die", i, moved: false };
@@ -639,7 +705,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
         return;
       }
     }
-    if (!((phase === "ready" || phase === "choose") && rollsUsed < 3)) return;
+    if (shouting || !((phase === "ready" || phase === "choose") && rollsUsed < 3)) return;
     press = { id: e.pointerId, x0: e.clientX, y0: e.clientY, kind: "cup", moved: false };
     canvas.setPointerCapture(e.pointerId);
   });
@@ -854,10 +920,12 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
       }
       if (a) {
         a.t += dt;
+        if (a.t < 0) { m.position.copy(a.from); m.quaternion.copy(a.fromQ); continue; }
         const k = ease(Math.min(1, a.t / a.dur));
         m.position.copy(a.from).lerp(target, k);
-        m.position.z += Math.sin(k * Math.PI) * 1.2;
+        m.position.z += Math.sin(k * Math.PI) * (a.arc || 1.2);
         m.quaternion.copy(a.fromQ).slerp(targetQ, k);
+        if (a.spin) m.quaternion.premultiply(tmpQ.setFromAxisAngle(a.spin, Math.sin(k * Math.PI) * Math.PI * 3));
         if (a.t >= a.dur) anim[i] = null;
       } else {
         m.position.copy(target);
@@ -867,7 +935,23 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     cupGroup.position.set(cup.x, cup.y, cup.z);
     cupGroup.quaternion.copy(cup.q);
 
+    if (waveT >= 0) {
+      waveT += dt;
+      const k = Math.min(1, waveT / 0.7);
+      wave.scale.setScalar(1 + k * 26);
+      wave.material.opacity = 0.45 * (1 - k) * (1 - k);
+      if (k >= 1) { waveT = -1; wave.material.opacity = 0; }
+    }
+    const shakeAmt = shakeT > 0 ? shakeT * 0.6 : 0;
+    shakeT = Math.max(0, shakeT - dt);
+    camera.position.x += (Math.random() - 0.5) * shakeAmt;
+    camera.position.y += (Math.random() - 0.5) * shakeAmt;
+    const left = shoutReady - now / 1000;
+    $("shoutCool").style.width = left > 0 ? `${(left / SHOUT_COOLDOWN) * 100}%` : "0";
+    $("shout").disabled = left > 0;
+
     renderer.render(scene, camera);
+    if (shakeAmt) resize();
     requestAnimationFrame(frame);
   }
 
