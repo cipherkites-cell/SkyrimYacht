@@ -1,207 +1,307 @@
 <title>Yacht Dice Cup</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Alegreya+Sans:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Barlow+Condensed:wght@400;500;600&display=swap">
 <style>
-/* Layout: the table fills the screen; the scorecard is a ledger pinned to the right (a sheet below it on phones). */
+/* Cinematic overlay in Skyrim's manner: no boxes, dark gradients edged with thin gold rules and diamond ornaments,
+   a carved serif for titles and a condensed sans for everything read at a glance. */
 :root {
-  --soot: #15100c;      /* room behind the table */
-  --oak: #2b2017;       /* ledger panel */
-  --oak-edge: #4a3726;
-  --parchment: #eadcbc; /* text */
-  --muted: #a8977c;
-  --brass: #caa457;     /* accent */
-  --ember: #e48a4c;     /* score previews */
-  --display: "IM Fell English SC", "Palatino Linotype", Palatino, Georgia, serif;
-  --body: "Alegreya Sans", "Segoe UI", system-ui, sans-serif;
+  --ink: #0b0806;        /* deepest shadow */
+  --soot: #120d0a;       /* room behind the table */
+  --gold: #dcb872;       /* ornament and accent */
+  --gold-hi: #f6dfa4;
+  --gold-dim: #7d6740;
+  --bone: #efe6d2;       /* primary text */
+  --ash: #a39782;        /* secondary text */
+  --ember: #f2a85e;      /* score previews */
+  --blood: #d0644a;      /* defeat, forfeit */
+  --frost: #b9d4f2;      /* the Thu'um */
+  --display: "Cinzel", "Trajan Pro", "Palatino Linotype", Georgia, serif;
+  --body: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", system-ui, sans-serif;
+  --rule: linear-gradient(90deg, transparent, var(--gold-dim) 12%, var(--gold) 50%, var(--gold-dim) 88%, transparent);
+  --panel: linear-gradient(180deg, rgba(10, 7, 5, 0.86), rgba(10, 7, 5, 0.66));
   color-scheme: dark;
 }
 html, body { height: 100%; }
 body {
-  background: var(--soot); color: var(--parchment); font-family: var(--body); font-size: 15px;
+  background: var(--soot); color: var(--bone); font-family: var(--body); font-size: 16px; letter-spacing: 0.02em;
   overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none;
 }
-/* The table fills the window with the tray in the middle; the scorecard floats top right, rank and cups bottom left. */
+[hidden] { display: none !important; }
 .app { position: relative; height: 100%; }
 .stage { position: absolute; inset: 0; }
-.panel {
-  background: rgba(31, 23, 16, 0.9); border: 1px solid var(--oak-edge); border-radius: 10px;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
-}
 canvas#view { display: block; width: 100%; height: 100%; cursor: grab; }
 canvas#view.shaking { cursor: grabbing; }
 canvas#view.over-die { cursor: pointer; }
+/* Lens vignette and soft bars top and bottom so the overlay reads over the scene. */
+.vignette {
+  position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse 75% 70% at 50% 52%, transparent 55%, rgba(4, 3, 2, 0.6) 100%),
+    linear-gradient(180deg, rgba(4, 3, 2, 0.55), transparent 14%, transparent 86%, rgba(4, 3, 2, 0.5));
+}
 
+/* ---- Shared ornament: a panel with gold rules top and bottom and a diamond at the top centre */
+.panel { position: relative; background: var(--panel); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
+.panel::before, .panel::after { content: ""; position: absolute; left: 0; right: 0; height: 1px; background: var(--rule); opacity: 0.75; }
+.panel::before { top: 0; }
+.panel::after { bottom: 0; }
+.gem { position: absolute; top: -4px; left: 50%; width: 8px; height: 8px; transform: translateX(-50%) rotate(45deg);
+  background: var(--soot); border: 1px solid var(--gold); box-shadow: 0 0 8px rgba(220, 184, 114, 0.45); }
+
+/* ---- Top centre: title, whose turn, rolls, controls */
 .hud {
-  position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
-  display: flex; align-items: center; justify-content: center; gap: 12px; pointer-events: none; white-space: nowrap;
+  position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; white-space: nowrap;
 }
-.hud h1 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 30px; letter-spacing: 0.02em; color: var(--brass); }
-.rolls { display: flex; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; }
-.rolls i { width: 11px; height: 11px; border-radius: 50%; border: 1.5px solid var(--brass); display: inline-block; }
-.rolls i.used { background: var(--brass); }
-.hud button { pointer-events: auto; }
-
-.hint {
-  position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); max-width: min(460px, calc(100% - 660px));
-  padding: 8px 16px; border-radius: 999px; background: rgba(21, 16, 12, 0.72); border: 1px solid var(--oak-edge);
-  font-size: 15px; text-align: center; pointer-events: none; text-wrap: balance;
+.banner { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.game-name { font-family: var(--display); font-size: 13px; font-weight: 600; letter-spacing: 0.5em; color: var(--gold); padding-left: 0.5em; opacity: 0.85; }
+.turn {
+  display: flex; align-items: center; gap: 16px; font-family: var(--display); font-weight: 600; font-size: 28px; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--bone); text-shadow: 0 0 18px rgba(246, 223, 164, 0.25), 0 2px 6px rgba(0, 0, 0, 0.9);
 }
-.toast {
-  position: absolute; left: 50%; top: 38%; transform: translate(-50%, -50%); font-family: var(--display); font-size: 44px;
-  color: var(--brass); text-shadow: 0 2px 18px rgba(0, 0, 0, 0.8); pointer-events: none; opacity: 0; transition: opacity 0.25s, transform 0.6s;
-}
-.toast.show { opacity: 1; transform: translate(-50%, -70%); }
-.toast.long { font-family: var(--body); font-size: 20px; font-weight: 500; color: var(--parchment); text-align: center; max-width: 80%; }
-
+.turn::before, .turn::after { content: ""; width: 120px; height: 1px; background: linear-gradient(90deg, transparent, var(--gold)); }
+.turn::after { transform: scaleX(-1); }
+.turn.theirs { color: #e7cfc4; }
+.turn.flip { animation: turnIn 0.7s cubic-bezier(.2, .8, .2, 1); }
+@keyframes turnIn { from { opacity: 0; letter-spacing: 0.4em; filter: blur(4px); } to { opacity: 1; letter-spacing: 0.14em; filter: none; } }
+.rolls { display: flex; gap: 9px; align-items: center; font-size: 12px; font-weight: 600; color: var(--ash); letter-spacing: 0.3em; text-transform: uppercase; }
+.rolls i { width: 9px; height: 9px; transform: rotate(45deg); border: 1px solid var(--gold); display: inline-block; transition: background 0.25s, box-shadow 0.25s; }
+.rolls i.used { background: var(--gold); box-shadow: 0 0 8px rgba(220, 184, 114, 0.7); }
+.controls { display: flex; gap: 10px; align-items: center; pointer-events: auto; margin-top: 2px; }
 .icon-btn {
-  font: inherit; font-size: 13px; color: var(--parchment); background: rgba(43, 32, 23, 0.85); border: 1px solid var(--oak-edge);
-  border-radius: 6px; padding: 5px 10px; cursor: pointer;
+  width: 36px; height: 36px; display: grid; place-items: center; padding: 0; cursor: pointer; color: var(--bone);
+  background: radial-gradient(circle at 50% 35%, rgba(40, 30, 20, 0.9), rgba(10, 7, 5, 0.9)); border: 1px solid var(--gold-dim); border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6), inset 0 0 0 2px rgba(0, 0, 0, 0.5); transition: border-color 0.2s, color 0.2s, box-shadow 0.2s;
 }
-.icon-btn:hover { border-color: var(--brass); }
+.icon-btn svg { width: 17px; height: 17px; }
+.icon-btn:hover:not(:disabled) { border-color: var(--gold); color: var(--gold-hi); box-shadow: 0 0 12px rgba(220, 184, 114, 0.35), inset 0 0 0 2px rgba(0, 0, 0, 0.5); }
+.icon-btn:disabled { opacity: 0.35; cursor: default; }
+.icon-btn.off .wave { display: none; }
+.icon-btn.off .mute { display: inline; }
+.icon-btn .mute { display: none; }
+.forfeit-btn:hover:not(:disabled) { border-color: var(--blood); color: #ffc3b3; box-shadow: 0 0 12px rgba(208, 100, 74, 0.45), inset 0 0 0 2px rgba(0, 0, 0, 0.5); }
 .shout-btn {
-  position: relative; overflow: hidden; pointer-events: auto; cursor: pointer;
-  font-family: var(--display); font-size: 16px; letter-spacing: 0.04em; color: var(--brass);
-  background: rgba(43, 32, 23, 0.85); border: 1px solid var(--brass); border-radius: 6px; padding: 4px 12px;
+  position: relative; overflow: hidden; cursor: pointer; height: 36px; padding: 0 20px;
+  font-family: var(--display); font-weight: 700; font-size: 15px; letter-spacing: 0.28em; color: var(--frost);
+  background: linear-gradient(180deg, rgba(20, 28, 40, 0.9), rgba(8, 10, 16, 0.92)); border: 1px solid rgba(185, 212, 242, 0.45);
+  clip-path: polygon(10px 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 10px 100%, 0 50%);
+  text-shadow: 0 0 10px rgba(185, 212, 242, 0.6); transition: color 0.2s, filter 0.2s;
 }
-.shout-btn:hover:not(:disabled) { background: rgba(202, 164, 87, 0.16); }
-.shout-btn:disabled { cursor: default; color: var(--muted); border-color: var(--oak-edge); }
-.shout-btn:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
-.shout-btn .cool { position: absolute; left: 0; bottom: 0; height: 2px; width: 0; background: var(--brass); }
-.toast.shout { font-family: var(--display); font-size: 64px; letter-spacing: 0.06em; color: var(--parchment);
-  text-shadow: 0 0 24px rgba(160, 200, 255, 0.55), 0 2px 18px rgba(0, 0, 0, 0.9); }
-.icon-btn:focus-visible, .row:focus-visible, .newgame:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+.shout-btn:hover:not(:disabled) { color: #fff; filter: drop-shadow(0 0 10px rgba(185, 212, 242, 0.55)); }
+.shout-btn:disabled { cursor: default; color: rgba(185, 212, 242, 0.35); text-shadow: none; }
+.shout-btn .cool { position: absolute; left: 0; bottom: 0; height: 2px; width: 0; background: var(--frost); box-shadow: 0 0 6px var(--frost); }
+.icon-btn:focus-visible, .shout-btn:focus-visible, .row:focus-visible, .newgame:focus-visible,
+.cup-chip:focus-visible, .dice-chip:focus-visible, .menu-btn:focus-visible, .test-btn:focus-visible { outline: 1px solid var(--gold-hi); outline-offset: 3px; }
 
-.ledger.npc { right: auto; left: max(14px, env(safe-area-inset-left, 0px)); }
-.ledger.turn { border-color: var(--brass); box-shadow: 0 0 0 1px var(--brass), 0 6px 24px rgba(0, 0, 0, 0.45); }
-.row.flash { background: rgba(202, 164, 87, 0.35); }
-.record { font-size: 12px; color: var(--muted); letter-spacing: 0.04em; margin: -2px 0 2px; font-variant-numeric: tabular-nums; }
-.forfeit-btn { display: inline-flex; align-items: center; gap: 6px; }
-.forfeit-btn:hover { border-color: #b4553d; color: #f0c2b2; }
-.forfeit-btn:disabled { opacity: 0.4; cursor: default; }
-[hidden] { display: none !important; }
-.veil { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; background: rgba(10, 7, 5, 0.55); }
-.prompt { zoom: var(--ui, 1); width: 380px; max-width: calc(100vw - 32px); padding: 26px 28px 24px; text-align: center; }
-.prompt-title { margin: 0; font-family: var(--display); font-weight: 400; font-size: 52px; line-height: 1.05; color: var(--brass);
-  text-wrap: balance; }
-.prompt-title.small { font-size: 32px; }
-.prompt-title.lose { color: #d88a70; }
-.prompt-score { margin: 10px 0 0; font-size: 17px; color: var(--parchment); font-variant-numeric: tabular-nums; }
-.prompt-record { margin: 6px 0 0; font-size: 13px; color: var(--muted); letter-spacing: 0.04em; font-variant-numeric: tabular-nums; }
-.prompt-actions { display: flex; gap: 10px; justify-content: center; margin-top: 20px; }
-.prompt-btn { font: inherit; font-size: 16px; font-weight: 700; min-width: 128px; padding: 10px 16px; border-radius: 7px; cursor: pointer;
-  color: var(--parchment); background: rgba(0, 0, 0, 0.25); border: 1px solid var(--oak-edge); }
-.prompt-btn:hover { border-color: var(--brass); }
-.prompt-btn.primary { color: var(--soot); background: var(--brass); border-color: var(--brass); }
-.prompt-btn.primary:hover { filter: brightness(1.08); }
-.prompt-btn.danger { color: #fff1ec; background: #9c3f2a; border-color: #9c3f2a; }
-.prompt-btn:focus-visible { outline: 2px solid var(--parchment); outline-offset: 2px; }
-.turn-label { font-family: var(--display); font-size: 18px; color: var(--parchment); padding: 2px 10px; border-left: 1px solid var(--oak-edge); }
-.ledger {
-  position: absolute; top: 12px; right: max(14px, env(safe-area-inset-right, 0px)); width: min(370px, calc(100% - 28px));
-  max-height: calc(100% - 24px); overflow-y: auto; padding: 10px 14px 12px;
-}
-.cols { display: grid; grid-template-columns: 1fr 1fr; column-gap: 18px; }
-.col { min-width: 0; }
-.dock {
-  position: absolute; left: max(14px, env(safe-area-inset-left, 0px)); bottom: 14px; width: min(336px, calc(100% - 28px));
-  padding: 10px 12px 10px;
-}
 .help.panel {
-  position: absolute; top: 62px; left: 50%; transform: translateX(-50%); width: min(380px, calc(100% - 28px));
-  padding: 12px 14px; z-index: 3;
+  position: absolute; top: 132px; left: 50%; transform: translateX(-50%); width: 420px; padding: 18px 22px; z-index: 3;
+  font-size: 15.5px; line-height: 1.55; color: var(--ash); letter-spacing: 0.03em;
 }
-.ledger h2 { margin: 0 0 2px; font-family: var(--display); font-weight: 400; font-size: 21px; color: var(--brass); display: flex; justify-content: space-between; align-items: baseline; }
-.ledger h2 span { font-family: var(--body); font-size: 24px; font-weight: 700; color: var(--parchment); font-variant-numeric: tabular-nums; }
-.section-label { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin: 6px 0 1px; }
+.help b { color: var(--bone); font-weight: 600; }
+
+/* ---- Bottom centre: what to do now, as a key prompt */
+.hint {
+  position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); max-width: 640px;
+  display: flex; align-items: center; gap: 12px; padding: 10px 26px 10px 18px; pointer-events: none;
+  font-size: 17px; font-weight: 500; letter-spacing: 0.06em; color: var(--bone); text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+  background: linear-gradient(90deg, transparent, rgba(8, 6, 4, 0.8) 18%, rgba(8, 6, 4, 0.8) 82%, transparent);
+}
+.hint::before {
+  content: ""; flex: none; width: 22px; height: 28px; border: 1.5px solid var(--gold); border-radius: 11px 11px 10px 10px;
+  background: linear-gradient(90deg, var(--gold) 0 50%, transparent 50%) top left / 100% 45% no-repeat; opacity: 0.9;
+  box-shadow: 0 0 8px rgba(220, 184, 114, 0.4);
+}
+.hint.waiting::before { background: none; border-radius: 50%; width: 14px; height: 14px; border-top-color: transparent; animation: spin 1.1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---- Notifications in the middle of the screen */
+.toast {
+  position: absolute; left: 50%; top: 36%; transform: translate(-50%, -50%); padding: 10px 40px; pointer-events: none;
+  font-family: var(--display); font-weight: 600; font-size: 40px; letter-spacing: 0.12em; color: var(--gold-hi); white-space: nowrap;
+  text-shadow: 0 0 22px rgba(220, 184, 114, 0.45), 0 2px 10px rgba(0, 0, 0, 0.95); opacity: 0; transition: opacity 0.3s, transform 0.7s;
+}
+.toast::before, .toast::after { content: ""; position: absolute; left: 0; right: 0; height: 1px; background: var(--rule); }
+.toast::before { top: 0; }
+.toast::after { bottom: 0; }
+.toast.show { opacity: 1; transform: translate(-50%, -64%); }
+.toast.long { font-family: var(--body); font-weight: 500; font-size: 22px; letter-spacing: 0.08em; color: var(--bone); white-space: normal; text-align: center; }
+.toast.shout { font-size: 66px; letter-spacing: 0.22em; color: #f4f8ff;
+  text-shadow: 0 0 30px rgba(185, 212, 242, 0.8), 0 0 60px rgba(120, 170, 230, 0.5), 0 2px 12px rgba(0, 0, 0, 0.9); }
+.toast.shout::before, .toast.shout::after { background: linear-gradient(90deg, transparent, var(--frost), transparent); }
+
+/* ---- Scorecards: the opponent's top left, yours top right */
+.ledger { position: absolute; top: 16px; width: 380px; max-height: calc(100% - 32px); overflow-y: auto; padding: 16px 20px 16px; }
+.ledger.you { right: max(16px, env(safe-area-inset-right, 0px)); }
+.ledger.npc { left: max(16px, env(safe-area-inset-left, 0px)); }
+.ledger.active::before, .ledger.active::after { opacity: 1; height: 2px; filter: drop-shadow(0 0 6px rgba(220, 184, 114, 0.8)); }
+.ledger.active .gem { background: var(--gold); box-shadow: 0 0 12px rgba(246, 223, 164, 0.9); }
+.card-head { display: flex; justify-content: space-between; align-items: flex-end; }
+.card-head h2 { margin: 0; font-family: var(--display); font-weight: 700; font-size: 19px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--gold); }
+.card-head .total { font-family: var(--display); font-weight: 700; font-size: 34px; line-height: 1; color: var(--bone); font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 14px rgba(246, 223, 164, 0.3); }
+.record { margin: 2px 0 8px; font-size: 12.5px; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase; color: var(--ash); font-variant-numeric: tabular-nums; }
+.cols { display: grid; grid-template-columns: 1fr 1fr; column-gap: 22px; }
+.col { min-width: 0; }
+.section-label { margin: 6px 0 2px; font-size: 11.5px; font-weight: 600; letter-spacing: 0.32em; text-transform: uppercase; color: var(--gold-dim); }
 .row {
-  display: flex; justify-content: space-between; align-items: baseline; gap: 10px; width: 100%;
-  font: inherit; color: var(--parchment); background: none; border: none; border-bottom: 1px dotted var(--oak-edge);
-  padding: 2px 3px; text-align: left; cursor: default; font-size: 13.5px;
+  position: relative; display: flex; justify-content: space-between; align-items: baseline; gap: 10px; width: 100%;
+  font: inherit; font-size: 16px; font-weight: 500; letter-spacing: 0.04em; color: var(--bone); background: none; border: none;
+  padding: 2px 4px 2px 12px; text-align: left; cursor: default;
 }
-.row .val { font-variant-numeric: tabular-nums; font-weight: 700; min-width: 2.5em; text-align: right; }
-.row.filled .val { color: var(--parchment); }
-.row.filled .name { color: var(--muted); }
+.row::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(125, 103, 64, 0.5), transparent); }
+.row .val { font-variant-numeric: tabular-nums; font-weight: 600; min-width: 2.2em; text-align: right; }
+.row.filled .name { color: var(--ash); }
+.row.filled .val { color: var(--bone); }
 .row.open .val { color: var(--ember); font-weight: 500; }
-.row.open.zero .val { color: var(--muted); }
-.row.pickable { cursor: pointer; }
-.row.pickable:hover { background: rgba(202, 164, 87, 0.12); }
+.row.open.zero .val { color: rgba(163, 151, 130, 0.6); }
 .row.locked .val { color: transparent; }
-.sub { display: flex; justify-content: space-between; gap: 6px; font-size: 12px; color: var(--muted); padding: 4px 3px 0; font-variant-numeric: tabular-nums; }
+.row.pickable { cursor: pointer; }
+.row.pickable::before { content: ""; position: absolute; left: 1px; top: 50%; width: 5px; height: 5px; transform: translateY(-50%) rotate(45deg); background: var(--gold); opacity: 0; transition: opacity 0.15s; }
+.row.pickable:hover { background: linear-gradient(90deg, rgba(220, 184, 114, 0.22), rgba(220, 184, 114, 0.04) 80%, transparent); color: #fff; }
+.row.pickable:hover::before { opacity: 1; }
+.row.pickable:hover .val { color: var(--gold-hi); text-shadow: 0 0 8px rgba(246, 223, 164, 0.6); }
+.row.flash { animation: flash 1.8s ease-out; }
+@keyframes flash { 0% { background: rgba(220, 184, 114, 0.55); } 100% { background: transparent; } }
+.sub { display: flex; justify-content: space-between; gap: 6px; padding: 5px 4px 0 12px; font-size: 13px; letter-spacing: 0.06em; color: var(--ash); font-variant-numeric: tabular-nums; }
 .newgame {
-  margin-top: 10px; width: 100%; font: inherit; font-weight: 700; color: var(--soot); background: var(--brass); border: none; border-radius: 6px;
-  padding: 9px 12px; cursor: pointer;
+  margin-top: 12px; width: 100%; padding: 9px 12px; cursor: pointer; font-family: var(--display); font-weight: 700; font-size: 15px; letter-spacing: 0.24em;
+  text-transform: uppercase; color: var(--ink); background: linear-gradient(180deg, var(--gold-hi), var(--gold)); border: none;
+  clip-path: polygon(10px 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 10px 100%, 0 50%);
 }
-.rank-line { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 2px 4px 6px; }
-.rank-name { font-family: var(--display); font-size: 18px; color: var(--brass); }
-.rank-next { font-size: 12px; color: var(--muted); text-align: right; }
-.cup-chips { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
-.dock-head { display: flex; justify-content: space-between; align-items: baseline; margin: 10px 2px 4px; }
-.dock-label { font-family: var(--display); font-size: 16px; color: var(--brass); }
-.dock-note { font-size: 11px; color: var(--muted); letter-spacing: 0.03em; }
-.dice-chips { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
-.dice-chip {
-  font: inherit; color: var(--parchment); background: rgba(0, 0, 0, 0.18); border: 1px solid var(--oak-edge); border-radius: 6px;
-  padding: 4px 2px 3px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0;
-}
-.dice-chip canvas { width: 30px; height: 30px; border-radius: 5px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6); }
-.dice-chip span { font-size: 10px; line-height: 1.1; letter-spacing: -0.01em; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dice-chip small { font-size: 9.5px; color: var(--muted); line-height: 1.1; white-space: nowrap; }
-.dice-chip[aria-pressed="true"] { border-color: var(--brass); background: rgba(202, 164, 87, 0.14); }
-.dice-chip:disabled { cursor: default; opacity: 0.55; }
-.dice-chip:disabled canvas { filter: grayscale(0.85) brightness(0.7); }
-.dice-chip:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+
+/* ---- Bottom left: rank, cups and dice */
+.dock { position: absolute; left: max(16px, env(safe-area-inset-left, 0px)); bottom: 18px; width: 360px; padding: 16px 18px 12px; }
+.rank-line { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 8px; }
+.rank-name { font-family: var(--display); font-weight: 700; font-size: 20px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); }
+.rank-next { font-size: 12.5px; letter-spacing: 0.04em; color: var(--ash); text-align: right; line-height: 1.3; }
+.cup-chips { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 10px; }
 .cup-chip {
-  font: inherit; font-size: 13px; text-align: left; color: var(--parchment); background: rgba(0, 0, 0, 0.18);
-  border: 1px solid var(--oak-edge); border-radius: 6px; padding: 3px 7px; cursor: pointer; display: flex; flex-direction: column; gap: 0;
-  font-size: 12.5px;
+  position: relative; display: flex; justify-content: space-between; align-items: baseline; gap: 6px; padding: 3px 4px 3px 14px; cursor: pointer;
+  font: inherit; font-size: 15px; font-weight: 500; letter-spacing: 0.04em; color: var(--bone); background: none; border: none; text-align: left;
 }
-.test-row { display: flex; gap: 12px; padding: 6px 4px 0; }
-.test-btn { font: inherit; font-size: 12px; color: var(--muted); background: none; border: none; padding: 0; cursor: pointer;
-  text-decoration: underline; text-underline-offset: 2px; }
-.test-btn:hover { color: var(--parchment); }
-.test-btn:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+.cup-chip::before { content: ""; position: absolute; left: 2px; top: 50%; width: 6px; height: 6px; transform: translateY(-50%) rotate(45deg); border: 1px solid var(--gold-dim); }
+.cup-chip small { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ash); }
+.cup-chip:hover:not(:disabled) { background: linear-gradient(90deg, rgba(220, 184, 114, 0.16), transparent); }
+.cup-chip[aria-pressed="true"] { color: var(--gold-hi); }
+.cup-chip[aria-pressed="true"]::before { background: var(--gold); border-color: var(--gold); box-shadow: 0 0 6px rgba(246, 223, 164, 0.8); }
+.cup-chip:disabled { cursor: default; color: rgba(163, 151, 130, 0.55); }
 .cup-chip:last-child:nth-child(odd) { grid-column: 1 / -1; }
-.cup-chip small { font-size: 10.5px; color: var(--muted); letter-spacing: 0.04em; }
-.cup-chip[aria-pressed="true"] { border-color: var(--brass); background: rgba(202, 164, 87, 0.14); }
-.cup-chip:disabled { cursor: default; color: var(--muted); opacity: 0.7; }
-.cup-chip:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
-.help { font-size: 13px; color: var(--muted); line-height: 1.55; }
-.help b { color: var(--parchment); font-weight: 500; }
-.loading { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 15px; }
+.dock-head { display: flex; justify-content: space-between; align-items: baseline; margin: 12px 0 7px; padding-top: 10px; position: relative; }
+.dock-head::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 1px; background: var(--rule); opacity: 0.45; }
+.dock-label { font-family: var(--display); font-weight: 700; font-size: 15px; letter-spacing: 0.24em; text-transform: uppercase; color: var(--gold); }
+.dock-note { font-size: 11.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ash); }
+.dice-chips { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.dice-chip {
+  position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0; padding: 0 0 2px; cursor: pointer;
+  font: inherit; color: var(--bone); background: none; border: none;
+}
+.dice-chip canvas { width: 40px; height: 40px; border-radius: 4px; outline: 1px solid rgba(125, 103, 64, 0.6); outline-offset: 2px;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.7); transition: outline-color 0.2s, box-shadow 0.2s, transform 0.2s; }
+.dice-chip span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11.5px; font-weight: 500; letter-spacing: 0.04em; line-height: 1.1; }
+.dice-chip small { font-size: 10px; letter-spacing: 0.1em; color: var(--ash); line-height: 1.1; white-space: nowrap; }
+.dice-chip:hover:not(:disabled) canvas { transform: translateY(-2px); outline-color: var(--gold); }
+.dice-chip[aria-pressed="true"] canvas { outline: 2px solid var(--gold); box-shadow: 0 0 14px rgba(246, 223, 164, 0.55), 0 3px 8px rgba(0, 0, 0, 0.7); }
+.dice-chip[aria-pressed="true"] span { color: var(--gold-hi); }
+.dice-chip:disabled { cursor: default; }
+.dice-chip:disabled canvas { filter: grayscale(0.9) brightness(0.45); }
+.dice-chip:disabled span { color: rgba(163, 151, 130, 0.6); }
+.test-row { display: flex; gap: 16px; margin-top: 10px; }
+.test-btn { font: inherit; font-size: 11.5px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(163, 151, 130, 0.75); background: none; border: none; padding: 0; cursor: pointer; }
+.test-btn:hover { color: var(--bone); }
+
+/* ---- Full-screen menus: result, forfeit, leave */
+.veil {
+  position: absolute; inset: 0; z-index: 20; display: grid; place-items: center;
+  background: radial-gradient(ellipse at 50% 45%, rgba(6, 4, 3, 0.55), rgba(3, 2, 1, 0.9) 75%);
+  animation: veilIn 0.5s ease-out;
+}
+@keyframes veilIn { from { opacity: 0; } to { opacity: 1; } }
+.prompt { width: 640px; max-width: calc(100vw - 32px); padding: 34px 40px 30px; text-align: center; background: none; backdrop-filter: none; animation: promptIn 0.8s cubic-bezier(.2, .8, .2, 1); }
+.prompt::before, .prompt::after { left: 8%; right: 8%; }
+@keyframes promptIn { from { opacity: 0; transform: scale(1.06); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
+.prompt-title {
+  margin: 0; font-family: var(--display); font-weight: 700; font-size: 84px; line-height: 1; letter-spacing: 0.08em; text-transform: uppercase;
+  background: linear-gradient(180deg, #fff6dc 0%, var(--gold-hi) 35%, var(--gold) 60%, #8f6b2e 100%); -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 0 22px rgba(220, 184, 114, 0.45)) drop-shadow(0 3px 4px rgba(0, 0, 0, 0.9)); text-wrap: balance;
+}
+.prompt-title.lose { background-image: linear-gradient(180deg, #ffe0d6 0%, #f09a80 40%, var(--blood) 65%, #6e2416 100%);
+  filter: drop-shadow(0 0 22px rgba(208, 100, 74, 0.45)) drop-shadow(0 3px 4px rgba(0, 0, 0, 0.9)); }
+.prompt-title.small { font-size: 40px; letter-spacing: 0.1em; }
+.divider { display: flex; align-items: center; gap: 12px; margin: 16px auto 0; width: 70%; }
+.divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--gold)); }
+.divider::after { transform: scaleX(-1); }
+.divider i { width: 8px; height: 8px; transform: rotate(45deg); background: var(--gold); box-shadow: 0 0 8px rgba(246, 223, 164, 0.8); }
+.prompt-score { margin: 14px 0 0; font-family: var(--display); font-weight: 600; font-size: 26px; letter-spacing: 0.12em; color: var(--bone); font-variant-numeric: tabular-nums; }
+.prompt-record { margin: 6px 0 0; font-size: 14px; font-weight: 600; letter-spacing: 0.3em; text-transform: uppercase; color: var(--ash); font-variant-numeric: tabular-nums; }
+.prompt-actions { display: flex; gap: 34px; justify-content: center; margin-top: 26px; }
+.menu-btn {
+  position: relative; padding: 8px 22px; cursor: pointer; font-family: var(--display); font-weight: 700; font-size: 20px; letter-spacing: 0.22em;
+  text-transform: uppercase; color: var(--ash); background: none; border: none; transition: color 0.2s, text-shadow 0.2s;
+}
+.menu-btn::before, .menu-btn::after { content: ""; position: absolute; top: 50%; width: 7px; height: 7px; background: var(--gold); transform: translateY(-50%) rotate(45deg); opacity: 0; transition: opacity 0.2s; }
+.menu-btn::before { left: 2px; }
+.menu-btn::after { right: 2px; }
+.menu-btn:hover, .menu-btn:focus-visible, .menu-btn.primary { color: var(--bone); text-shadow: 0 0 14px rgba(246, 223, 164, 0.5); }
+.menu-btn:hover::before, .menu-btn:hover::after, .menu-btn:focus-visible::before, .menu-btn:focus-visible::after { opacity: 1; }
+.menu-btn.danger:hover, .menu-btn.danger:focus-visible { color: #ffc3b3; text-shadow: 0 0 14px rgba(208, 100, 74, 0.7); }
+.menu-btn.danger::before, .menu-btn.danger::after { background: var(--blood); }
+
+.loading { position: absolute; inset: 0; display: grid; place-items: center; align-content: center; gap: 18px; background: var(--soot);
+  font-family: var(--display); font-weight: 600; font-size: 16px; letter-spacing: 0.4em; text-transform: uppercase; color: var(--ash); }
+.loading::before { content: ""; width: 16px; height: 16px; border: 1.5px solid var(--gold); transform: rotate(45deg); animation: loadSpin 1.6s ease-in-out infinite; }
+@keyframes loadSpin { 50% { transform: rotate(225deg); background: rgba(220, 184, 114, 0.35); } 100% { transform: rotate(405deg); } }
+
+/* Entrance */
+.hud, .ledger, .dock { animation: rise 0.9s cubic-bezier(.2, .8, .2, 1) both; }
+.ledger.npc { animation-delay: 0.08s; }
+.ledger.you { animation-delay: 0.16s; }
+.dock { animation-delay: 0.24s; }
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.hud { animation-name: riseHud; }
+@keyframes riseHud { from { opacity: 0; transform: translate(-50%, -8px); } to { opacity: 1; transform: translateX(-50%); } }
 
 /* Overlay UI is laid out at 1080p sizes and zoomed with the window (see resize()). */
-.hud, .ledger, .dock, .hint, .help.panel, .toast { zoom: var(--ui, 1); }
-@media (max-width: 1060px) {
-  .hint { left: auto; right: 14px; transform: none; max-width: min(360px, calc(100% - 340px)); }
-}
+.hud, .ledger, .dock, .hint, .help.panel, .toast, .prompt { zoom: var(--ui, 1); }
 @media (max-width: 760px) {
   .app { display: flex; flex-direction: column; overflow-y: auto; }
   .stage { position: relative; flex: 0 0 58%; min-height: 340px; }
-  .ledger, .dock { position: static; flex: none; width: auto; max-height: none; border-radius: 0; border-left: none; border-right: none; box-shadow: none;
+  .ledger, .dock { position: static; flex: none; width: auto; max-height: none;
     padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-  .hud h1 { font-size: 24px; }
-  .hint { left: 50%; right: auto; transform: translateX(-50%); bottom: 10px; font-size: 13px; max-width: calc(100% - 32px); }
+  .hint { bottom: 10px; font-size: 14px; max-width: calc(100% - 32px); }
 }
-@media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
 </style>
 
 <div class="app">
   <div class="stage" id="stage">
     <canvas id="view" aria-label="Dice tray. Hold the left mouse button and move to pick up and shake the cup, release to throw."></canvas>
+    <div class="vignette" aria-hidden="true"></div>
     <div class="hud">
-      <h1>Yacht</h1>
-      <span class="turn-label" id="turnLabel" aria-live="polite">Your turn</span>
-      <div class="rolls" id="rolls"><span>Roll</span><i></i><i></i><i></i></div>
-      <button class="icon-btn" id="sound" type="button" aria-pressed="true">Sound on</button>
-      <button class="shout-btn" id="shout" type="button" title="Shout the dice on the pad back into the cup">Fus Ro Dah<span class="cool" id="shoutCool"></span></button>
-      <button class="icon-btn" id="helpBtn" type="button" aria-expanded="false" aria-controls="help">How to play</button>
-      <button class="icon-btn forfeit-btn" id="forfeitBtn" type="button" title="Forfeit this game" aria-label="Forfeit this game">
-        <svg viewBox="0 0 20 20" width="15" height="15" aria-hidden="true"><path d="M4 18V2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/><path d="M4.9 3.2c3-1.6 5.2 1.4 8.2.2l2.6-.9v8.2l-2.6.9c-3 1.2-5.2-1.8-8.2-.2z" fill="currentColor"/></svg>
-        Forfeit
-      </button>
+      <div class="banner">
+        <span class="game-name">Yacht</span>
+        <span class="turn" id="turnLabel" aria-live="polite">Your turn</span>
+        <div class="rolls" id="rolls"><span>Roll</span><i></i><i></i><i></i></div>
+      </div>
+      <div class="controls">
+        <button class="icon-btn" id="sound" type="button" aria-pressed="true" title="Sound" aria-label="Sound on">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"/><path class="wave" d="M15.5 9a4.2 4.2 0 0 1 0 6M18 6.5a7.6 7.6 0 0 1 0 11"/><path class="mute" d="M16 9.5l5 5m0-5l-5 5"/>
+          </svg>
+        </button>
+        <button class="shout-btn" id="shout" type="button" title="Shout the dice on the pad back into the cup">Fus Ro Dah<span class="cool" id="shoutCool"></span></button>
+        <button class="icon-btn" id="helpBtn" type="button" aria-expanded="false" aria-controls="help" title="How to play" aria-label="How to play">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M9.2 9.2a2.9 2.9 0 1 1 3.9 2.7c-.7.3-1.1.9-1.1 1.6v.8"/><circle cx="12" cy="17.6" r="0.6" fill="currentColor"/></svg>
+        </button>
+        <button class="icon-btn forfeit-btn" id="forfeitBtn" type="button" title="Forfeit this game" aria-label="Forfeit this game">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 18V2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/><path d="M4.9 3.2c3-1.6 5.2 1.4 8.2.2l2.6-.9v8.2l-2.6.9c-3 1.2-5.2-1.8-8.2-.2z" fill="currentColor"/></svg>
+        </button>
+      </div>
     </div>
     <div class="help panel" id="help" hidden>
+      <i class="gem"></i>
       <b>Hold</b> the left button and <b>move</b> to pick up the cup and shake it. <b>Let go</b> to flick the dice out the
       way you last moved. A die that lands off the table means throw again.
       <b>Click</b> a die to keep it on the rack; <b>drag</b> one into the cup to roll it again. The cup waits until the
@@ -213,34 +313,38 @@ canvas#view.over-die { cursor: pointer; }
     <div class="veil" id="veil" hidden>
       <div class="prompt panel" id="resultPrompt" role="dialog" aria-modal="true" aria-labelledby="resultTitle" hidden>
         <h2 class="prompt-title" id="resultTitle">You Win!</h2>
+        <div class="divider" aria-hidden="true"><i></i></div>
         <p class="prompt-score" id="resultScore"></p>
         <p class="prompt-record" id="resultRecord"></p>
         <div class="prompt-actions">
-          <button class="prompt-btn primary" id="rematchBtn" type="button">Rematch</button>
-          <button class="prompt-btn" id="leaveBtn" type="button">Leave</button>
+          <button class="menu-btn primary" id="rematchBtn" type="button">Rematch</button>
+          <button class="menu-btn" id="leaveBtn" type="button">Leave</button>
         </div>
       </div>
       <div class="prompt panel" id="forfeitPrompt" role="dialog" aria-modal="true" aria-labelledby="forfeitTitle" hidden>
         <h2 class="prompt-title small" id="forfeitTitle">Forfeit this game?</h2>
-        <p class="prompt-score">It counts as a loss.</p>
+        <div class="divider" aria-hidden="true"><i></i></div>
+        <p class="prompt-record">It counts as a loss</p>
         <div class="prompt-actions">
-          <button class="prompt-btn danger" id="forfeitYes" type="button">Forfeit</button>
-          <button class="prompt-btn" id="forfeitNo" type="button">Keep playing</button>
+          <button class="menu-btn danger" id="forfeitYes" type="button">Forfeit</button>
+          <button class="menu-btn" id="forfeitNo" type="button">Keep playing</button>
         </div>
       </div>
       <div class="prompt panel" id="leftPrompt" role="dialog" aria-modal="true" aria-labelledby="leftTitle" hidden>
-        <h2 class="prompt-title small" id="leftTitle">You get up from the table.</h2>
+        <h2 class="prompt-title small" id="leftTitle">You leave the table</h2>
+        <div class="divider" aria-hidden="true"><i></i></div>
         <p class="prompt-record" id="leftRecord"></p>
         <div class="prompt-actions">
-          <button class="prompt-btn primary" id="sitBtn" type="button">Sit down again</button>
+          <button class="menu-btn primary" id="sitBtn" type="button">Sit down again</button>
         </div>
       </div>
     </div>
-    <div class="loading" id="loading">Setting up the table…</div>
-
+    <div class="loading" id="loading">Setting up the table</div>
   </div>
+
   <aside class="ledger npc panel" aria-label="Opponent's scorecard">
-    <h2>Opponent <span id="ntotal">0</span></h2>
+    <i class="gem"></i>
+    <div class="card-head"><h2>Opponent</h2><span class="total" id="ntotal">0</span></div>
     <div class="record" id="nrecord">Record 0–0</div>
     <div class="cols">
       <div class="col" id="ncolUpper"></div>
@@ -249,7 +353,8 @@ canvas#view.over-die { cursor: pointer; }
   </aside>
 
   <aside class="ledger you panel" aria-label="Your scorecard">
-    <h2>You <span id="total">0</span></h2>
+    <i class="gem"></i>
+    <div class="card-head"><h2>You</h2><span class="total" id="total">0</span></div>
     <div class="record" id="record">Record 0–0</div>
     <div class="cols">
       <div class="col" id="colUpper"></div>
@@ -259,6 +364,7 @@ canvas#view.over-die { cursor: pointer; }
   </aside>
 
   <aside class="dock panel" aria-label="Rank, cups and dice">
+    <i class="gem"></i>
     <div class="rank-line"><span class="rank-name" id="rankName">Novice</span><span class="rank-next" id="rankNext"></span></div>
     <div class="cup-chips" id="cupChips" role="group" aria-label="Choose a cup"></div>
     <div class="dock-head"><span class="dock-label">Dice</span><span class="dock-note" id="diceNote">Sold by innkeepers</span></div>
@@ -1022,7 +1128,8 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   }
   $("sound").addEventListener("click", () => {
     soundOn = !soundOn;
-    $("sound").textContent = soundOn ? "Sound on" : "Sound off";
+    $("sound").classList.toggle("off", !soundOn);
+    $("sound").setAttribute("aria-label", soundOn ? "Sound on" : "Sound off");
     $("sound").setAttribute("aria-pressed", String(soundOn));
   });
 
@@ -1167,7 +1274,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   function showPrompt(id) {
     for (const p of ["resultPrompt", "forfeitPrompt", "leftPrompt"]) $(p).hidden = p !== id;
     $("veil").hidden = !id;
-    if (id) { const b = $(id).querySelector(".prompt-btn"); if (b) setTimeout(() => b.focus(), 50); }
+    if (id) { const b = $(id).querySelector(".menu-btn"); if (b) setTimeout(() => b.focus(), 50); }
   }
 
   // outcome: "win", "lose", "draw" or "forfeit" (a loss)
@@ -1191,7 +1298,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     const title = $("resultTitle");
     title.textContent = outcome === "win" ? "You Win!" : outcome === "draw" ? "A Draw" : "You Lose!";
     title.classList.toggle("lose", outcome === "lose" || outcome === "forfeit");
-    $("resultScore").textContent = outcome === "forfeit" ? "You forfeited." : `${mine} to ${theirs}`;
+    $("resultScore").textContent = outcome === "forfeit" ? "You forfeited" : `${mine}  —  ${theirs}`;
     $("resultRecord").textContent = recordText(r, false).replace("Record", "Your record");
     setTimeout(() => showPrompt("resultPrompt"), outcome === "forfeit" ? 0 : 700);
     finishGame(outcome === "forfeit" ? 0 : mine);
@@ -1557,9 +1664,13 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     }
     $("newgame").hidden = phase !== "over";
     $("forfeitBtn").disabled = phase === "over";
-    document.querySelector(".ledger.you").classList.toggle("turn", mine && phase !== "over");
-    document.querySelector(".ledger.npc").classList.toggle("turn", !mine && phase !== "over");
-    $("turnLabel").textContent = phase === "over" ? "Game over" : mine ? "Your turn" : "Their turn";
+    document.querySelector(".ledger.you").classList.toggle("active", mine && phase !== "over");
+    document.querySelector(".ledger.npc").classList.toggle("active", !mine && phase !== "over");
+    const label = phase === "over" ? "Game over" : mine ? "Your turn" : "Their turn";
+    const tl = $("turnLabel");
+    if (tl.textContent !== label) { tl.textContent = label; tl.classList.remove("flip"); void tl.offsetWidth; tl.classList.add("flip"); }
+    tl.classList.toggle("theirs", !mine && phase !== "over");
+    $("hint").classList.toggle("waiting", !mine || phase === "pouring" || phase === "rolling");
     document.querySelectorAll("#rolls i").forEach((dot, k) => dot.classList.toggle("used", k < rollsUsed));
     const hint = $("hint");
     if (phase === "over") hint.textContent = "Game over. Start a new game from your scorecard.";
