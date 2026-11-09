@@ -1,4 +1,4 @@
-SkyrimYacht 0.3.2
+SkyrimYacht 0.3.3
 =================
 
 A game of Yacht (Yahtzee) you play against Skyrim's NPCs, with a cup you shake and dice that tumble.
@@ -15,7 +15,7 @@ dice and bet 25 to 100 septims. The table sits in front of you; your controls ar
 Cups: score 150, 200, 250 and 300 in a game for the Goblet, the Dwemer Cup, the Silver Goblet and the Golden Goblet.
 Dice: every ten wins, innkeepers have a finer set for sale. Ask any innkeeper "Got any dice for sale?".
 
-Settings: Data\SKSE\Plugins\SkyrimYacht.ini (volume, table size and position, bets).
+Settings: in game with SKSE Menu Framework (Mod Control Panel > Yacht), or Data\SKSE\Plugins\SkyrimYacht.ini.
 Log: Documents\My Games\Skyrim Special Edition\SKSE\SkyrimYacht.log
 
 Source and license (GPL-3.0): https://github.com/evodube/SkyrimYacht

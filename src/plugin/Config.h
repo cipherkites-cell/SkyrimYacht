@@ -33,5 +33,7 @@ namespace Config
 	};
 
 	const Values& Get();
+	Values&       Edit();  // the in-game settings page changes these live
 	void          Load();
+	void          Save();  // writes them back to the INI
 }

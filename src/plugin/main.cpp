@@ -12,6 +12,7 @@
 // You should have received a copy of the GNU General Public License along with this program (LICENSE.txt).
 // If not, see <https://www.gnu.org/licenses/>.
 
+#include "Menu.h"
 #include "Config.h"
 #include "Game.h"
 #include "Overlay.h"
@@ -122,6 +123,9 @@ namespace
 	void OnMessage(SKSE::MessagingInterface::Message* a_msg)
 	{
 		switch (a_msg->type) {
+		case SKSE::MessagingInterface::kPostLoad:
+			Menu::Register();
+			break;
 		case SKSE::MessagingInterface::kDataLoaded:
 			Game::OnDataLoaded();
 			if (SafeInstallPresentHook()) {

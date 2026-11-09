@@ -45,6 +45,33 @@ namespace Config
 	}
 
 	const Values& Get() { return g_values; }
+	Values&       Edit() { return g_values; }
+
+	void Save()
+	{
+		const auto& v = g_values;
+		auto put = [](const char* a_section, const char* a_key, const std::string& a_value) {
+			::WritePrivateProfileStringA(a_section, a_key, a_value.c_str(), kPath);
+		};
+		auto f = [](float a_v) { return fmt::format("{:.2f}", a_v); };
+		put("Play", "MinBet", std::to_string(v.minBet));
+		put("Play", "MaxBet", std::to_string(v.maxBet));
+		put("Play", "TableReach", f(v.tableReach));
+		put("Play", "MouseSpeed", f(v.mouseSpeed));
+		put("Play", "UiScale", f(v.uiScale));
+		put("Play", "Volume", f(v.volume));
+		put("Play", "PauseGame", v.pauseGame ? "1" : "0");
+		put("Table", "Mode", std::to_string(v.mode));
+		put("Table", "Distance", f(v.distance));
+		put("Table", "Brightness", f(v.brightness));
+		put("Table", "TiltDegrees", f(v.tiltDeg));
+		put("Table", "FitWidth", f(v.fitWidth));
+		put("Table", "CenterX", f(v.centerX));
+		put("Table", "CenterY", f(v.centerY));
+		put("Table", "FlipTilt", v.flipTilt ? "1" : "0");
+		put("Debug", "Overlay", v.debugOverlay ? "1" : "0");
+		spdlog::info("Settings saved");
+	}
 
 	void Load()
 	{
