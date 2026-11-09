@@ -509,7 +509,7 @@ namespace Scene
 				m->menuFlags.set(Flag::kDisablePauseMenu, Flag::kUsesMenuContext, Flag::kCustomRendering, Flag::kRequiresUpdate);
 				// Paused, the world stops drawing new things; the table (in the world) needs it running. Your controls are
 				// held by the table either way, and the opponent stays in their seat.
-				if (Config::Get().pauseGame || Config::Get().mode != 2) {
+				if (Config::Get().pauseGame || Config::Get().mode == 1) {  // the item view only draws while paused
 					m->menuFlags.set(Flag::kPausesGame);
 				}
 				m->depthPriority = 10;

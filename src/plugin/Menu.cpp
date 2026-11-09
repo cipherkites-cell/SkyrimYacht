@@ -93,7 +93,7 @@ namespace Menu
 			Changed(UI::SliderFloat("Interface size", &v.uiScale, 0.6f, 1.6f, "%.2f"));
 			Hint("Takes effect the next time the game starts.");
 			Changed(UI::Checkbox("Pause the world while playing", &v.pauseGame));
-			Hint("In the room only (the other ways always pause).");
+			Hint("Applies to the next table. The item view always pauses.");
 			SaveRow();
 		}
 
