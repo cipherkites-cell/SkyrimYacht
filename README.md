@@ -61,6 +61,6 @@ g++ -std=c++20 -O2 -o build/yacht_test tests/yacht_test.cpp src/sim/Yacht.cpp &&
 
 `tools/nif2json.py` reads Skyrim SE meshes (BSTriShape) and `tools/make_local_cups.py` turns a folder of the four
 cups' `.nif` and `.dds` files into `local-assets/cups.js`. `LOCAL=1 ./preview/build.sh` then writes
-`preview/yacht-local.html`, which shows the real Tankard, Dwemer Cup, Glazed Goblet, Silver Goblet and Thieves Guild Golden Goblet. Both outputs
+`preview/yacht-local.html`, which shows the real Tankard, Glazed Goblet, Dwemer Cup, Silver Goblet and Thieves Guild Golden Goblet. Both outputs
 hold Bethesda's assets, so they are git-ignored and never published; the plugin uses the vanilla meshes from the
 player's own game.

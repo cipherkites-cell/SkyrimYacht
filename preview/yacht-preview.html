@@ -1,7 +1,7 @@
 <title>Yacht Dice Cup</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;500;600&family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=Fondamento&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;500;600&family=Crimson+Pro:ital,wght@0,500;0,600;1,500&family=IM+Fell+English+SC&family=Fondamento&display=swap">
 <style>
 /* Skyrim's own interface language: off-white condensed capitals on smoke-black gradients, thin rules that fade at the
    ends, a compass across the top, key prompts in the corner. The scorecards are notes on parchment, written in ink. */
@@ -12,13 +12,13 @@
   --line: rgba(241, 238, 232, 0.62);
   --frost: #cfe2ff;       /* the Thu'um */
   --blood: #d06a52;       /* defeat, forfeit */
-  --ink: #2a1c11;         /* ink on parchment */
-  --ink-soft: #5e4631;
-  --rubric: #8e2f1b;      /* red ink: headings and pencilled previews */
+  --ink: #1b1109;         /* ink on parchment */
+  --ink-soft: #46321f;
+  --rubric: #8a2210;      /* red ink: headings and pencilled previews */
   --soot: #0d0a08;
   --ui: 1;
   --sans: "Barlow Condensed", "Futura Condensed", "Arial Narrow", "Roboto Condensed", system-ui, sans-serif;
-  --book: "IM Fell English", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  --book: "Crimson Pro", "Palatino Linotype", "Book Antiqua", Georgia, serif;
   --book-sc: "IM Fell English SC", "IM Fell English", "Palatino Linotype", Georgia, serif;
   --hand: "Fondamento", "IM Fell English", "Palatino Linotype", Georgia, serif;
   --fade-rule: linear-gradient(90deg, transparent, var(--line) 18%, var(--line) 82%, transparent);
@@ -154,9 +154,9 @@ button { font: inherit; color: inherit; }
 
 /* ---- Tally sheets: notes on parchment (the texture is drawn at load, see paintParchment) */
 .ledger {
-  position: absolute; top: 18px; width: 384px; padding: 22px 30px 22px 30px; color: var(--ink);
+  position: absolute; top: 16px; width: 430px; padding: 18px 32px 16px 32px; color: var(--ink);
   background: #d6bf95 center / 100% 100% no-repeat; font-family: var(--book);
-  filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.75)) brightness(0.52) saturate(0.7);
+  filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.75)) brightness(0.84) saturate(0.85);
   transition: filter 0.6s, transform 0.6s;
 }
 .ledger.you { right: max(22px, env(safe-area-inset-right, 0px)); transform: rotate(0.7deg); }
@@ -165,23 +165,23 @@ button { font: inherit; color: inherit; }
 .ledger.you.active { transform: rotate(0.7deg) translateY(2px) scale(1.012); }
 .ledger.npc.active { transform: rotate(-0.8deg) translateY(2px) scale(1.012); }
 .card-head { display: flex; justify-content: space-between; align-items: flex-end; }
-.card-head h2 { margin: 0; font-family: var(--book-sc); font-weight: 400; font-size: 27px; line-height: 1; letter-spacing: 0.04em; color: var(--ink); }
-.card-head .total { font-family: var(--hand); font-size: 40px; line-height: 0.9; color: var(--ink); font-variant-numeric: tabular-nums; }
-.record { margin: 3px 0 8px; font-style: italic; font-size: 15px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.card-head h2 { margin: 0; font-family: var(--book-sc); font-weight: 400; font-size: 30px; line-height: 1; letter-spacing: 0.04em; color: var(--ink); }
+.card-head .total { font-family: var(--hand); font-size: 44px; -webkit-text-stroke: 0.6px var(--ink); line-height: 0.9; color: var(--ink); font-variant-numeric: tabular-nums; }
+.record { margin: 3px 0 8px; font-style: italic; font-weight: 500; font-size: 17px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
 .cols { display: grid; grid-template-columns: 1fr 1.18fr; column-gap: 22px; }
 .col { min-width: 0; }
-.section-label { margin: 4px 0 1px; font-family: var(--book-sc); font-size: 15px; letter-spacing: 0.08em; color: var(--rubric); }
+.section-label { margin: 4px 0 1px; font-family: var(--book-sc); font-size: 17px; letter-spacing: 0.08em; color: var(--rubric); }
 .row {
   position: relative; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; width: 100%;
-  font-family: var(--book); font-size: 17.5px; line-height: 1.2; color: var(--ink); background: none; border: none;
+  font-family: var(--book); font-weight: 500; font-size: 20.5px; line-height: 1.16; color: var(--ink); background: none; border: none;
   padding: 1px 2px 1px 10px; text-align: left; cursor: default; border-radius: 2px;
 }
-.row::after { content: ""; position: absolute; left: 6px; right: 0; bottom: 1px; border-bottom: 1px dotted rgba(42, 28, 17, 0.35); }
+.row::after { content: ""; position: absolute; left: 6px; right: 0; bottom: 1px; border-bottom: 1px dotted rgba(27, 17, 9, 0.28); }
 .row .name { white-space: nowrap; }
-.row .val { font-family: var(--hand); font-size: 20px; line-height: 1; min-width: 1.8em; text-align: right; font-variant-numeric: tabular-nums; }
+.row .val { font-family: var(--hand); font-size: 24px; -webkit-text-stroke: 0.4px currentColor; line-height: 1; min-width: 1.8em; text-align: right; font-variant-numeric: tabular-nums; }
 .row.filled .name { color: var(--ink-soft); }
-.row.open .val { color: var(--rubric); font-style: italic; opacity: 0.85; }
-.row.open.zero .val { opacity: 0.45; }
+.row.open .val { color: var(--rubric); }
+.row.open.zero .val { opacity: 0.55; }
 .row.locked .val { color: transparent; }
 .row.pickable { cursor: pointer; }
 .row.pickable::before { content: ""; position: absolute; left: 0; top: 50%; width: 5px; height: 5px; transform: translateY(-50%) rotate(45deg); background: var(--rubric); opacity: 0; transition: opacity 0.15s; }
@@ -190,7 +190,7 @@ button { font: inherit; color: inherit; }
 .row.pickable:hover .val { opacity: 1; }
 .row.flash .val { animation: ink 0.9s ease-out both; }
 @keyframes ink { from { clip-path: inset(0 100% 0 0); filter: blur(1px); } to { clip-path: inset(0 0 0 0); filter: none; } }
-.sub { display: flex; justify-content: space-between; gap: 6px; padding: 3px 2px 0 10px; font-style: italic; font-size: 14.5px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.sub { display: flex; justify-content: space-between; gap: 6px; padding: 3px 2px 0 10px; font-style: italic; font-weight: 500; font-size: 16.5px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
 .newgame {
   display: block; margin: 14px auto 0; padding: 7px 26px; cursor: pointer; font-family: var(--book-sc); font-size: 19px; letter-spacing: 0.08em;
   color: #f3e3c7; background: radial-gradient(circle at 50% 40%, #9c2d1c, #5f160b); border: none; border-radius: 3px;
@@ -219,7 +219,7 @@ button { font: inherit; color: inherit; }
   font-size: 13px; font-weight: 500; letter-spacing: 0.32em; text-transform: uppercase; color: var(--grey); position: relative; }
 .list-head::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: linear-gradient(90deg, var(--line), transparent); }
 .dock-note { font-weight: 400; letter-spacing: 0.14em; font-size: 12px; }
-.cup-list { display: grid; grid-template-columns: 1fr 1fr; column-gap: 18px; }
+.cup-list { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: repeat(3, auto); grid-auto-flow: column; column-gap: 18px; }
 .cup-chip {
   position: relative; display: flex; justify-content: space-between; align-items: baseline; gap: 6px; padding: 3px 4px 3px 14px; cursor: pointer;
   font-size: 18px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--grey); background: none; border: none; text-align: left; transition: color 0.15s;
@@ -230,7 +230,6 @@ button { font: inherit; color: inherit; }
 .cup-chip[aria-pressed="true"]::before { content: ""; position: absolute; left: 1px; top: 50%; width: 0; height: 0; transform: translateY(-50%);
   border-left: 6px solid var(--white); border-top: 4px solid transparent; border-bottom: 4px solid transparent; }
 .cup-chip:disabled { cursor: default; color: var(--dim); }
-.cup-chip:last-child:nth-child(odd) { grid-column: 1 / -1; }
 .dice-chips { display: grid; grid-template-columns: repeat(5, 1fr); gap: 9px 8px; }
 .dice-chip { position: relative; display: grid; place-items: center; padding: 3px 0; cursor: pointer; background: none; border: none; }
 .dice-chip canvas { width: 46px; height: 46px; border-radius: 4px; box-shadow: 0 3px 8px rgba(0, 0, 0, 0.8); outline: 1px solid rgba(241, 238, 232, 0.2); outline-offset: 2px;
@@ -702,17 +701,23 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   for (const sx of [-1, 1]) for (const sy of [-1, 1]) {
     const cx = sx * (S.X + wallT / 2), cy = sy * (S.Yh + wallT / 2);
     // Along the long wall and the short wall, on top
-    box(strap, sw, th, cx - sx * (strap / 2 - wallT / 2), cy, top + th / 2, ironMat);
-    box(sw, strap, th, cx, cy - sy * (strap / 2 - wallT / 2), top + th / 2, ironMat);
-    // Down the two outside faces
-    box(sw, th, wallH, cx - sx * 0.3, cy + sy * (wallT / 2 + th / 2), wallH / 2 - 0.2, ironMat);
-    box(th, sw, wallH, cx + sx * (wallT / 2 + th / 2), cy - sy * 0.3, wallH / 2 - 0.2, ironMat);
+    // Flush with the outside edge, so they meet the straps coming up the faces.
+    const ey = cy + sy * (wallT - sw) / 2, ex = cx + sx * (wallT - sw) / 2;
+    box(strap, sw, th, cx - sx * (strap / 2 - wallT / 2), ey, top + th / 2, ironMat);
+    box(sw, strap, th, ex, cy - sy * (strap / 2 - wallT / 2), top + th / 2, ironMat);
+    // Down the two outside faces, flush with the corner so they wrap it like the bracket on top, and on down over
+    // the base board.
+    const bot = -0.51, hh = top + th - bot, zc = (top + th + bot) / 2, ox = sx * (S.X + wallT), oy = sy * (S.Yh + wallT);
+    box(sw + th, th, hh, ox - sx * (sw - th) / 2, oy + sy * th / 2, zc, ironMat);
+    box(th, sw + th, hh, ox + sx * th / 2, oy - sy * (sw - th) / 2, zc, ironMat);
     for (const k of [0.35, 1.2, 2.0]) {
-      rivet(cx - sx * k, cy, top + th, 0, 0, 1);
-      rivet(cx, cy - sy * k, top + th, 0, 0, 1);
+      rivet(cx - sx * k, ey, top + th, 0, 0, 1);
+      rivet(ex, cy - sy * k, top + th, 0, 0, 1);
     }
-    rivet(cx - sx * 0.3, cy + sy * (wallT / 2 + th), wallH * 0.6, 0, sy, 0);
-    rivet(cx + sx * (wallT / 2 + th), cy - sy * 0.3, wallH * 0.6, sx, 0, 0);
+    for (const z of [wallH * 0.6, -0.26]) {
+      rivet(ox - sx * sw / 2, oy + sy * th, z, 0, sy, 0);
+      rivet(ox + sx * th, oy - sy * sw / 2, z, sx, 0, 0);
+    }
   }
   // Nails along the long walls
   for (let x = -S.X + 3; x <= S.X - 3; x += 3.2) for (const sy of [-1, 1]) rivet(x, sy * (S.Yh + wallT / 2), top, 0, 0, 1);
@@ -980,8 +985,8 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   // window.LOCAL_CUPS, scaled to that radius, each with its real inside depth.
   const CUPS = [
     { id: "tankard", name: "Tankard", rank: "Novice", need: 0 },
-    { id: "dwemer", name: "Dwemer Cup", rank: "Apprentice", need: 150 },
-    { id: "goblet", name: "Goblet", rank: "Adept", need: 200 },
+    { id: "goblet", name: "Goblet", rank: "Apprentice", need: 150 },
+    { id: "dwemer", name: "Dwemer Cup", rank: "Adept", need: 200 },
     { id: "silver", name: "Silver Goblet", rank: "Expert", need: 250 },
     { id: "golden", name: "Golden Goblet", rank: "Master", need: 300 },
   ];
@@ -1157,26 +1162,28 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   // die's material and what it hit (another die, the linen, the tray's wood, the cup), as hard as the impact, panned to
   // where it happened, in a small tavern room. Dice rolling on the linen and rattling in the cup are continuous layers.
   let audio = null, master = null, noiseBuf = null, soundOn = true, recent = 0, sfx = null, voices = 0;
-  let roomIR = null, hallIR = null, rollGain = null, rattleGain = null, rattleBand = null;
+  let roomSend = null, roomIR = null, hallIR = null, rollGain = null, rattleGain = null, rattleBand = null;
   const bufCache = new Map();
-  // Modes as [frequency Hz, decay s, amplitude]. Small dice ring high; precious metal rings longest.
+  // Modes as [frequency Hz, decay s, amplitude]. A die is a small hard block: its own resonances die in a few
+  // milliseconds, so what you hear is a dry clack, coloured by the material, plus whatever it struck.
   const DIE_MODES = {
-    bone: [[2950, 0.014, 1], [5200, 0.010, 0.6], [7600, 0.007, 0.35], [1350, 0.012, 0.25]],
-    metal: [[4300, 0.05, 1], [6950, 0.036, 0.55], [9700, 0.026, 0.35], [12300, 0.018, 0.2]],
-    precious: [[3500, 0.075, 1], [5950, 0.055, 0.5], [8800, 0.038, 0.3], [11200, 0.026, 0.15]],
-    stone: [[2500, 0.022, 1], [4550, 0.016, 0.55], [7100, 0.011, 0.3]],
-    ice: [[3900, 0.04, 1], [7500, 0.03, 0.55], [10400, 0.022, 0.35]],
+    bone: [[2300, 0.006, 1], [3600, 0.005, 0.8], [5200, 0.004, 0.6], [7300, 0.003, 0.4], [9800, 0.0025, 0.25]],
+    metal: [[3400, 0.018, 1], [5100, 0.014, 0.7], [7700, 0.011, 0.5], [10600, 0.008, 0.3]],
+    precious: [[3000, 0.024, 1], [4700, 0.018, 0.65], [7100, 0.013, 0.45], [9900, 0.009, 0.25]],
+    stone: [[2100, 0.007, 1], [3400, 0.006, 0.8], [5400, 0.005, 0.55], [7900, 0.004, 0.35]],
+    ice: [[2900, 0.012, 1], [4800, 0.01, 0.7], [7600, 0.008, 0.5], [10900, 0.006, 0.3]],
   };
   const DIE_MAT = { bone: "bone", dragonbone: "bone", iron: "metal", steel: "metal", corundum: "metal", dwemer: "metal",
     orichalcum: "metal", ebony: "metal", daedric: "metal", silver: "precious", quicksilver: "precious", gold: "precious",
     malachite: "stone", moonstone: "stone", stalhrim: "ice" };
+  // What the dice strike: the cup (hollow wood, or a metal goblet that rings), the tray's wood, linen over boards.
   const CUP_MODES = {
-    wood: [[310, 0.07, 1], [720, 0.05, 0.6], [1460, 0.03, 0.35], [2600, 0.018, 0.2]],
-    metal: [[1180, 0.42, 1], [2710, 0.3, 0.6], [4890, 0.2, 0.4], [7620, 0.12, 0.25]],
+    wood: [[240, 0.04, 1], [520, 0.03, 0.8], [960, 0.02, 0.6], [1700, 0.012, 0.4], [2900, 0.007, 0.25]],
+    metal: [[1250, 0.16, 0.7], [2800, 0.12, 0.5], [4900, 0.08, 0.35], [7400, 0.05, 0.2], [600, 0.02, 0.4]],
   };
   const CUP_MAT = { tankard: "wood", dwemer: "metal", goblet: "metal", silver: "metal", golden: "metal" };
-  const TRAY_MODES = [[195, 0.05, 0.8], [430, 0.04, 0.6], [810, 0.025, 0.4], [1390, 0.016, 0.25]];
-  const LINEN_MODES = [[150, 0.035, 0.9], [290, 0.02, 0.5], [520, 0.012, 0.25]];
+  const TRAY_MODES = [[210, 0.032, 1], [470, 0.024, 0.8], [880, 0.016, 0.6], [1550, 0.01, 0.4], [2600, 0.006, 0.25]];
+  const LINEN_MODES = [[160, 0.022, 1], [330, 0.016, 0.7], [610, 0.01, 0.45], [1050, 0.006, 0.25]];
   const dieTune = [0.97, 1.0, 1.035, 0.985, 1.02];  // every die has its own voice
   let curDiceStyle = "bone";
 
@@ -1191,6 +1198,11 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
         d[i] = lp * Math.exp(-t / decay) * Math.min(1, t / 0.004);
       }
       for (const [ms, g] of early) { const i = Math.floor((ms + ch * 1.7) / 1000 * sr); if (i < n) d[i] += g * (Math.random() < 0.5 ? -1 : 1); }
+      // Fixed energy, so the send level means what it says.
+      let e = 0;
+      for (let i = 0; i < n; i++) e += d[i] * d[i];
+      const k = Math.sqrt(1 / Math.max(e, 1e-9));
+      for (let i = 0; i < n; i++) d[i] *= k;
     }
     return b;
   }
@@ -1199,7 +1211,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     try {
       audio = ctx || new (window.AudioContext || window.webkitAudioContext)();
       const comp = audio.createDynamicsCompressor();
-      comp.threshold.value = -16; comp.knee.value = 10; comp.ratio.value = 4; comp.attack.value = 0.003; comp.release.value = 0.18;
+      comp.threshold.value = -6; comp.knee.value = 6; comp.ratio.value = 3; comp.attack.value = 0.004; comp.release.value = 0.15;  // only catches the loudest moments
       master = audio.createGain(); master.gain.value = 0.85;
       master.connect(comp); comp.connect(audio.destination);
       noiseBuf = audio.createBuffer(1, audio.sampleRate * 2, audio.sampleRate);
@@ -1209,40 +1221,44 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
       roomIR = makeIR(1.3, 0.28, [[9, 0.5], [14, 0.35], [23, 0.3], [31, 0.22], [44, 0.15]]);
       hallIR = makeIR(3.4, 0.95, [[60, 0.45], [130, 0.35], [210, 0.25]]);
       sfx = audio.createGain(); sfx.gain.value = 1;
-      const room = audio.createConvolver(); room.buffer = roomIR;
-      const send = audio.createGain(); send.gain.value = 0.2;
+      const room = audio.createConvolver(); room.normalize = false; room.buffer = roomIR;
+      const send = audio.createGain(); send.gain.value = 0.1; roomSend = send;
       sfx.connect(master); sfx.connect(send); send.connect(room); room.connect(master);
-      // Rolling on the linen: a soft broadband scuff. The cup rattle rings at the cup's own pitch.
+      // Dice sliding and rolling on the linen: a soft scuff under the knocks.
       const roll = audio.createBufferSource(); roll.buffer = noiseBuf; roll.loop = true;
       const rbp = audio.createBiquadFilter(); rbp.type = "bandpass"; rbp.frequency.value = 900; rbp.Q.value = 0.6;
       const rlp = audio.createBiquadFilter(); rlp.type = "lowpass"; rlp.frequency.value = 2600;
       rollGain = audio.createGain(); rollGain.gain.value = 0;
       roll.connect(rbp); rbp.connect(rlp); rlp.connect(rollGain); rollGain.connect(sfx); roll.start();
-      const rat = audio.createBufferSource(); rat.buffer = noiseBuf; rat.loop = true; rat.loopStart = 0.7;
-      rattleBand = audio.createBiquadFilter(); rattleBand.type = "bandpass"; rattleBand.frequency.value = 1500; rattleBand.Q.value = 1.4;
-      rattleGain = audio.createGain(); rattleGain.gain.value = 0;
-      rat.connect(rattleBand); rattleBand.connect(rattleGain); rattleGain.connect(sfx); rat.start();
     } catch (e) { audio = null; }
   }
 
   // A struck object as a buffer: damped modes plus a short noise click for the contact itself.
   function strike(modes, len, clickAmp, clickTone) {
     const sr = audio.sampleRate, n = Math.ceil(len * sr), b = audio.createBuffer(1, n, sr), o = b.getChannelData(0);
-    for (const [f0, dec, a] of modes) {
-      const w = (2 * Math.PI * f0 * (1 + (Math.random() - 0.5) * 0.05)) / sr, k = Math.exp(-1 / (dec * sr)), ph = Math.random() * 6.283;
-      let env = a * (0.85 + Math.random() * 0.3);
-      for (let i = 0; i < n && env > 1e-5; i++) { o[i] += env * Math.sin(w * i + ph); env *= k; }
+    for (const [fm, dec, am] of modes) {
+      for (const [r, ra] of [[1, 1], [1 + 0.04 * (Math.random() + 0.5), 0.55], [1 - 0.035 * (Math.random() + 0.5), 0.45]]) {
+        const f = fm * r * (1 + (Math.random() - 0.5) * 0.06);
+        if (f > sr * 0.45) continue;
+        const w = (2 * Math.PI * f) / sr, k = Math.exp(-1 / (dec * (0.7 + Math.random() * 0.6) * sr)), ph = Math.random() * 6.283;
+        let env = am * ra * (0.7 + Math.random() * 0.6);
+        for (let i = 0; i < n && env > 1e-5; i++) { o[i] += env * Math.sin(w * i + ph); env *= k; }
+      }
     }
-    let lp = 0;
-    const cn = Math.min(n, Math.floor(sr * 0.008));
-    for (let i = 0; i < cn; i++) { lp += (Math.random() * 2 - 1 - lp) * clickTone; o[i] += lp * clickAmp * Math.exp(-i / (sr * 0.0012)); }
+    // The contact itself: a sharp burst of noise, which is most of a dice click.
+    let lp = 0, lp2 = 0;
+    const cn = Math.min(n, Math.floor(sr * 0.01));
+    for (let i = 0; i < cn; i++) {
+      lp += (Math.random() * 2 - 1 - lp) * clickTone; lp2 += (lp - lp2) * Math.min(1, clickTone * 1.6);
+      o[i] += (lp - lp2 * 0.6) * clickAmp * Math.exp(-i / (sr * 0.0009));
+    }
     let peak = 0;
     for (let i = 0; i < n; i++) { if (i < 24) o[i] *= i / 24; peak = Math.max(peak, Math.abs(o[i])); }
     if (peak > 0) for (let i = 0; i < n; i++) o[i] *= 0.9 / peak;
     return b;
   }
   const scaled = (modes, amp, pitch) => modes.map(([f, d, a]) => [f * (pitch || 1), d, a * amp]);
-  const ringLen = (modes) => Math.min(1.6, Math.max(...modes.map((m) => m[1])) * 7 + 0.02);
+  const ringLen = (modes) => Math.min(1.2, Math.max(...modes.map((m) => m[1])) * 9 + 0.03);
   function hitSet(surf, dieMat, cupMat) {
     const key = surf + dieMat + (surf === "cup" ? cupMat : "");
     let set = bufCache.get(key);
@@ -1251,10 +1267,10 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     set = [];
     for (let v = 0; v < 5; v++) {
       let modes, click, tone;
-      if (surf === "die") { modes = [...dm, ...scaled(dm, 0.8, 1.07)]; click = 0.6; tone = 0.6; }
-      else if (surf === "felt") { modes = [...LINEN_MODES, ...scaled(dm, 0.12)]; click = 0.55; tone = 0.07; }
-      else if (surf === "wall") { modes = [...TRAY_MODES, ...scaled(dm, 0.45)]; click = 0.5; tone = 0.3; }
-      else { modes = [...CUP_MODES[cupMat], ...scaled(dm, 0.4)]; click = 0.45; tone = 0.25; }
+      if (surf === "die") { modes = [...dm, ...scaled(dm, 0.85, 1.09)]; click = 3.2; tone = 0.85; }
+      else if (surf === "felt") { modes = [...LINEN_MODES, ...scaled(dm, 0.3)]; click = 1.4; tone = 0.18; }
+      else if (surf === "wall") { modes = [...TRAY_MODES, ...scaled(dm, 0.6)]; click = 2.2; tone = 0.5; }
+      else { modes = [...CUP_MODES[cupMat], ...scaled(dm, 0.55)]; click = 2.0; tone = 0.45; }
       set.push(strike(modes, ringLen(modes), click, tone));
     }
     bufCache.set(key, set);
@@ -1282,7 +1298,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     if (audio.createStereoPanner) {
       const p = audio.createStereoPanner();
       const x = die >= 0 ? state()[die * 11] : cup.x;
-      p.pan.value = THREE.MathUtils.clamp(x / (S.X + 6), -1, 1) * 0.7;
+      p.pan.value = THREE.MathUtils.clamp(x / (S.X + 6), -1, 1) * 0.5;
       g.connect(p); out = p;
     }
     out.connect(sfx);
@@ -1296,21 +1312,18 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   let bedsPrimed = false;
   function updateBeds(dt, st) {
     if (!audio || !rollGain) return;
-    let rolling = 0, rattle = 0;
-    const cupSpeed = Math.hypot(cup.vx || 0, cup.vy || 0, cup.vz || 0);
+    let rolling = 0;
     for (let i = 0; i < 5; i++) {
       const o = i * 11, x = st[o], y = st[o + 1], z = st[o + 2];
       const sp = bedsPrimed ? Math.hypot(x - prevPos[i].x, y - prevPos[i].y, z - prevPos[i].z) / Math.max(dt, 1e-3) : 0;
       prevPos[i].set(x, y, z);
-      if (!active(st, i)) continue;
-      if (inCup(st, i)) rattle += Math.min(cupSpeed, 40);
-      else if (z < half + 0.25) rolling += Math.min(sp, 30);
+      if (!active(st, i) || inCup(st, i)) continue;
+      // Only a die sliding or rolling on the linen, inside the tray, scuffs.
+      if (z < half + 0.15 && Math.abs(x) < S.X && Math.abs(y) < S.Yh && sp > 1.5 && sp < 60) rolling += Math.min(sp, 25);
     }
     bedsPrimed = true;
     const on = soundOn ? 1 : 0, now = audio.currentTime;
-    rollGain.gain.setTargetAtTime(on * Math.min(0.32, rolling * 0.0065), now, 0.05);
-    rattleGain.gain.setTargetAtTime(on * Math.min(0.12, rattle * 0.0009), now, 0.06);
-    rattleBand.frequency.setTargetAtTime(CUP_MAT[activeCupId()] === "metal" ? 2300 : 1100, now, 0.2);
+    rollGain.gain.setTargetAtTime(on * Math.min(0.16, rolling * 0.004), now, 0.04);
   }
 
   // A swing of the cup through the air.
@@ -1709,8 +1722,8 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     if (!audio || !soundOn) return;
     const t0 = audio.currentTime + 0.03;
     const bus = audio.createGain(); bus.gain.value = 0.55;
-    const hall = audio.createConvolver(); hall.buffer = hallIR;
-    const wet = audio.createGain(); wet.gain.value = 0.6;
+    const hall = audio.createConvolver(); hall.normalize = false; hall.buffer = hallIR;
+    const wet = audio.createGain(); wet.gain.value = 0.9;
     // The Voice rolls back off the walls.
     const echo = audio.createDelay(1); echo.delayTime.value = 0.23;
     const fb = audio.createGain(); fb.gain.value = 0.32;
@@ -2526,25 +2539,25 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     for (let y = H; y >= 0; y -= step) pts.push([10 + edge(0, y), y]);
     const outline = () => { g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); };
     outline(); g.save(); g.clip();
-    g.fillStyle = "#dcc69c"; g.fillRect(0, 0, W, H);
+    g.fillStyle = "#e6d4ae"; g.fillRect(0, 0, W, H);
     const img = g.getImageData(0, 0, W, H), d = img.data;
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
       const i = (y * W + x) * 4;
       const blot = fbm(x / 120, y / 120, 4), fine = fbm(x / 6, y / 6, 2), fib = fbm(x / 2.5, y / 26, 2);
-      const n = (blot - 0.5) * 46 + (fine - 0.5) * 14 + (fib - 0.5) * 10 + (Math.random() - 0.5) * 8;
+      const n = (blot - 0.5) * 24 + (fine - 0.5) * 8 + (fib - 0.5) * 6 + (Math.random() - 0.5) * 5;
       d[i] += n; d[i + 1] += n * 0.9; d[i + 2] += n * 0.75;
     }
     g.putImageData(img, 0, 0);
     // A few old stains: a cup ring, drips.
-    g.strokeStyle = "rgba(120,72,30,0.16)"; g.lineWidth = 5;
+    g.strokeStyle = "rgba(120,72,30,0.1)"; g.lineWidth = 5;
     g.beginPath(); g.arc(W * (0.62 + rnd() * 0.2), H * (0.55 + rnd() * 0.3), 46 + rnd() * 14, 0.3, 5.6); g.stroke();
     for (let k = 0; k < 4; k++) {
       const rg = g.createRadialGradient(0, 0, 0, 0, 0, 1);
-      rg.addColorStop(0, "rgba(130,80,35,0.14)"); rg.addColorStop(1, "rgba(130,80,35,0)");
+      rg.addColorStop(0, "rgba(130,80,35,0.08)"); rg.addColorStop(1, "rgba(130,80,35,0)");
       g.save(); g.translate(rnd() * W, rnd() * H); g.scale(30 + rnd() * 70, 20 + rnd() * 50); g.fillStyle = rg; g.fillRect(-1, -1, 2, 2); g.restore();
     }
     // Darkened, slightly burnt edges.
-    g.filter = "blur(14px)"; g.strokeStyle = "rgba(92,52,20,0.55)"; g.lineWidth = 46; outline(); g.stroke();
+    g.filter = "blur(10px)"; g.strokeStyle = "rgba(92,52,20,0.5)"; g.lineWidth = 30; outline(); g.stroke();
     g.filter = "blur(3px)"; g.strokeStyle = "rgba(48,24,8,0.75)"; g.lineWidth = 10; outline(); g.stroke();
     g.filter = "none";
     g.restore();
@@ -2556,10 +2569,12 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   // Hooks for automated checks of the preview.
   window.__yacht = {
     // Renders a sound offline, for checking the synthesis: "shout", or a hit type 0-3 with a dice style.
-    renderSound: async (what, style) => {
+    strikeBuf: (surf, mat) => { const keep = audio; audio = new OfflineAudioContext(1, 48000, 48000); bufCache.clear();
+      const b = hitSet(surf, mat, "wood")[0]; audio = keep; bufCache.clear(); return Array.from(b.getChannelData(0)); },
+    renderSound: async (what, style, dry) => {
       const keep = [audio, master, sfx, noiseBuf, roomIR, hallIR, rollGain, rattleGain, rattleBand, curDiceStyle];
       const off = new OfflineAudioContext(2, 48000 * 3.5, 48000);
-      initAudio(off); bufCache.clear();
+      initAudio(off); bufCache.clear(); if (dry) roomSend.gain.value = 0;
       if (style) curDiceStyle = style;
       if (what === "shout") shoutSound(); else hit(what, 70, 1);
       const buf = await off.startRendering();
