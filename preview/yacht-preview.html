@@ -209,8 +209,8 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   world.rotation.x = -Math.PI / 2;
   scene.add(world);
 
-  scene.add(new THREE.HemisphereLight(0xffe2b8, 0x20140c, 0.5));
-  const key = new THREE.DirectionalLight(0xffd29a, 1.5);
+  scene.add(new THREE.HemisphereLight(0xffd9a8, 0x1a120a, 0.42));
+  const key = new THREE.DirectionalLight(0xffcf94, 1.35);
   key.position.set(-10, 30, 14);
   key.castShadow = true;
   key.shadow.mapSize.set(2048, 2048);
@@ -218,20 +218,22 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   key.shadow.bias = -0.0004;
   key.shadow.radius = 3;
   scene.add(key);
-  const candle = new THREE.PointLight(0xff9a4a, 0.8, 40, 2);
-  candle.position.set(16, 8, -4);
+  // A candle off to the right of the table, flickering a little (see the frame loop).
+  const candle = new THREE.PointLight(0xff8a3a, 1.0, 45, 2);
+  candle.position.set(17, 9, -3);
   scene.add(candle);
 
-  function canvasTex(w, h, draw, repeat) {
+  function canvasTex(w, h, draw, repeat, srgb) {
     const c = document.createElement("canvas");
     c.width = w; c.height = h;
     draw(c.getContext("2d"), w, h);
     const t = new THREE.CanvasTexture(c);
-    t.encoding = THREE.sRGBEncoding;
-    t.anisotropy = 4;
+    if (srgb !== false) t.encoding = THREE.sRGBEncoding;
+    t.anisotropy = 8;
     if (repeat) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(repeat[0], repeat[1]); }
     return t;
   }
+  // Old helper, still used for the drawn cups' leather and the reflection room.
   function noise(g, w, h, base, amount, streak) {
     g.fillStyle = base; g.fillRect(0, 0, w, h);
     const img = g.getImageData(0, 0, w, h);
@@ -246,58 +248,246 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     g.putImageData(img, 0, 0);
   }
 
-  const feltMat = new THREE.MeshStandardMaterial({ map: canvasTex(256, 256, (g, w, h) => noise(g, w, h, "#5a1f1d", 26, false), [4, 3]), roughness: 0.97 });
-  const woodMat = new THREE.MeshStandardMaterial({ map: canvasTex(256, 256, (g, w, h) => noise(g, w, h, "#5b3a22", 18, true), [2, 1]), roughness: 0.62 });
-  const brassMat = new THREE.MeshStandardMaterial({ color: 0xcaa457, metalness: 0.85, roughness: 0.35 });
+  // ---- Generated textures in Skyrim's look: weathered planks, tanned hide, blackened iron, carved bone.
+  // Seeded value noise, so every visit gets the same table.
+  function makeNoise(seed) {
+    const perm = new Uint8Array(512);
+    let st = seed >>> 0 || 1;
+    const rnd = () => { st ^= st << 13; st ^= st >>> 17; st ^= st << 5; return (st >>> 0) / 4294967296; };
+    const p = Array.from({ length: 256 }, (_, i) => i);
+    for (let i = 255; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [p[i], p[j]] = [p[j], p[i]]; }
+    for (let i = 0; i < 512; i++) perm[i] = p[i & 255];
+    const val = (x, y) => perm[(perm[x & 255] + y) & 511] / 255;
+    const smooth = (t) => t * t * (3 - 2 * t);
+    const v2 = (x, y) => {
+      const xi = Math.floor(x), yi = Math.floor(y), xf = smooth(x - xi), yf = smooth(y - yi);
+      const a = val(xi, yi), b = val(xi + 1, yi), c = val(xi, yi + 1), d = val(xi + 1, yi + 1);
+      return a + (b - a) * xf + (c - a) * yf + (a - b - c + d) * xf * yf;
+    };
+    const fbm = (x, y, oct) => { let s = 0, amp = 0.5, f = 1; for (let o = 0; o < (oct || 4); o++) { s += v2(x * f, y * f) * amp; f *= 2; amp *= 0.5; } return s; };
+    return { fbm, rnd };
+  }
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const mixRGB = (c1, c2, t) => [lerp(c1[0], c2[0], t), lerp(c1[1], c2[1], t), lerp(c1[2], c2[2], t)];
+  // Draws a texture and its bump map together from one height/colour function.
+  function texPair(w, h, fn, repeat) {
+    const cv = document.createElement("canvas"), bv = document.createElement("canvas");
+    cv.width = bv.width = w; cv.height = bv.height = h;
+    const cg = cv.getContext("2d"), bg = bv.getContext("2d");
+    const ci = cg.createImageData(w, h), bi = bg.createImageData(w, h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const [rgb, height] = fn(x, y);
+      const i = (y * w + x) * 4;
+      ci.data[i] = rgb[0]; ci.data[i + 1] = rgb[1]; ci.data[i + 2] = rgb[2]; ci.data[i + 3] = 255;
+      const hv = Math.max(0, Math.min(255, height * 255));
+      bi.data[i] = bi.data[i + 1] = bi.data[i + 2] = hv; bi.data[i + 3] = 255;
+    }
+    cg.putImageData(ci, 0, 0); bg.putImageData(bi, 0, 0);
+    const wrap = (c, srgb) => {
+      const t = new THREE.CanvasTexture(c);
+      if (srgb) t.encoding = THREE.sRGBEncoding;
+      t.anisotropy = 8;
+      if (repeat) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(repeat[0], repeat[1]); }
+      return t;
+    };
+    return { map: wrap(cv, true), bump: wrap(bv, false), canvas: cv, bumpCanvas: bv };
+  }
 
-  // The tray: a felt pad inside four wooden walls, on a thin wooden base.
+  // Weathered Nord planks: grey-brown, long grain, dark seams, a few cracks and knots, lighter wear.
+  function woodTex(seed, planks) {
+    const N = makeNoise(seed), W = 512, H = 512, ph = H / planks;
+    const dark = [44, 34, 26], mid = [86, 70, 54], light = [128, 108, 84];
+    const knots = Array.from({ length: 3 }, () => [N.rnd() * W, N.rnd() * H, 6 + N.rnd() * 10]);
+    const cracks = Array.from({ length: 5 }, () => [N.rnd() * W, Math.floor(N.rnd() * planks) * ph + 6 + N.rnd() * (ph - 12), 40 + N.rnd() * 120]);
+    return texPair(W, H, (x, y) => {
+      const plank = Math.floor(y / ph), py = y - plank * ph;
+      const shift = plank * 97.3;
+      let warp = N.fbm((x + shift) / 140, y / 30, 3) * 18;
+      for (const [kx, ky, kr] of knots) { const d = Math.hypot(x - kx, (y - ky) * 2); if (d < kr * 4) warp += (kr * 4 - d) * 0.6; }
+      const grain = 0.5 + 0.5 * Math.sin((y + warp) * 0.9 + N.fbm((x + shift) / 60, y / 8, 2) * 4);
+      const tone = N.fbm((x + shift) / 220, y / 40 + plank * 3.1, 4);
+      let col = mixRGB(dark, mid, Math.min(1, tone * 1.3));
+      col = mixRGB(col, light, Math.max(0, grain - 0.72) * 1.4 * (0.4 + tone));
+      col = mixRGB(col, dark, Math.pow(1 - grain, 6) * 0.5);
+      let height = 0.55 + grain * 0.2 + tone * 0.15;
+      // Knots
+      for (const [kx, ky, kr] of knots) {
+        const d = Math.hypot(x - kx, (y - ky) * 1.6);
+        if (d < kr) { const r = 0.5 + 0.5 * Math.sin(d * 1.4); col = mixRGB(dark, mid, r * 0.6); height -= 0.15 * (1 - d / kr); }
+      }
+      // Cracks along the grain
+      for (const [cx, cy, cl] of cracks) {
+        if (x > cx && x < cx + cl) { const off = Math.abs(y - cy - Math.sin((x - cx) / 13) * 2); if (off < 1.2) { col = mixRGB(col, [18, 13, 9], 0.85); height = 0.15; } }
+      }
+      // Plank seams with a little bevel
+      if (py < 2 || py > ph - 2) { col = mixRGB(col, [15, 11, 8], 0.9); height = 0.05; }
+      else if (py < 5 || py > ph - 5) { col = mixRGB(col, dark, 0.35); height -= 0.15; }
+      // Worn, lighter specks
+      const wear = N.fbm(x / 6, y / 6, 2);
+      if (wear > 0.72) col = mixRGB(col, light, (wear - 0.72) * 2);
+      return [col, height];
+    }, [1, 1]);
+  }
+
+  // Tanned hide for the pad: mottled brown leather, pores and creases, darker at the edges, stitched border.
+  function hideTex(seed) {
+    const N = makeNoise(seed), W = 1024, H = 700;
+    const deep = [40, 27, 17], tan = [84, 60, 40], pale = [108, 82, 58];
+    return texPair(W, H, (x, y) => {
+      const m = N.fbm(x / 160, y / 160, 5);
+      const crease = Math.abs(N.fbm(x / 40 + 20, y / 55, 3) - 0.5);
+      const pore = N.fbm(x / 2.2, y / 2.2, 1);
+      let col = mixRGB(deep, tan, Math.min(1, m * 1.35));
+      col = mixRGB(col, pale, Math.max(0, m - 0.62) * 1.6);
+      col = mixRGB(col, deep, Math.min(0.22, Math.max(0, 0.04 - crease) * 6));
+      col = mixRGB(col, deep, Math.max(0, pore - 0.7) * 0.8);
+      let height = 0.5 + m * 0.2 - Math.max(0, 0.04 - crease) * 3 + (pore - 0.5) * 0.15;
+      // Darker, oilier toward the edges
+      const edge = Math.min(x, y, W - 1 - x, H - 1 - y);
+      if (edge < 60) col = mixRGB(col, deep, (1 - edge / 60) * 0.45);
+      // Stitching: pale thread dashes in a row of holes, inset from the edge
+      const inset = 20, onRow = Math.abs(edge - inset) < 1.6;
+      const along = (x < inset + 3 || x > W - inset - 4) ? y : x;
+      if (onRow && (along % 16) < 8) { col = mixRGB([122, 100, 72], col, N.fbm(x / 3, y / 3, 1) * 0.5); height = 0.75; }
+      else if (Math.abs(edge - inset) < 2.6 && (along % 16) >= 10 && (along % 16) < 13) { col = mixRGB(col, [10, 6, 3], 0.7); height = 0.15; }
+      return [col, height];
+    });
+  }
+
+  // Blackened iron with dull rust patches.
+  function ironTex(seed) {
+    const N = makeNoise(seed);
+    return texPair(128, 128, (x, y) => {
+      const n = N.fbm(x / 14, y / 14, 4), rust = N.fbm(x / 22 + 7, y / 22, 3);
+      let col = mixRGB([30, 29, 28], [70, 66, 60], n);
+      if (rust > 0.6) col = mixRGB(col, [92, 52, 28], (rust - 0.6) * 1.6);
+      return [col, 0.5 + (n - 0.5) * 0.6];
+    }, [1, 1]);
+  }
+
+  const wood = woodTex(11, 2), woodLong = woodTex(23, 3), rackWood = woodTex(37, 2), hide = hideTex(5), iron = ironTex(9);
+  const woodMat = new THREE.MeshStandardMaterial({ map: wood.map, bumpMap: wood.bump, bumpScale: 0.035, roughness: 0.82 });
+  const woodLongMat = new THREE.MeshStandardMaterial({ map: woodLong.map, bumpMap: woodLong.bump, bumpScale: 0.035, roughness: 0.82 });
+  const rackMat = new THREE.MeshStandardMaterial({ map: rackWood.map, bumpMap: rackWood.bump, bumpScale: 0.03, roughness: 0.8 });
+  const feltMat = new THREE.MeshStandardMaterial({ map: hide.map, bumpMap: hide.bump, bumpScale: 0.02, roughness: 0.9 });
+  const ironMat = new THREE.MeshStandardMaterial({ map: iron.map, bumpMap: iron.bump, bumpScale: 0.02, roughness: 0.62, metalness: 0.75 });
+  const brassMat = ironMat;  // fittings are iron now
+
+  // The tray: a hide pad inside four plank walls on a plank base, held at the corners by iron straps.
   const wallH = 1.7, wallT = 0.8;
   const felt = new THREE.Mesh(new THREE.PlaneGeometry(S.X * 2, S.Yh * 2), feltMat);
   felt.receiveShadow = true;
   world.add(felt);
   function box(w, d, h, x, y, z, mat) {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(w, d, h), mat);
+    const g = new THREE.BoxGeometry(w, d, h);
+    // Stretch the texture with the board instead of squashing it: UVs in world units along the board's length.
+    const uv = g.attributes.uv, pos = g.attributes.position, nrm = g.attributes.normal;
+    for (let i = 0; i < uv.count; i++) {
+      const nx = Math.abs(nrm.getX(i)), ny = Math.abs(nrm.getY(i));
+      const px = pos.getX(i) + x, py = pos.getY(i) + y, pz = pos.getZ(i) + z;
+      const along = w >= d ? px : py;
+      const across = nx > 0.5 ? (w >= d ? pz : py) : ny > 0.5 ? pz : (w >= d ? py : px);
+      uv.setXY(i, along / 14, across / 6 + 0.5);
+    }
+    const m = new THREE.Mesh(g, mat);
     m.position.set(x, y, z);
     m.castShadow = m.receiveShadow = true;
     world.add(m);
     return m;
   }
   box(S.X * 2 + wallT * 2, S.Yh * 2 + wallT * 2, 0.5, 0, 0, -0.26, woodMat);
-  box(S.X * 2 + wallT * 2, wallT, wallH, 0, S.Yh + wallT / 2, wallH / 2 - 0.2, woodMat);
-  box(S.X * 2 + wallT * 2, wallT, wallH, 0, -S.Yh - wallT / 2, wallH / 2 - 0.2, woodMat);
-  box(wallT, S.Yh * 2, wallH, S.X + wallT / 2, 0, wallH / 2 - 0.2, woodMat);
-  box(wallT, S.Yh * 2, wallH, -S.X - wallT / 2, 0, wallH / 2 - 0.2, woodMat);
-  for (const sx of [-1, 1]) for (const sy of [-1, 1]) {
-    box(wallT + 0.12, wallT + 0.12, 0.25, sx * (S.X + wallT / 2), sy * (S.Yh + wallT / 2), wallH - 0.08, brassMat);
-  }
+  box(S.X * 2 + wallT * 2, wallT, wallH, 0, S.Yh + wallT / 2, wallH / 2 - 0.2, woodLongMat);
+  box(S.X * 2 + wallT * 2, wallT, wallH, 0, -S.Yh - wallT / 2, wallH / 2 - 0.2, woodLongMat);
+  box(wallT, S.Yh * 2, wallH, S.X + wallT / 2, 0, wallH / 2 - 0.2, woodLongMat);
+  box(wallT, S.Yh * 2, wallH, -S.X - wallT / 2, 0, wallH / 2 - 0.2, woodLongMat);
 
-  // The rack: a wooden ledge in front of the tray where kept dice sit.
+  // Iron corner straps over the wall tops and down the outside, with round rivet heads.
+  const rivetGeo = new THREE.SphereGeometry(0.11, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2);
+  rivetGeo.rotateX(Math.PI / 2);
+  function rivet(x, y, z, nx, ny, nz) {
+    const r = new THREE.Mesh(rivetGeo, ironMat);
+    r.position.set(x, y, z);
+    r.lookAt(x + nx, y + ny, z + nz);
+    r.rotateX(Math.PI / 2);
+    r.castShadow = true;
+    world.add(r);
+  }
+  const top = wallH - 0.2, strap = 2.4, sw = 0.5, th = 0.06;
+  for (const sx of [-1, 1]) for (const sy of [-1, 1]) {
+    const cx = sx * (S.X + wallT / 2), cy = sy * (S.Yh + wallT / 2);
+    // Along the long wall and the short wall, on top
+    box(strap, sw, th, cx - sx * (strap / 2 - wallT / 2), cy, top + th / 2, ironMat);
+    box(sw, strap, th, cx, cy - sy * (strap / 2 - wallT / 2), top + th / 2, ironMat);
+    // Down the two outside faces
+    box(sw, th, wallH, cx - sx * 0.3, cy + sy * (wallT / 2 + th / 2), wallH / 2 - 0.2, ironMat);
+    box(th, sw, wallH, cx + sx * (wallT / 2 + th / 2), cy - sy * 0.3, wallH / 2 - 0.2, ironMat);
+    for (const k of [0.35, 1.2, 2.0]) {
+      rivet(cx - sx * k, cy, top + th, 0, 0, 1);
+      rivet(cx, cy - sy * k, top + th, 0, 0, 1);
+    }
+    rivet(cx - sx * 0.3, cy + sy * (wallT / 2 + th), wallH * 0.6, 0, sy, 0);
+    rivet(cx + sx * (wallT / 2 + th), cy - sy * 0.3, wallH * 0.6, sx, 0, 0);
+  }
+  // Nails along the long walls
+  for (let x = -S.X + 3; x <= S.X - 3; x += 3.2) for (const sy of [-1, 1]) rivet(x, sy * (S.Yh + wallT / 2), top, 0, 0, 1);
+
+  // The rack: a plank ledge in front of the tray where kept dice sit, with an iron lip.
   const rackY = -S.Yh - wallT - 1.7, rackTop = 0.0;
-  box(13.5, 2.4, 0.5, 0, rackY, rackTop - 0.25, woodMat);
-  box(13.5, 0.25, 0.7, 0, rackY - 1.15, rackTop + 0.1, woodMat);
+  box(13.5, 2.4, 0.5, 0, rackY, rackTop - 0.25, rackMat);
+  box(13.5, 0.25, 0.7, 0, rackY - 1.15, rackTop + 0.1, rackMat);
+  box(13.6, 0.08, 0.18, 0, rackY - 1.3, rackTop + 0.32, ironMat);
+  for (const x of [-6.2, 0, 6.2]) rivet(x, rackY - 1.34, rackTop + 0.32, 0, -1, 0);
   const rackX = (slot) => (slot - 2) * 2.4;
 
   // ------------------------------------------------------------------ dice
+  // Hand-carved bone: yellowed and grimy, scratched, uneven drilled pips with dirt in them, darker worn edges.
   const PIPS = {
     1: [[1, 1]], 2: [[0, 0], [2, 2]], 3: [[0, 0], [1, 1], [2, 2]], 4: [[0, 0], [2, 0], [0, 2], [2, 2]],
     5: [[0, 0], [2, 0], [1, 1], [0, 2], [2, 2]], 6: [[0, 0], [2, 0], [0, 1], [2, 1], [0, 2], [2, 2]],
   };
-  function faceTex(n) {
-    return canvasTex(128, 128, (g, w) => {
-      const grad = g.createRadialGradient(w / 2, w / 2, 10, w / 2, w / 2, w * 0.75);
-      grad.addColorStop(0, "#f2e8d2"); grad.addColorStop(1, "#d8c8a6");
-      g.fillStyle = grad; g.fillRect(0, 0, w, w);
-      for (const [cx, cy] of PIPS[n]) {
-        const x = 30 + cx * 34, y = 30 + cy * 34, r = n === 1 ? 15 : 11;
-        g.fillStyle = n === 1 ? "#7a1b14" : "#231610";
-        g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
-        g.fillStyle = "rgba(255,255,255,0.18)";
-        g.beginPath(); g.arc(x + r * 0.25, y + r * 0.3, r * 0.55, 0, Math.PI * 2); g.fill();
+  function boneFace(n) {
+    const N = makeNoise(100 + n * 17), W = 256;
+    const pips = PIPS[n].map(([cx, cy]) => [60 + cx * 68 + (N.rnd() - 0.5) * 7, 60 + cy * 68 + (N.rnd() - 0.5) * 7,
+      (n === 1 ? 24 : 17) * (0.9 + N.rnd() * 0.2)]);
+    const scratches = Array.from({ length: 22 }, () => {
+      const a = N.rnd() * Math.PI, x = N.rnd() * W, y = N.rnd() * W, l = 20 + N.rnd() * 90;
+      return [x, y, Math.cos(a), Math.sin(a), l, N.rnd() < 0.5];
+    });
+    const old = [150, 130, 92], fresh = [205, 188, 148], grime = [78, 62, 40], dirt = [22, 15, 8];
+    const stains = Array.from({ length: 3 }, () => [N.rnd() * W, N.rnd() * W, 20 + N.rnd() * 40]);
+    return texPair(W, W, (x, y) => {
+      const m = N.fbm(x / 70, y / 70, 4), fine = N.fbm(x / 5, y / 5, 2);
+      let col = mixRGB(old, fresh, Math.min(1, m * 1.4));
+      col = mixRGB(col, grime, Math.max(0, 0.42 - m) * 1.2);
+      // Pores in the bone, and a few old stains
+      col = mixRGB(col, grime, Math.max(0, fine - 0.62) * 1.8);
+      for (const [sx, sy, sr] of stains) {
+        const d = Math.hypot(x - sx, y - sy) / sr;
+        if (d < 1) col = mixRGB(col, grime, (1 - d) * 0.35 * N.fbm(x / 12, y / 12, 2));
       }
+      let height = 0.6 + (m - 0.5) * 0.15 + (fine - 0.5) * 0.1;
+      // Dirt worked into the edges
+      const edge = Math.min(x, y, W - 1 - x, W - 1 - y);
+      if (edge < 44) { const k = Math.pow(1 - edge / 44, 1.6); col = mixRGB(col, grime, k * 0.85); height -= k * 0.12; }
+      // Scratches, some pale (fresh) and some dark (dirty)
+      for (const [sx, sy, dx, dy, l, pale] of scratches) {
+        const rx = x - sx, ry = y - sy, t = rx * dx + ry * dy;
+        if (t > 0 && t < l && Math.abs(-rx * dy + ry * dx) < 0.8) { col = mixRGB(col, pale ? fresh : grime, 0.6); height -= 0.08; }
+      }
+      // Drilled pips: dark dirt inside, a slightly raised worn rim
+      for (const [px, py, pr] of pips) {
+        const d = Math.hypot(x - px, y - py) + (N.fbm(x / 6, y / 6, 2) - 0.5) * 3;
+        if (d < pr) { const k = d / pr; col = mixRGB(dirt, [60, 42, 24], k * k * 0.7); height = 0.08 + k * 0.2; }
+        else if (d < pr + 3) { col = mixRGB(col, fresh, 0.25); height += 0.05; }
+      }
+      return [col, height];
     });
   }
   // BoxGeometry material order is +x, -x, +y, -y, +z, -z; the sim puts 1, 6, 2, 5, 3, 4 there.
-  const dieMats = [1, 6, 2, 5, 3, 4].map((n) => new THREE.MeshStandardMaterial({ map: faceTex(n), roughness: 0.38 }));
+  const dieMats = [1, 6, 2, 5, 3, 4].map((n) => {
+    const t = boneFace(n);
+    return new THREE.MeshStandardMaterial({ map: t.map, bumpMap: t.bump, bumpScale: 0.016, roughness: 0.8 });
+  });
 
   function roundedCube(size, radius) {
     const g = new THREE.BoxGeometry(size, size, size, 7, 7, 7);
@@ -1175,6 +1365,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     cupGroup.position.set(cup.x, cup.y, cup.z);
     cupGroup.quaternion.copy(cup.q);
 
+    candle.intensity = 0.95 + Math.sin(t * 7.3) * 0.04 + Math.sin(t * 13.1) * 0.03 + Math.sin(t * 2.1) * 0.05;
     if (waveT >= 0) {
       waveT += dt;
       const k = Math.min(1, waveT / 0.7);
