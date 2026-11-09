@@ -91,6 +91,21 @@ jobs:
             "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded`$<`$<CONFIG:Debug>:Debug>DLL" 2>&1 | Tee-Object -FilePath logs/configure.txt
           if ($LASTEXITCODE -ne 0) { exit 1 }
 
+      - name: Check the table's shaders (fxc)
+        shell: pwsh
+        run: |
+          $src = Get-Content src/plugin/Render3D.cpp -Raw
+          $m = [regex]::Match($src, 'R"\((.*?)\)";', 'Singleline')
+          Set-Content -Path shader.hlsl -Value $m.Groups[1].Value
+          $fxc = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Filter fxc.exe | Where-Object { $_.FullName -match 'x64' } | Select-Object -First 1
+          $fail = 0
+          foreach ($e in @('VSMain:vs_5_0','VSShadow:vs_5_0','VSFull:vs_5_0','PSMain:ps_5_0','PSDown:ps_5_0','PSBlur:ps_5_0','PSBack:ps_5_0','PSComposite:ps_5_0')) {
+            $entry, $target = $e.Split(':')
+            & $fxc.FullName /nologo /E $entry /T $target /Fo NUL shader.hlsl
+            if ($LASTEXITCODE -ne 0) { Write-Output "::error::shader $entry failed"; $fail = 1 }
+          }
+          exit $fail
+
       - name: Build
         id: build
         if: steps.configure.outcome == 'success'
