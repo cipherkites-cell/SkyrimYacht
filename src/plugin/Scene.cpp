@@ -356,6 +356,14 @@ namespace Scene
 				std::string m = model;
 				std::string low = m;
 				std::transform(low.begin(), low.end(), low.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+				// every drinking vessel in the game, for choosing more cups
+				for (const char* w : { "cup", "goblet", "tankard", "mug", "flagon", "chalice", "horn", "stein", "tumbler" }) {
+					if (low.find(w) != std::string::npos) {
+						spdlog::info("Vessel: {} | {} | {:08X} | {}", misc->GetName(), m, misc->GetFormID(),
+							misc->GetFile(0) ? misc->GetFile(0)->GetFilename() : "?");
+						break;
+					}
+				}
 				for (const auto& c : kCups) {
 					if (low.size() >= std::strlen(c.file) && low.compare(low.size() - std::strlen(c.file), std::strlen(c.file), c.file) == 0 &&
 						!g_cupPaths.contains(c.id)) {
