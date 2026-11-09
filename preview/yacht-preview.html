@@ -136,6 +136,21 @@ canvas#view.over-die { cursor: pointer; }
 .rank-name { font-family: var(--display); font-size: 18px; color: var(--brass); }
 .rank-next { font-size: 12px; color: var(--muted); text-align: right; }
 .cup-chips { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+.dock-head { display: flex; justify-content: space-between; align-items: baseline; margin: 10px 2px 4px; }
+.dock-label { font-family: var(--display); font-size: 16px; color: var(--brass); }
+.dock-note { font-size: 11px; color: var(--muted); letter-spacing: 0.03em; }
+.dice-chips { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+.dice-chip {
+  font: inherit; color: var(--parchment); background: rgba(0, 0, 0, 0.18); border: 1px solid var(--oak-edge); border-radius: 6px;
+  padding: 4px 2px 3px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0;
+}
+.dice-chip canvas { width: 30px; height: 30px; border-radius: 5px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6); }
+.dice-chip span { font-size: 10px; line-height: 1.1; letter-spacing: -0.01em; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dice-chip small { font-size: 9.5px; color: var(--muted); line-height: 1.1; white-space: nowrap; }
+.dice-chip[aria-pressed="true"] { border-color: var(--brass); background: rgba(202, 164, 87, 0.14); }
+.dice-chip:disabled { cursor: default; opacity: 0.55; }
+.dice-chip:disabled canvas { filter: grayscale(0.85) brightness(0.7); }
+.dice-chip:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
 .cup-chip {
   font: inherit; font-size: 13px; text-align: left; color: var(--parchment); background: rgba(0, 0, 0, 0.18);
   border: 1px solid var(--oak-edge); border-radius: 6px; padding: 3px 7px; cursor: pointer; display: flex; flex-direction: column; gap: 0;
@@ -243,9 +258,11 @@ canvas#view.over-die { cursor: pointer; }
     <button class="newgame" id="newgame" type="button" hidden>New game</button>
   </aside>
 
-  <aside class="dock panel" aria-label="Rank and cups">
+  <aside class="dock panel" aria-label="Rank, cups and dice">
     <div class="rank-line"><span class="rank-name" id="rankName">Novice</span><span class="rank-next" id="rankNext"></span></div>
     <div class="cup-chips" id="cupChips" role="group" aria-label="Choose a cup"></div>
+    <div class="dock-head"><span class="dock-label">Dice</span><span class="dock-note" id="diceNote">Sold by innkeepers</span></div>
+    <div class="dice-chips" id="diceChips" role="group" aria-label="Choose your dice"></div>
     <div class="test-row">
       <button class="test-btn" id="unlockAll" type="button">Unlock all (test)</button>
       <button class="test-btn" id="resetRank" type="button">Reset rank</button>
@@ -553,49 +570,200 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     1: [[1, 1]], 2: [[0, 0], [2, 2]], 3: [[0, 0], [1, 1], [2, 2]], 4: [[0, 0], [2, 0], [0, 2], [2, 2]],
     5: [[0, 0], [2, 0], [1, 1], [0, 2], [2, 2]], 6: [[0, 0], [2, 0], [0, 1], [2, 1], [0, 2], [2, 2]],
   };
-  function boneFace(n) {
-    const N = makeNoise(100 + n * 17), W = 256;
-    const pips = PIPS[n].map(([cx, cy]) => [60 + cx * 68 + (N.rnd() - 0.5) * 7, 60 + cy * 68 + (N.rnd() - 0.5) * 7,
-      (n === 1 ? 24 : 17) * (0.9 + N.rnd() * 0.2)]);
+  // ---- Dice sets. Bone is what everyone plays with; the rest are sold by innkeepers to players who have won enough
+  // games. All of them are cosmetic: same size, weight and physics, so no set rolls differently.
+  const DICE = [
+    { id: "bone", name: "Bone", wins: 0, gold: 0, blurb: "Hand-carved bone. Yellowed, scratched, and dirty in the pips." },
+    { id: "iron", name: "Iron", wins: 2, gold: 50, blurb: "Hammered iron, pocked and spotted with rust, punched pips." },
+    { id: "steel", name: "Steel", wins: 4, gold: 100, blurb: "Brushed steel with crisp engraved pips." },
+    { id: "corundum", name: "Corundum", wins: 6, gold: 150, blurb: "Coppery corundum, a little green at the edges." },
+    { id: "dwemer", name: "Dwemer", wins: 8, gold: 200, blurb: "Dwarven bronze with gear-ring pips, green with age." },
+    { id: "orichalcum", name: "Orichalcum", wins: 10, gold: 250, blurb: "Orc-forged orichalcum, dark green-bronze, scored with claw marks." },
+    { id: "silver", name: "Silver", wins: 12, gold: 300, blurb: "Polished silver, tarnished in the corners, black niello pips." },
+    { id: "quicksilver", name: "Quicksilver", wins: 15, gold: 400, blurb: "Mirror-bright quicksilver that looks wet." },
+    { id: "moonstone", name: "Moonstone", wins: 18, gold: 500, blurb: "Pale elven moonstone with fine leaf lines." },
+    { id: "gold", name: "Gold", wins: 21, gold: 650, blurb: "Solid gold with garnet pips." },
+    { id: "malachite", name: "Malachite", wins: 24, gold: 750, blurb: "Polished glass-green malachite, banded, with white pips." },
+    { id: "ebony", name: "Ebony", wins: 28, gold: 900, blurb: "Black ebony with inlaid gold pips." },
+    { id: "stalhrim", name: "Stalhrim", wins: 32, gold: 1100, blurb: "Enchanted ice from Solstheim. Cold blue, cracked, faintly glowing." },
+    { id: "dragonbone", name: "Dragonbone", wins: 40, gold: 1500, blurb: "Pale dragon bone, fibrous grain, pips stained dark red." },
+    { id: "daedric", name: "Daedric", wins: 50, gold: 2500, blurb: "Black and red, cut with runes, the pips smouldering like coals." },
+  ];
+  // Plain metals share one recipe: two-tone base, brushing or hammering, tarnish or rust, and their own pips.
+  const METALS = {
+    iron: { lo: [62, 60, 58], hi: [124, 120, 114], brush: 0, hammer: 1, spot: [104, 56, 30], spotAt: 0.58, pip: "punch", met: 210 },
+    steel: { lo: [118, 124, 132], hi: [200, 206, 212], brush: 1, hammer: 0, spot: [90, 96, 104], spotAt: 0.75, pip: "engrave", met: 240 },
+    corundum: { lo: [116, 70, 40], hi: [190, 124, 74], brush: 0.6, hammer: 0.4, spot: [70, 112, 92], spotAt: 0.66, pip: "engrave", met: 220 },
+    orichalcum: { lo: [56, 66, 36], hi: [118, 128, 70], brush: 0.3, hammer: 0.6, spot: [30, 34, 18], spotAt: 0.6, pip: "punch", met: 200, claws: true },
+    silver: { lo: [170, 172, 178], hi: [240, 242, 246], brush: 0.5, hammer: 0, spot: [70, 66, 62], spotAt: 0.7, edgeTarnish: true, pip: "niello", met: 250 },
+    quicksilver: { lo: [150, 160, 170], hi: [250, 252, 255], brush: 0, hammer: 0, ripple: true, spot: [120, 130, 150], spotAt: 0.9, pip: "engrave", met: 255 },
+    moonstone: { lo: [176, 170, 128], hi: [240, 232, 190], brush: 0.4, hammer: 0, spot: [150, 170, 130], spotAt: 0.8, leaves: true, pip: "engrave", met: 230 },
+    gold: { lo: [176, 128, 40], hi: [252, 212, 116], brush: 0.5, hammer: 0.2, spot: [140, 96, 30], spotAt: 0.8, pip: "garnet", met: 255 },
+  };
+  // Drawn in a 256-unit face whatever the texture size, so thumbnails and full textures match.
+  function diceFace(style, n, W) {
+    const N = makeNoise(100 + n * 17 + style.length * 131), k = 256 / W;
+    const pips = PIPS[n].map(([cx, cy]) => [60 + cx * 68 + (N.rnd() - 0.5) * 6, 60 + cy * 68 + (N.rnd() - 0.5) * 6,
+      (n === 1 ? 24 : 17) * (0.92 + N.rnd() * 0.16)]);
     const scratches = Array.from({ length: 22 }, () => {
-      const a = N.rnd() * Math.PI, x = N.rnd() * W, y = N.rnd() * W, l = 20 + N.rnd() * 90;
-      return [x, y, Math.cos(a), Math.sin(a), l, N.rnd() < 0.5];
+      const a = N.rnd() * Math.PI;
+      return [N.rnd() * 256, N.rnd() * 256, Math.cos(a), Math.sin(a), 20 + N.rnd() * 90, N.rnd() < 0.5];
     });
-    const old = [150, 130, 92], fresh = [205, 188, 148], grime = [78, 62, 40], dirt = [22, 15, 8];
-    const stains = Array.from({ length: 3 }, () => [N.rnd() * W, N.rnd() * W, 20 + N.rnd() * 40]);
-    return texPair(W, W, (x, y) => {
+    const stains = Array.from({ length: 3 }, () => [N.rnd() * 256, N.rnd() * 256, 20 + N.rnd() * 40]);
+    const glow = document.createElement("canvas"), metal = document.createElement("canvas");
+    glow.width = glow.height = metal.width = metal.height = W;
+    const gctx = glow.getContext("2d"), mctx = metal.getContext("2d");
+    const gi = gctx.createImageData(W, W), mi = mctx.createImageData(W, W);
+    let anyGlow = false, anyMetal = false;
+    const t = texPair(W, W, (px, py) => {
+      const x = px * k, y = py * k;
       const m = N.fbm(x / 70, y / 70, 4), fine = N.fbm(x / 5, y / 5, 2);
-      let col = mixRGB(old, fresh, Math.min(1, m * 1.4));
-      col = mixRGB(col, grime, Math.max(0, 0.42 - m) * 1.2);
-      // Pores in the bone, and a few old stains
-      col = mixRGB(col, grime, Math.max(0, fine - 0.62) * 1.8);
-      for (const [sx, sy, sr] of stains) {
-        const d = Math.hypot(x - sx, y - sy) / sr;
-        if (d < 1) col = mixRGB(col, grime, (1 - d) * 0.35 * N.fbm(x / 12, y / 12, 2));
+      const edge = Math.min(x, y, 255 - x, 255 - y);
+      let col, height = 0.6 + (m - 0.5) * 0.15 + (fine - 0.5) * 0.1, emit = 0, met = 0;
+      // Pip test, with a slightly ragged edge
+      let pip = -1, pd = 0, near = null;
+      for (const q of pips) {
+        const d = Math.hypot(x - q[0], y - q[1]) + (N.fbm(x / 6, y / 6, 2) - 0.5) * 3;
+        if (d < q[2] + 4) { pip = d < q[2] ? 1 : 0; pd = d / q[2]; near = q; break; }
       }
-      let height = 0.6 + (m - 0.5) * 0.15 + (fine - 0.5) * 0.1;
-      // Dirt worked into the edges
-      const edge = Math.min(x, y, W - 1 - x, W - 1 - y);
-      if (edge < 44) { const k = Math.pow(1 - edge / 44, 1.6); col = mixRGB(col, grime, k * 0.85); height -= k * 0.12; }
-      // Scratches, some pale (fresh) and some dark (dirty)
-      for (const [sx, sy, dx, dy, l, pale] of scratches) {
-        const rx = x - sx, ry = y - sy, t = rx * dx + ry * dy;
-        if (t > 0 && t < l && Math.abs(-rx * dy + ry * dx) < 0.8) { col = mixRGB(col, pale ? fresh : grime, 0.6); height -= 0.08; }
+      if (style === "bone") {
+        const old = [150, 130, 92], fresh = [205, 188, 148], grime = [78, 62, 40];
+        col = mixRGB(old, fresh, Math.min(1, m * 1.4));
+        col = mixRGB(col, grime, Math.max(0, 0.42 - m) * 1.2);
+        col = mixRGB(col, grime, Math.max(0, fine - 0.62) * 1.8);
+        for (const [sx, sy, sr] of stains) { const d = Math.hypot(x - sx, y - sy) / sr; if (d < 1) col = mixRGB(col, grime, (1 - d) * 0.35 * N.fbm(x / 12, y / 12, 2)); }
+        if (edge < 44) { const e = Math.pow(1 - edge / 44, 1.6); col = mixRGB(col, grime, e * 0.85); height -= e * 0.12; }
+        for (const [sx, sy, dx, dy, l, pale] of scratches) {
+          const rx = x - sx, ry = y - sy, tt = rx * dx + ry * dy;
+          if (tt > 0 && tt < l && Math.abs(-rx * dy + ry * dx) < 0.8) { col = mixRGB(col, pale ? fresh : grime, 0.6); height -= 0.08; }
+        }
+        if (pip === 1) { col = mixRGB([22, 15, 8], [60, 42, 24], pd * pd * 0.7); height = 0.08 + pd * 0.2; }
+        else if (pip === 0) { col = mixRGB(col, fresh, 0.25); height += 0.05; }
+      } else if (style === "dwemer") {
+        const brush = N.fbm(x / 90, y / 2.5, 2);
+        col = mixRGB([120, 80, 38], [196, 146, 78], Math.min(1, m * 0.9 + brush * 0.5));
+        const patina = N.fbm(x / 30 + 40, y / 30, 3);
+        if (patina > 0.6) col = mixRGB(col, [74, 104, 78], (patina - 0.6) * 1.8);
+        if (edge < 30) { const e = 1 - edge / 30; col = mixRGB(col, [70, 46, 22], e * 0.7); }
+        met = 200 - Math.max(0, patina - 0.6) * 400;
+        height = 0.6 + (brush - 0.5) * 0.08;
+        if (pip >= 0) {
+          // Gear ring: dark hole, raised toothed ring
+          const [cx, cy, r] = near;
+          const ang = Math.atan2(y - cy, x - cx), d = Math.hypot(x - cx, y - cy);
+          const tooth = Math.cos(ang * 8) > 0.3 ? 3 : 0;
+          if (d < r * 0.42) { col = [22, 13, 6]; height = 0.1; met = 40; }
+          else if (d < r * 0.55) { col = [70, 44, 20]; height = 0.4; met = 120; }
+          else if (d < r + tooth) { col = mixRGB([250, 214, 140], [196, 150, 80], d / (r + 3)); height = 0.9; met = 255; }
+          else { col = mixRGB(col, [60, 38, 16], 0.6); }
+        }
+      } else if (style === "ebony") {
+        const streak = N.fbm(x / 120, y / 18, 3);
+        col = mixRGB([18, 16, 20], [52, 46, 56], Math.min(1, streak * 0.9 + m * 0.3));
+        if (edge < 20) col = mixRGB(col, [70, 64, 72], (1 - edge / 20) * 0.4);
+        height = 0.6 + (streak - 0.5) * 0.06;
+        if (pip === 1) { col = mixRGB([238, 196, 98], [170, 120, 44], pd * pd); height = 0.55; met = 255; }
+        else if (pip === 0) { col = [10, 9, 11]; height = 0.4; }
+      } else if (METALS[style]) {
+        const M = METALS[style];
+        const brush = N.fbm(x / 90, y / 2.5, 2), dimple = N.fbm(x / 9, y / 9, 2);
+        let tone = m * 0.7 + brush * 0.4 * M.brush + dimple * 0.5 * M.hammer;
+        if (M.ripple) tone = 0.5 + 0.4 * Math.sin(N.fbm(x / 50, y / 50, 3) * 22) + m * 0.2;
+        col = mixRGB(M.lo, M.hi, Math.min(1, tone));
+        const spot = N.fbm(x / 26 + 17, y / 26, 3);
+        if (spot > M.spotAt) col = mixRGB(col, M.spot, (spot - M.spotAt) * 2.2);
+        if (M.edgeTarnish && edge < 40) col = mixRGB(col, M.spot, Math.pow(1 - edge / 40, 1.4) * 0.7);
+        else if (edge < 26) col = mixRGB(col, M.lo, (1 - edge / 26) * 0.5);
+        height = 0.6 + (dimple - 0.5) * 0.2 * M.hammer + (brush - 0.5) * 0.06 * M.brush;
+        if (M.leaves) { const lv = Math.abs(Math.sin(x * 0.09 + Math.sin(y * 0.05) * 3)); if (lv < 0.04 && edge > 14) { col = mixRGB(col, [110, 120, 90], 0.6); height -= 0.08; } }
+        if (M.claws && edge > 18) {
+          for (let c = 0; c < 3; c++) { const off = Math.abs((x - 180 - c * 9) + (y - 200) * 0.6); if (off < 1.4 && y > 170 && y < 240) { col = mixRGB(col, M.lo, 0.8); height -= 0.1; } }
+        }
+        met = M.met - Math.max(0, spot - M.spotAt) * 300;
+        if (pip === 1) {
+          if (M.pip === "punch") { col = mixRGB([16, 14, 12], [50, 46, 40], pd * pd); height = 0.08 + pd * 0.25; met = 80; }
+          else if (M.pip === "niello") { col = mixRGB([12, 12, 14], [36, 36, 40], pd); height = 0.5; met = 40; }
+          else if (M.pip === "garnet") { col = mixRGB([170, 20, 30], [90, 6, 14], pd); height = 0.55; met = 0; }
+          else { col = mixRGB([20, 20, 22], [70, 70, 74], pd * pd); height = 0.15 + pd * 0.2; met = 120; }
+        } else if (pip === 0) { col = mixRGB(col, M.hi, 0.5); height += 0.05; }
+      } else if (style === "malachite") {
+        const band = Math.sin(N.fbm(x / 60, y / 60, 4) * 40 + Math.hypot(x - 40, y - 210) * 0.05);
+        col = mixRGB([16, 76, 50], [72, 164, 112], (band + 1) / 2);
+        col = mixRGB(col, [8, 44, 28], Math.max(0, -band - 0.7) * 2);
+        height = 0.6;
+        if (pip === 1) { col = mixRGB([244, 240, 228], [200, 196, 184], pd); height = 0.55; }
+        else if (pip === 0) { col = mixRGB(col, [10, 40, 26], 0.5); }
+      } else if (style === "stalhrim") {
+        col = mixRGB([104, 156, 192], [210, 236, 248], Math.min(1, m * 1.2));
+        const crack = Math.abs(N.fbm(x / 34 + 3, y / 34, 4) - 0.5);
+        if (crack < 0.018) { col = mixRGB(col, [250, 255, 255], 0.8); height -= 0.1; }
+        const frost = N.fbm(x / 3, y / 3, 1);
+        col = mixRGB(col, [236, 248, 255], Math.max(0, frost - 0.7) * 1.5);
+        emit = 18;
+        if (pip === 1) { col = mixRGB([24, 58, 104], [60, 110, 160], pd); height = 0.15; emit = 70; }
+        else if (pip === 0) { col = mixRGB(col, [255, 255, 255], 0.4); }
+      } else if (style === "dragonbone") {
+        const fiber = N.fbm(x / 140, y / 3.5, 3);
+        col = mixRGB([196, 182, 146], [238, 228, 198], Math.min(1, m * 0.8 + fiber * 0.5));
+        col = mixRGB(col, [150, 136, 104], Math.max(0, fine - 0.66) * 1.4);
+        if (edge < 36) { const e = Math.pow(1 - edge / 36, 1.5); col = mixRGB(col, [120, 108, 86], e * 0.6); }
+        height = 0.6 + (fiber - 0.5) * 0.15;
+        if (pip === 1) { col = mixRGB([62, 16, 10], [104, 34, 20], pd * pd); height = 0.1 + pd * 0.2; }
+        else if (pip === 0) { col = mixRGB(col, [150, 80, 60], 0.35); }
+      } else {  // daedric
+        const vein = Math.abs(N.fbm(x / 40, y / 40, 4) - 0.5);
+        col = mixRGB([16, 10, 10], [44, 26, 24], m);
+        if (vein < 0.02) { col = mixRGB(col, [150, 30, 14], 0.8); emit = 90; }
+        // Angular runes cut near the edges
+        const rx = x % 32, rune = edge > 10 && edge < 22;
+        if (rune && (Math.abs(rx - 16) < 1.2 || Math.abs(rx - Math.abs(edge - 16) * 2) < 1.2)) { col = [120, 24, 10]; emit = 120; height = 0.4; }
+        met = 120; height = Math.min(height, 0.6);
+        if (pip === 1) { col = mixRGB([255, 170, 70], [220, 50, 16], pd); height = 0.15; emit = 255 - pd * 90; }
+        else if (pip === 0) { col = [20, 8, 6]; emit = 0; }
       }
-      // Drilled pips: dark dirt inside, a slightly raised worn rim
-      for (const [px, py, pr] of pips) {
-        const d = Math.hypot(x - px, y - py) + (N.fbm(x / 6, y / 6, 2) - 0.5) * 3;
-        if (d < pr) { const k = d / pr; col = mixRGB(dirt, [60, 42, 24], k * k * 0.7); height = 0.08 + k * 0.2; }
-        else if (d < pr + 3) { col = mixRGB(col, fresh, 0.25); height += 0.05; }
-      }
+      const i = (py * W + px) * 4;
+      gi.data[i] = emit; gi.data[i + 1] = emit * 0.3; gi.data[i + 2] = emit * 0.1; gi.data[i + 3] = 255;
+      mi.data[i] = mi.data[i + 1] = mi.data[i + 2] = met; mi.data[i + 3] = 255;
+      if (emit > 0) anyGlow = true;
+      if (met > 0) anyMetal = true;
       return [col, height];
     });
+    if (style === "stalhrim") for (let i = 0; i < gi.data.length; i += 4) { gi.data[i] = gi.data[i] * 0.3; gi.data[i + 1] = gi.data[i] * 2; gi.data[i + 2] = gi.data[i] * 3.3; }
+    gctx.putImageData(gi, 0, 0); mctx.putImageData(mi, 0, 0);
+    t.glow = anyGlow ? new THREE.CanvasTexture(glow) : null;
+    if (t.glow) t.glow.encoding = THREE.sRGBEncoding;
+    t.metal = anyMetal ? new THREE.CanvasTexture(metal) : null;
+    return t;
   }
+  const DICE_LOOK = {
+    bone: { rough: 0.8, metal: 0, bump: 0.016 }, dwemer: { rough: 0.42, metal: 1, bump: 0.012 },
+    ebony: { rough: 0.22, metal: 1, bump: 0.008 }, malachite: { rough: 0.12, metal: 0, bump: 0.004 },
+    stalhrim: { rough: 0.16, metal: 0, bump: 0.01 }, dragonbone: { rough: 0.65, metal: 0, bump: 0.016 },
+    daedric: { rough: 0.32, metal: 1, bump: 0.01 },
+    iron: { rough: 0.62, metal: 1, bump: 0.016 }, steel: { rough: 0.34, metal: 1, bump: 0.01 },
+    corundum: { rough: 0.45, metal: 1, bump: 0.012 }, orichalcum: { rough: 0.5, metal: 1, bump: 0.014 },
+    silver: { rough: 0.24, metal: 1, bump: 0.008 }, quicksilver: { rough: 0.06, metal: 1, bump: 0.004 },
+    moonstone: { rough: 0.3, metal: 1, bump: 0.008 }, gold: { rough: 0.24, metal: 1, bump: 0.008 },
+  };
+  const diceMatCache = {};
   // BoxGeometry material order is +x, -x, +y, -y, +z, -z; the sim puts 1, 6, 2, 5, 3, 4 there.
-  const dieMats = [1, 6, 2, 5, 3, 4].map((n) => {
-    const t = boneFace(n);
-    return new THREE.MeshStandardMaterial({ map: t.map, bumpMap: t.bump, bumpScale: 0.016, roughness: 0.8 });
-  });
+  function diceMats(style) {
+    if (diceMatCache[style]) return diceMatCache[style];
+    const look = DICE_LOOK[style];
+    return (diceMatCache[style] = [1, 6, 2, 5, 3, 4].map((n) => {
+      const t = diceFace(style, n, 256);
+      const mat = new THREE.MeshStandardMaterial({ map: t.map, bumpMap: t.bump, bumpScale: look.bump, roughness: look.rough,
+        metalness: t.metal ? look.metal : 0 });
+      if (t.metal) mat.metalnessMap = t.metal;
+      if (t.glow) { mat.emissiveMap = t.glow; mat.emissive.setRGB(1, 1, 1); }
+      return mat;
+    }));
+  }
+  function diceThumb(style, size) {
+    const t = diceFace(style, 5, size || 72);
+    return t.canvas;
+  }
+  const dieMats = diceMats("bone");
 
   function roundedCube(size, radius) {
     const g = new THREE.BoxGeometry(size, size, size, 7, 7, 7);
@@ -892,8 +1060,11 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   function tweenFrom(i, dur) { anim[i] = { from: dice[i].position.clone(), fromQ: dice[i].quaternion.clone(), t: 0, dur: dur || 0.25 }; }
   function freeSlot() { const used = new Set(rackSlot.filter((v) => v >= 0)); let k = 0; while (used.has(k)) k++; return k; }
 
+  function setDiceStyle(style) { const mats = diceMats(style); for (const d of dice) d.material = mats; }
+
   function startTurn(owner, animate) {
     turn = owner;
+    setDiceStyle(owner === "player" ? ranks.dice : "bone");
     cup = cups[owner];
     cup.x = cup.rest.x; cup.y = cup.rest.y; cup.z = cup.rest.z; cup.vx = cup.vy = cup.vz = 0; cup.q.identity();
     tilt = null;
@@ -1008,13 +1179,17 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     saveRecords();
     showRecords();
     updateUI();
+    if (outcome === "win") {
+      const fresh = DICE.find((d) => d.wins === r.w);
+      if (fresh) setTimeout(() => toast(`Innkeepers now sell ${fresh.name} dice`), 3200);
+    }
     const title = $("resultTitle");
     title.textContent = outcome === "win" ? "You Win!" : outcome === "draw" ? "A Draw" : "You Lose!";
     title.classList.toggle("lose", outcome === "lose" || outcome === "forfeit");
     $("resultScore").textContent = outcome === "forfeit" ? "You forfeited." : `${mine} to ${theirs}`;
     $("resultRecord").textContent = recordText(r, false).replace("Record", "Your record");
     setTimeout(() => showPrompt("resultPrompt"), outcome === "forfeit" ? 0 : 700);
-    if (outcome !== "forfeit") finishGame(mine);
+    finishGame(outcome === "forfeit" ? 0 : mine);
   }
 
   function newGame() {
@@ -1185,14 +1360,23 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   }
 
   // ---- Ranks: your best final score unlocks better cups. Kept in this browser only.
-  const ranks = { best: 0, selected: "tankard" };
+  // ---- Cups follow your LAST finished game: a high score earns the better cups, a low one (or a forfeit) drops you
+  // back. Any cup up to your current tier can be chosen. Kept in this browser only.
+  const ranks = { last: 0, selected: "tankard", test: false, dice: "bone" };
   try {
     const saved = JSON.parse(localStorage.getItem("yacht-ranks") || "null");
-    if (saved && typeof saved.best === "number") { ranks.best = saved.best; ranks.selected = saved.selected || "tankard"; }
+    if (saved) {
+      ranks.last = typeof saved.last === "number" ? saved.last : 0;
+      ranks.selected = saved.selected || "tankard";
+      ranks.test = !!saved.test;
+      ranks.dice = saved.dice || "bone";
+    }
   } catch (e) { /* storage blocked: start fresh */ }
   function saveRanks() { try { localStorage.setItem("yacht-ranks", JSON.stringify(ranks)); } catch (e) { /* ignore */ } }
-  const unlocked = (c) => ranks.best >= c.need;
+  const unlocked = (c) => ranks.last >= c.need;
   function currentRank() { let r = CUPS[0]; for (const c of CUPS) if (unlocked(c)) r = c; return r; }
+  const wins = () => rec().w;
+  const diceOwned = (d) => ranks.test || wins() >= d.wins;
 
   const chipsEl = $("cupChips");
   CUPS.forEach((c) => {
@@ -1205,37 +1389,69 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     });
     chipsEl.appendChild(b);
   });
+  const diceEl = $("diceChips");
+  DICE.forEach((d) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "dice-chip"; b.id = "dice-" + d.id;
+    b.title = d.blurb;
+    b.appendChild(diceThumb(d.id, 68));
+    b.insertAdjacentHTML("beforeend", `<span>${d.name}</span><small></small>`);
+    b.addEventListener("click", () => {
+      if (!diceOwned(d)) return;
+      ranks.dice = d.id; saveRanks(); updateRanks();
+      if (turn === "player") setDiceStyle(d.id);
+      toast(`${d.name} dice`);
+    });
+    diceEl.appendChild(b);
+  });
+  if (DICE.length % 5) diceEl.lastChild.style.gridColumn = `span ${5 - (DICE.length % 5) + 1}`;
+
   function updateRanks() {
     const r = currentRank(), next = CUPS.find((c) => !unlocked(c));
     $("rankName").textContent = r.rank;
-    $("rankNext").textContent = next ? `Score ${next.need}+ in a game for the ${next.name}` : `Best game ${ranks.best}`;
+    $("rankNext").textContent = next ? `Last game ${ranks.last}. Score ${next.need}+ for the ${next.name}` : `Last game ${ranks.last}`;
     CUPS.forEach((c) => {
       const b = $("cup-" + c.id);
       b.disabled = !unlocked(c);
       b.setAttribute("aria-pressed", String(ranks.selected === c.id));
-      b.querySelector("small").textContent = unlocked(c) ? c.rank : `Locked · ${c.need}+`;
+      b.querySelector("small").textContent = unlocked(c) ? c.rank : `${c.need}+`;
     });
+    DICE.forEach((d) => {
+      const b = $("dice-" + d.id), owned = diceOwned(d);
+      b.disabled = !owned;
+      b.setAttribute("aria-pressed", String(ranks.dice === d.id));
+      b.querySelector("small").textContent = d.wins === 0 ? "Yours" : owned ? `${d.gold}g` : `${Math.min(wins(), d.wins)}/${d.wins}`;
+      b.setAttribute("aria-label", `${d.name} dice. ${d.blurb} ${owned ? "" : `Sold once you've won ${d.wins} games, for ${d.gold} gold.`}`);
+    });
+    $("diceNote").textContent = `Sold by innkeepers · ${wins()} wins`;
   }
   function finishGame(total) {
     const before = currentRank();
-    ranks.best = Math.max(ranks.best, total);
+    ranks.last = total;
     const after = currentRank();
-    if (after !== before) {
+    const idx = (c) => CUPS.indexOf(c);
+    if (idx(after) > idx(before)) {
       ranks.selected = after.id;
-      buildCup(after.id);
-      setTimeout(() => toast(`${after.rank}! ${after.name} unlocked`), 2400);
+      setTimeout(() => toast(`${after.rank}! ${after.name}`), 2400);
+    } else if (!unlocked(CUPS.find((c) => c.id === ranks.selected))) {
+      ranks.selected = after.id;
+      setTimeout(() => toast(`Back to ${after.rank}: ${after.name}`), 2400);
     }
+    buildCup(ranks.selected);
     saveRanks();
     updateRanks();
   }
-  // Testing: every cup at once, or back to Novice.
+  // Testing: every cup and every dice set at once, or back to Novice with bone dice.
   $("unlockAll").addEventListener("click", () => {
-    ranks.best = Math.max(ranks.best, CUPS[CUPS.length - 1].need); saveRanks(); updateRanks(); toast("All cups unlocked");
+    ranks.last = Math.max(ranks.last, CUPS[CUPS.length - 1].need); ranks.test = true; saveRanks(); updateRanks(); toast("All cups and dice unlocked");
   });
   $("resetRank").addEventListener("click", () => {
-    ranks.best = 0; ranks.selected = "tankard"; saveRanks(); buildCup("tankard"); updateRanks(); toast("Back to Novice");
+    ranks.last = 0; ranks.selected = "tankard"; ranks.test = false; ranks.dice = "bone"; saveRanks(); buildCup("tankard");
+    if (turn === "player") setDiceStyle("bone");
+    updateRanks(); toast("Back to Novice");
   });
-  if (!CUPS.some((c) => c.id === ranks.selected && unlocked(c))) ranks.selected = "tankard";
+  if (!CUPS.some((c) => c.id === ranks.selected && unlocked(c))) ranks.selected = currentRank().id;
+  if (!DICE.some((d) => d.id === ranks.dice && diceOwned(d))) ranks.dice = "bone";
   buildCup(ranks.selected);
   updateRanks();
 
@@ -1688,6 +1904,23 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
 
   // Hooks for automated checks of the preview.
   window.__yacht = {
+    diceSheet: () => {
+      const wrap = document.createElement("div");
+      wrap.id = "sheet";
+      wrap.style.cssText = "position:fixed;inset:0;z-index:99;background:#15100c;display:grid;grid-template-columns:repeat(8,1fr);gap:22px 14px;padding:26px;align-content:center";
+      for (const d of DICE) {
+        const col = document.createElement("div");
+        col.style.cssText = "display:flex;flex-direction:column;align-items:center;gap:8px;color:#eadcbc;font:15px sans-serif";
+        col.innerHTML = `<b style="font:22px 'IM Fell English SC',serif;color:#caa457">${d.name}</b><small style="color:#a8977c">${d.wins ? d.wins + " wins · " + d.gold + " gold" : "Starting dice"}</small>`;
+        const grid = document.createElement("div");
+        grid.style.cssText = "display:grid;grid-template-columns:1fr 1fr;gap:6px";
+        for (let n = 1; n <= 6; n++) { const c = diceFace(d.id, n, 96).canvas; c.style.cssText = "width:82px;height:82px;border-radius:8px"; grid.appendChild(c); }
+        col.appendChild(grid);
+        wrap.appendChild(col);
+      }
+      document.body.appendChild(wrap);
+    },
+    setDice: (id) => { ranks.dice = id; setDiceStyle(id); },
     endGame: (o) => endGame(o), forfeit: () => endGame("forfeit"), record: () => rec(),
     setBest: (n) => { ranks.best = n; saveRanks(); updateRanks(); }, finishGame: (n) => finishGame(n),
     state: () => Array.from(state()), phase: () => phase, faces: () => faces.slice(), rolls: () => rollsUsed,
