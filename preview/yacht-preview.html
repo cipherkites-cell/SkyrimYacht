@@ -1244,26 +1244,6 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     precious: { low: [220, 7], peak: [560, 3, 0.9], shelf: [3500, -6] },
     ice: { peak: [2400, 2, 1], shelf: [7000, -1] },
   };
-  // Metal goblets ring softly when dice hit them.
-  const GOBLET_RING = [[1250, 0.12], [2780, 0.09], [4900, 0.06]];
-  const ringCache = new Map();
-  function ringBufs(key, modes) {
-    let set = ringCache.get(key);
-    if (set) return set;
-    set = [];
-    const sr = audio.sampleRate;
-    for (let v = 0; v < 4; v++) {
-      const n = Math.ceil(Math.max(...modes.map((m) => m[1])) * 6 * sr), b = audio.createBuffer(1, n, sr), o = b.getChannelData(0);
-      modes.forEach(([f0, dec], k) => {
-        const w = (2 * Math.PI * f0 * (1 + (Math.random() - 0.5) * 0.06)) / sr, kk = Math.exp(-1 / (dec * sr)), ph = Math.random() * 6.283;
-        let env = 1 / (k + 1);
-        for (let i = 0; i < n && env > 1e-5; i++) { o[i] += env * Math.sin(w * i + ph) * Math.min(1, i / 48); env *= kk; }
-      });
-      set.push(b);
-    }
-    ringCache.set(key, set);
-    return set;
-  }
   const SURF_GAIN = [0.3, 0.55, 0.6, 0.45];
   const lastHit = new Float64Array(24).fill(-1);
   const activeCupId = () => (turn === "npc" ? "tankard" : ranks.selected);
@@ -1302,25 +1282,12 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
       [sh.frequency.value, sh.gain.value] = col.shelf; tail.connect(sh); tail = sh;
     }
     if (inside) {
-      // The cup's hollow body: more weight, and a wooden tankard's boxy "tok".
+      // The cup's hollow body: more weight and a boxy "tok". Every cup sounds the same as the tankard.
       const body = audio.createBiquadFilter(); body.type = "lowshelf"; body.frequency.value = 220; body.gain.value = 6;
-      tail.connect(body); tail = body;
-      if (CUP_MAT[activeCupId()] === "wood") {
-        const box = audio.createBiquadFilter(); box.type = "peaking"; box.frequency.value = 380; box.gain.value = 4; box.Q.value = 1.2;
-        tail.connect(box); tail = box;
-      }
+      const box = audio.createBiquadFilter(); box.type = "peaking"; box.frequency.value = 380; box.gain.value = 4; box.Q.value = 1.2;
+      tail.connect(body); body.connect(box); tail = box;
     }
     tail.connect(f); f.connect(g);
-    // A metal goblet's soft ring under the hit, only on firmer hits.
-    const rings = [];
-    if (type === 3 && CUP_MAT[activeCupId()] === "metal" && v > 0.12) rings.push([ringBufs("goblet", GOBLET_RING), 0.04]);
-    for (const [set, level] of rings) {
-      const r = audio.createBufferSource(); r.buffer = set[(Math.random() * set.length) | 0];
-      r.playbackRate.value = (die >= 0 ? dieTune[die] : 1) * (1 + (Math.random() - 0.5) * 0.03);
-      const rg = audio.createGain(); rg.gain.value = level;  // then through the same filter and level as the hit
-      r.connect(rg); rg.connect(f);
-      r.start(audio.currentTime);
-    }
     let out = g;
     if (audio.createStereoPanner) {
       const p = audio.createStereoPanner();
