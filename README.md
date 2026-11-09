@@ -28,6 +28,8 @@ every frame, so dice can't be flung off the table or wedge in level geometry.
   recordings (`assets/sounds/kenney`, kenney.nl): sharp clicks of dice in a cup for dice on dice and in the cup,
   knocks of dice landing on a table for the linen and the tray. Every contact the sim reports plays one at random,
   pitched for the dice's material, as loud as the impact and darker on the linen.
+  Each material adds a light flavour: bone a warm, hollow tok; metal a brighter edge and a faint ring of a few
+  milliseconds (silver and gold a little lower and longer); metal goblets ring softly when dice hit them.
 - **Never stuck:** a die resting on another die, or cocked against a wall, is knocked over a few times and then set
   down flat on its nearest face at the closest clear spot; any die still loose six seconds after leaving the cup is
   set down the same way, so a throw always ends (`TestNeverStuck`).
