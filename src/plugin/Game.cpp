@@ -1557,7 +1557,7 @@ namespace Game
 		struct Fonts
 		{
 			ImFont *sans = nullptr, *sansSemi = nullptr, *turn = nullptr, *toast = nullptr, *toastLong = nullptr, *words = nullptr,
-				   *title = nullptr, *titleMid = nullptr, *menu = nullptr, *score = nullptr, *skill = nullptr, *small = nullptr;
+				   *title = nullptr, *titleMid = nullptr, *menu = nullptr, *score = nullptr, *skill = nullptr, *tiny = nullptr;
 			ImFont *book = nullptr, *bookIt = nullptr, *bookSC = nullptr, *bookSCsm = nullptr, *hand = nullptr, *handBig = nullptr;
 		} F;
 		float g_ui = 1.0f;
@@ -1828,7 +1828,7 @@ namespace Game
 					kFrost, kFrost, IM_COL32(143, 180, 232, 255));
 			}
 			// the stake, small, under it
-			TextC(dl, F.small, cx, my + S(10), kGrey, Upper(fmt::format("Wager {} septims", g_bet)), 0.3f, 0.8f);
+			TextC(dl, F.tiny, cx, my + S(10), kGrey, Upper(fmt::format("Wager {} septims", g_bet)), 0.3f, 0.8f);
 		}
 
 		// The words of power, each appearing as it's spoken.
@@ -2169,7 +2169,7 @@ namespace Game
 			float       y = a.y + S(30);
 			Text(dl, F.skill, ImVec2(x0, y), kWhite, Upper(kCups[rank].rank), 0.22f, 0.8f);
 			const std::string next = rank < 4 ? fmt::format("{} at {}", kCups[rank + 1].rank, kCups[rank + 1].need) : "Master of the table";
-			Text(dl, F.small, ImVec2(x1 - Measure(F.small, next, 0.05f), y + F.skill->FontSize - F.small->FontSize - S(2)), kGrey, next, 0.05f);
+			Text(dl, F.tiny, ImVec2(x1 - Measure(F.tiny, next, 0.05f), y + F.skill->FontSize - F.tiny->FontSize - S(2)), kGrey, next, 0.05f);
 			y += F.skill->FontSize + S(9);
 			// the skill bar: best score toward the next cup
 			const float lo = static_cast<float>(kCups[rank].need), hi = rank < 4 ? static_cast<float>(kCups[rank + 1].need) : lo + 1;
@@ -2186,7 +2186,7 @@ namespace Game
 			Diamond(dl, ImVec2(bb.x + S(5), ba.y + S(3.5f)), S(5), IM_COL32(0, 0, 0, 255), kWhite);
 			y += S(22);
 			auto line = [&](const char* label, const std::string& value) {
-				Text(dl, F.small, ImVec2(x0, y + S(3)), kGrey, label, 0.32f);
+				Text(dl, F.tiny, ImVec2(x0, y + S(3)), kGrey, label, 0.32f);
 				Text(dl, F.sans, ImVec2(x0 + S(90), y), kWhite, Upper(value), 0.08f, 0.7f);
 				dl->AddRectFilledMultiColor(ImVec2(x0, y + S(24)), ImVec2(x1, y + S(25)), Alpha(kWhite, 0.62f), Alpha(kWhite, 0.0f), Alpha(kWhite, 0.0f),
 					Alpha(kWhite, 0.62f));
@@ -2224,7 +2224,7 @@ namespace Game
 				auto* dl = ImGui::GetWindowDrawList();
 				MsgBox(dl, ImVec2(x, y), ImVec2(x + w, y + h));
 				TextC(dl, F.menu, W * 0.5f, y + S(24), kWhite, "FORFEIT THIS GAME?", 0.26f);
-				TextC(dl, F.small, W * 0.5f, y + S(62), kGrey, Upper(fmt::format("It counts as a loss. {} keeps your {} septims", g_oppName, g_betHeld)), 0.2f);
+				TextC(dl, F.tiny, W * 0.5f, y + S(62), kGrey, Upper(fmt::format("It counts as a loss. {} keeps your {} septims", g_oppName, g_betHeld)), 0.2f);
 				switch (MenuButtons("fb", { { "Forfeit", true }, { "Keep playing", false } }, W * 0.5f, y + S(100))) {
 				case 0:
 					Post(UiAct::ForfeitYes);
@@ -2269,7 +2269,7 @@ namespace Game
 		{
 			ImGui::PushID(a_id);
 			const float x0 = cx - w * 0.5f, x1 = cx + w * 0.5f;
-			Text(dl, F.small, ImVec2(x0, y + S(5)), kGrey, a_label, 0.32f);
+			Text(dl, F.tiny, ImVec2(x0, y + S(5)), kGrey, a_label, 0.32f);
 			int prev = -1, next = -1;
 			for (int k = a_cur - 1; k >= 0 && prev < 0; --k) {
 				if (a_ok(k)) {
@@ -2315,7 +2315,7 @@ namespace Game
 			const int   top = std::clamp(gold - gold % 5, cfg.minBet, cfg.maxBet);
 			const int   bet = std::clamp(g_bet, cfg.minBet, top);
 			float       yy = y;
-			TextC(dl, F.small, cx, yy, kGrey, Upper(fmt::format("A game of Yacht with {}", g_oppName)), 0.6f, 0.8f);
+			TextC(dl, F.tiny, cx, yy, kGrey, Upper(fmt::format("A game of Yacht with {}", g_oppName)), 0.6f, 0.8f);
 			yy += S(30);
 			// the stake, large, with arrows either side
 			const std::string stake = fmt::format("{}", bet);
@@ -2337,9 +2337,9 @@ namespace Game
 			tri(cx - sw * 0.5f - S(55), -1, h0, bet > cfg.minBet);
 			tri(cx + sw * 0.5f + S(55), 1, h1, bet < top);
 			yy += F.titleMid->FontSize + S(6);
-			TextC(dl, F.small, cx, yy, kGrey, Upper(fmt::format("Septims wagered. Win and you take {}", bet * 2)), 0.34f, 0.8f);
+			TextC(dl, F.tiny, cx, yy, kGrey, Upper(fmt::format("Septims wagered. Win and you take {}", bet * 2)), 0.34f, 0.8f);
 			yy += S(22);
-			TextC(dl, F.small, cx, yy, kDimC, Upper(fmt::format("Your purse: {} septims", gold)), 0.34f, 0.8f);
+			TextC(dl, F.tiny, cx, yy, kDimC, Upper(fmt::format("Your purse: {} septims", gold)), 0.34f, 0.8f);
 			yy += S(34);
 			DiamondRule(dl, cx, yy, S(560));
 			yy += S(28);
@@ -2371,7 +2371,7 @@ namespace Game
 				}
 			}
 			if (topCup < 4) {
-				TextC(dl, F.small, cx, yy, kDimC, Upper(fmt::format("Score {} in a game to earn the {}", kCups[topCup + 1].need, kCups[topCup + 1].name)), 0.2f);
+				TextC(dl, F.tiny, cx, yy, kDimC, Upper(fmt::format("Score {} in a game to earn the {}", kCups[topCup + 1].need, kCups[topCup + 1].name)), 0.2f);
 			}
 			yy += S(34);
 			switch (MenuButtons("wb", { { "Place bet", false }, { "Leave", false } }, cx, yy)) {
@@ -2403,11 +2403,11 @@ namespace Game
 			BeginArea("##shop", ImVec2(x, y), ImVec2(w, h));
 			auto* dl = ImGui::GetWindowDrawList();
 			float yy = y;
-			TextC(dl, F.small, cx, yy, kGrey, Upper(fmt::format("{}'s stock", g_shopName)), 0.6f, 0.8f);
+			TextC(dl, F.tiny, cx, yy, kGrey, Upper(fmt::format("{}'s stock", g_shopName)), 0.6f, 0.8f);
 			yy += S(26);
 			TextC(dl, F.title, cx, yy, IM_COL32(255, 255, 255, 255), "DICE", 0.16f, 0.9f);
 			yy += F.title->FontSize + S(4);
-			TextC(dl, F.small, cx, yy, kGrey, Upper(fmt::format("Your purse: {} septims  -  {} wins", GoldHeld(), g_totalWins)), 0.34f, 0.8f);
+			TextC(dl, F.tiny, cx, yy, kGrey, Upper(fmt::format("Your purse: {} septims  -  {} wins", GoldHeld(), g_totalWins)), 0.34f, 0.8f);
 			yy += S(30);
 			DiamondRule(dl, cx, yy, S(760));
 			yy += S(18);
@@ -2443,7 +2443,7 @@ namespace Game
 				Text(dl, F.sans, ImVec2(ra.x + S(16), ra.y + (rowH - F.sans->FontSize) * 0.5f), col, Upper(d.name), 0.08f, 0.7f);
 				const std::string tag = inUse == kDiceSets[k] ? "In use" : owned ? "Owned" : sale ? fmt::format("{} septims", d.gold) : fmt::format("{} wins", d.wins);
 				const ImU32 tc = inUse == kDiceSets[k] ? kWhite : sale ? IM_COL32(230, 200, 140, 255) : kDimC;
-				Text(dl, F.small, ImVec2(rb.x - S(8) - Measure(F.small, Upper(tag), 0.14f), ra.y + (rowH - F.small->FontSize) * 0.5f), tc, Upper(tag), 0.14f);
+				Text(dl, F.tiny, ImVec2(rb.x - S(8) - Measure(F.tiny, Upper(tag), 0.14f), ra.y + (rowH - F.tiny->FontSize) * 0.5f), tc, Upper(tag), 0.14f);
 			}
 			// the card
 			const int   k = std::clamp(g_shopSel, 0, 14);
@@ -2455,7 +2455,7 @@ namespace Game
 			FadeRule(dl, rx0, rx1, ry);
 			ry += S(10);
 			const std::string stats = k == 0 ? "STARTING DICE" : fmt::format("PRICE  {}     WINS  {}", d.gold, d.wins);
-			TextC(dl, F.small, rcx, ry, kGrey, stats, 0.22f);
+			TextC(dl, F.tiny, rcx, ry, kGrey, stats, 0.22f);
 			ry += S(26);
 			const ImVec2 bsz = F.sans->CalcTextSizeA(F.sans->FontSize, FLT_MAX, rx1 - rx0 - S(20), d.blurb);
 			dl->AddText(F.sans, F.sans->FontSize, ImVec2(rcx - bsz.x * 0.5f, ry), kGrey, d.blurb, nullptr, rx1 - rx0 - S(20));
@@ -2473,12 +2473,12 @@ namespace Game
 					Post(UiAct::BuyDice, k);
 				}
 				if (!afford) {
-					TextC(dl, F.small, rcx, ry + S(48), IM_COL32(240, 182, 166, 255), "NOT ENOUGH GOLD", 0.22f);
+					TextC(dl, F.tiny, rcx, ry + S(48), IM_COL32(240, 182, 166, 255), "NOT ENOUGH GOLD", 0.22f);
 				}
 			} else if (!owned) {
-				TextC(dl, F.small, rcx, ry + S(8), kDimC, Upper(fmt::format("For sale after {} wins", d.wins)), 0.22f);
+				TextC(dl, F.tiny, rcx, ry + S(8), kDimC, Upper(fmt::format("For sale after {} wins", d.wins)), 0.22f);
 			} else {
-				TextC(dl, F.small, rcx, ry + S(8), kGrey, "THE DICE YOU PLAY WITH", 0.22f);
+				TextC(dl, F.tiny, rcx, ry + S(8), kGrey, "THE DICE YOU PLAY WITH", 0.22f);
 			}
 			if (!g_toast.empty() && g_clock - g_toastTime < 2.2) {
 				TextC(dl, F.sans, rcx, ry + S(80), kWhite, Upper(g_toast), 0.14f, 0.9f);
@@ -2505,7 +2505,7 @@ namespace Game
 			const bool  lose = g_outcome == "lose" || g_outcome == "forfeit";
 			const char* title = win ? "YOU WIN" : g_outcome == "draw" ? "A DRAW" : g_outcome == "forfeit" ? "FORFEIT" : "YOU LOSE";
 			float       yy = y;
-			TextC(dl, F.small, cx, yy, kGrey, "GAME OVER", 0.6f, 0.8f);
+			TextC(dl, F.tiny, cx, yy, kGrey, "GAME OVER", 0.6f, 0.8f);
 			yy += S(26);
 			const ImU32 tc = lose ? IM_COL32(240, 195, 182, 255) : IM_COL32(255, 255, 255, 255);
 			const float tw = Measure(F.title, title, 0.16f) - 0.16f * F.title->FontSize;
@@ -2518,13 +2518,13 @@ namespace Game
 				TextC(dl, F.score, cx, yy, kWhite, fmt::format("{}   -   {}", g_cards[0].Total(), g_cards[1].Total()), 0.18f, 0.8f);
 				yy += F.score->FontSize + S(10);
 			}
-			TextC(dl, F.small, cx, yy, kGrey, Upper(g_payoutText), 0.34f, 0.8f);
+			TextC(dl, F.tiny, cx, yy, kGrey, Upper(g_payoutText), 0.34f, 0.8f);
 			yy += S(24);
 			const auto& r = g_records[g_oppId];
-			TextC(dl, F.small, cx, yy, kGrey,
+			TextC(dl, F.tiny, cx, yy, kGrey,
 				Upper(fmt::format("Your record against {}: {}-{}{}", g_oppName, r.w, r.l, r.d ? fmt::format(", {} drawn", r.d) : "")), 0.34f, 0.8f);
 			yy += S(24);
-			TextC(dl, F.small, cx, yy, kDimC, Upper(fmt::format("Your cup: the {} ({})", PlayerCup().name, PlayerCup().rank)), 0.34f, 0.8f);
+			TextC(dl, F.tiny, cx, yy, kDimC, Upper(fmt::format("Your cup: the {} ({})", PlayerCup().name, PlayerCup().rank)), 0.34f, 0.8f);
 			yy += S(44);
 			switch (MenuButtons("ob", { { "Rematch", false }, { "Leave", false } }, cx, yy)) {
 			case 0:
@@ -2855,7 +2855,7 @@ namespace Game
 		};
 		F.sans = load("BarlowCondensed-Medium.ttf", "arialn.ttf", 20.0f);
 		F.sansSemi = load("BarlowCondensed-SemiBold.ttf", "arialnb.ttf", 13.0f);
-		F.small = load("BarlowCondensed-Medium.ttf", "arialn.ttf", 15.0f);
+		F.tiny = load("BarlowCondensed-Medium.ttf", "arialn.ttf", 15.0f);
 		F.turn = load("BarlowCondensed-Medium.ttf", "arialn.ttf", 21.0f);
 		F.menu = load("BarlowCondensed-Medium.ttf", "arialn.ttf", 24.0f);
 		F.toastLong = load("BarlowCondensed-Medium.ttf", "arialn.ttf", 26.0f, kCaps);
@@ -2872,7 +2872,7 @@ namespace Game
 		F.hand = load("Fondamento-Regular.ttf", "georgiai.ttf", 21.0f);
 		F.handBig = load("Fondamento-Regular.ttf", "georgiai.ttf", 40.0f);
 		ImFont* any = F.sans ? F.sans : io.Fonts->AddFontDefault();
-		for (ImFont** f : { &F.sans, &F.sansSemi, &F.small, &F.turn, &F.menu, &F.toastLong, &F.skill, &F.score, &F.toast, &F.titleMid, &F.words,
+		for (ImFont** f : { &F.sans, &F.sansSemi, &F.tiny, &F.turn, &F.menu, &F.toastLong, &F.skill, &F.score, &F.toast, &F.titleMid, &F.words,
 				 &F.title, &F.book, &F.bookIt, &F.bookSC, &F.bookSCsm, &F.hand, &F.handBig }) {
 			if (!*f) {
 				*f = any;
