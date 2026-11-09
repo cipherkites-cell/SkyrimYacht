@@ -71,6 +71,8 @@ namespace Scene
 		int                      g_diceSide = 0;    // which set is showing
 		std::unordered_map<std::string, std::string> g_cupPaths;
 		RE::NiAVObject*          g_model = nullptr;
+		RE::NiPointer<RE::NiAVObject> g_worldTray;  // world mode: our own tray, hung under the world's scene node
+		bool                     g_world = false;   // this table is in the world (not the item view)
 
 		// The table's placement this frame (in the inventory scene's camera space: y away from the camera, z up).
 		RE::NiMatrix3 g_rot;
@@ -145,6 +147,78 @@ namespace Scene
 			spdlog::info("Table: preview camera at ({:.1f}, {:.1f}, {:.1f}), forward axis {}{}; item {:.1f} ahead, {:.1f} right, {:.1f} up",
 				f.t.x, f.t.y, f.t.z, sgn < 0 ? "-" : "+", best, Dot(f.fwd, to), Dot(f.right, to), Dot(f.up, to));
 			return f;
+		}
+
+		RE::NiPoint3 Cross(const RE::NiPoint3& a, const RE::NiPoint3& b) { return { a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x }; }
+
+		// The game's own camera. Forward is the axis whose point ahead lands in the middle of the screen; up is the one
+		// nearest the world's up.
+		CamFrame FindWorldCamera(RE::NiCamera* a_cam)
+		{
+			CamFrame f;
+			if (!a_cam) {
+				return f;
+			}
+			const auto& w = a_cam->world;
+			f.t = w.translate;
+			int   best = 0;
+			float bestSign = 1.0f, bestErr = 1e9f;
+			for (int c = 0; c < 3; ++c) {
+				for (float sg : { 1.0f, -1.0f }) {
+					const RE::NiPoint3 p = f.t + Col(w.rotate, c) * (100.0f * sg);
+					float              x = 0, y = 0, z = 0;
+					if (!RE::NiCamera::WorldPtToScreenPt3(a_cam->GetRuntimeData().worldToCam, a_cam->GetRuntimeData2().port, p, x, y, z, 1e-5f) || z <= 0.0f) {
+						continue;
+					}
+					const float err = std::fabs(x - 0.5f) + std::fabs(y - 0.5f);
+					if (err < bestErr) {
+						bestErr = err;
+						best = c;
+						bestSign = sg;
+					}
+				}
+			}
+			if (bestErr > 1e8f) {  // nothing projected: assume Gamebryo's (forward X, up Y, right Z)
+				best = 0;
+				bestSign = 1.0f;
+			}
+			f.fwd = Col(w.rotate, best) * bestSign;
+			float upZ = 0.0f;
+			for (int c = 0; c < 3; ++c) {
+				if (c == best) {
+					continue;
+				}
+				const auto v = Col(w.rotate, c);
+				if (std::fabs(v.z) > std::fabs(upZ)) {
+					upZ = v.z;
+					f.up = v.z < 0.0f ? v * -1.0f : v;
+				}
+			}
+			f.right = Cross(f.fwd, f.up);
+			f.ok = true;
+			spdlog::info("Table: game camera at ({:.0f}, {:.0f}, {:.0f}), forward axis {}{} (centre error {:.3f}), forward ({:.2f}, {:.2f}, {:.2f})",
+				f.t.x, f.t.y, f.t.z, bestSign < 0 ? "-" : "+", best, bestErr, f.fwd.x, f.fwd.y, f.fwd.z);
+			return f;
+		}
+
+		// Lifts the table out of a dark room: a little light of its own on every surface.
+		void Brighten(RE::NiAVObject* a_obj)
+		{
+			const float b = Config::Get().brightness;
+			if (!a_obj || b <= 1.0f) {
+				return;
+			}
+			const float v = std::clamp((b - 1.0f) * 0.12f, 0.0f, 0.5f);
+			RE::BSVisit::TraverseScenegraphGeometries(a_obj, [&](RE::BSGeometry* g) {
+				auto* prop = g->GetGeometryRuntimeData().properties[RE::BSGeometry::States::kEffect].get();
+				if (auto* lit = prop ? netimmerse_cast<RE::BSLightingShaderProperty*>(prop) : nullptr; lit && lit->emissiveColor) {
+					lit->emissiveColor->red = v;
+					lit->emissiveColor->green = v * 0.92f;
+					lit->emissiveColor->blue = v * 0.82f;
+					lit->emissiveMult = 1.0f;
+				}
+				return RE::BSVisit::BSVisitControl::kContinue;
+			});
 		}
 
 		RE::NiPoint3 Mul(const RE::NiMatrix3& m, const RE::NiPoint3& p)
@@ -284,6 +358,9 @@ namespace Scene
 
 		RE::NiAVObject* TrayModel(RE::Inventory3DManager* a_mgr)
 		{
+			if (g_world) {
+				return g_worldTray.get();
+			}
 			auto& rt = a_mgr->GetRuntimeData();
 			if (rt.loadTask || rt.loadedModels.empty()) {
 				return nullptr;
@@ -298,6 +375,22 @@ namespace Scene
 
 		bool TryTeardown()
 		{
+			if (g_world) {
+				if (g_root && g_worldTray) {
+					if (auto* node = g_worldTray->AsNode()) {
+						node->DetachChild2(g_root.get());
+					}
+				}
+				if (g_worldTray && g_worldTray->parent) {
+					g_worldTray->parent->DetachChild2(g_worldTray.get());
+				}
+				g_worldTray.reset();
+				g_scene = false;
+				g_model = nullptr;
+				g_world = false;
+				spdlog::info("Table put away");
+				return true;
+			}
 			auto* mgr = RE::Inventory3DManager::GetSingleton();
 			if (!mgr || !g_scene) {
 				return true;
@@ -365,7 +458,7 @@ namespace Scene
 			void PostDisplay() override
 			{
 				// the game's UI pass: the only place the item preview actually draws
-				if (auto* mgr = RE::Inventory3DManager::GetSingleton(); mgr && g_scene) {
+				if (auto* mgr = RE::Inventory3DManager::GetSingleton(); mgr && g_scene && !g_world) {
 					mgr->Render();
 				}
 			}
@@ -374,6 +467,15 @@ namespace Scene
 			static void OnShow()
 			{
 				g_shown = true;
+				// the line that started the game would otherwise hang on screen while the game is paused
+				if (auto* subs = RE::SubtitleManager::GetSingleton()) {
+					subs->KillSubtitles();
+				}
+				if (Config::Get().mode == 0) {
+					OpenWorld();
+					return;
+				}
+				g_blurred = true;
 				if (auto* blur = RE::UIBlurManager::GetSingleton()) {
 					blur->IncrementBlurCount();
 				}
@@ -401,13 +503,44 @@ namespace Scene
 					return;
 				}
 				g_shown = false;
-				if (auto* blur = RE::UIBlurManager::GetSingleton()) {
-					blur->DecrementBlurCount();
+				if (g_blurred) {
+					g_blurred = false;
+					if (auto* blur = RE::UIBlurManager::GetSingleton()) {
+						blur->DecrementBlurCount();
+					}
 				}
 				g_teardown = !TryTeardown();
 			}
 
+			// The table as a thing in the room: our tray mesh under the world's scene node, in front of the camera,
+			// lit by the room's own lights. The world keeps drawing while the game is paused.
+			static void OpenWorld()
+			{
+				if (g_scene && !TryTeardown()) {
+					g_scene = false;
+				}
+				auto& state = RE::BSShaderManager::State::GetSingleton();
+				auto* ssn = state.shadowSceneNode[0];
+				auto  tray = Instance("SkyrimYacht\\Tray.nif");
+				if (!ssn || !tray) {
+					spdlog::error("Table: couldn't put the tray in the world (scene node {}, mesh {})", ssn != nullptr, tray != nullptr);
+					return;
+				}
+				g_world = true;
+				g_worldTray = tray;
+				g_scene = true;
+				g_attached = false;
+				g_placed = false;
+				g_model = nullptr;
+				ssn->AttachChild(tray.get(), true);
+				Brighten(tray.get());
+				RE::NiUpdateData ud;
+				tray->Update(ud);
+				spdlog::info("Table: tray placed in the world");
+			}
+
 			static inline bool g_failed = false;
+			static inline bool g_blurred = false;
 		};
 	}
 
@@ -494,7 +627,7 @@ namespace Scene
 			return;
 		}
 		auto* model = TrayModel(mgr);
-		if (!model || model->worldBound.radius <= 0.0f) {
+		if (!model || (!g_world && model->worldBound.radius <= 0.0f)) {
 			return;
 		}
 		if (model != g_model) {
@@ -526,7 +659,11 @@ namespace Scene
 		LoadCup(1);
 
 		// Place the table: tilted toward you, scaled to fit the screen, centred where the settings say.
-		if (auto* scn = RE::UI3DSceneManager::GetSingleton()) {
+		if (g_world) {
+			if (auto* cam = RE::Main::WorldRootCamera()) {
+				g_frustum = cam->GetRuntimeData2().viewFrustum;
+			}
+		} else if (auto* scn = RE::UI3DSceneManager::GetSingleton()) {
 			g_frustum = scn->viewFrustum;
 		}
 		if (auto* r = RE::BSGraphics::Renderer::GetSingleton()) {
@@ -536,7 +673,11 @@ namespace Scene
 		}
 		const auto& cfg = Config::Get();
 		static float s_depth = 0.0f;
-		if (!g_placed) {
+		if (!g_placed && g_world) {
+			g_cam = FindWorldCamera(RE::Main::WorldRootCamera());
+			s_depth = cfg.distance;
+			spdlog::info("Table: frustum L {:.3f} R {:.3f} T {:.3f} B {:.3f}", g_frustum.fLeft, g_frustum.fRight, g_frustum.fTop, g_frustum.fBottom);
+		} else if (!g_placed) {
 			g_cam = FindCamera(model->world.translate);
 			const float ahead = g_cam.ok ? Dot(g_cam.fwd, model->world.translate - g_cam.t) : 0.0f;
 			s_depth = cfg.depth > 0.0f ? cfg.depth : (ahead > 1.0f ? ahead : 100.0f);
@@ -553,8 +694,8 @@ namespace Scene
 		g_rot.entry[2][0] = 0.0f, g_rot.entry[2][1] = std::sin(tilt), g_rot.entry[2][2] = std::cos(tilt);
 		// the screen point -> camera space at depth d (the inverse of Project)
 		const float rx = (g_frustum.fLeft - g_frustum.fRight) * d / g_screenW;
-		const float rz = (g_frustum.fBottom - g_frustum.fTop) * d / g_screenH;
-		g_pos = { -(cfg.centerX * g_screenW) * rx + g_frustum.fLeft * d, d, -(cfg.centerY * g_screenH) * rz + g_frustum.fBottom * d };
+		const float rz = (g_frustum.fTop - g_frustum.fBottom) * d / g_screenH;
+		g_pos = { -(cfg.centerX * g_screenW) * rx + g_frustum.fLeft * d, d, g_frustum.fTop * d - (cfg.centerY * g_screenH) * rz };
 		// camera space (x right, y ahead, z up) -> world -> the model's parent
 		{
 			RE::NiMatrix3 basis;  // columns: right, ahead, up
@@ -597,7 +738,7 @@ namespace Scene
 			return false;
 		}
 		a_sx = (g_frustum.fLeft * w.y - w.x) / ((g_frustum.fLeft - g_frustum.fRight) * w.y) * g_screenW;
-		a_sy = (g_frustum.fBottom * w.y - w.z) / ((g_frustum.fBottom - g_frustum.fTop) * w.y) * g_screenH;
+		a_sy = (g_frustum.fTop * w.y - w.z) / ((g_frustum.fTop - g_frustum.fBottom) * w.y) * g_screenH;
 		return std::isfinite(a_sx) && std::isfinite(a_sy);
 	}
 

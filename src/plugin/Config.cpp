@@ -49,6 +49,9 @@ namespace Config
 	void Load()
 	{
 		Values v;
+		v.mode = static_cast<int>(Float("Table", "Mode", 0.0f)) == 1 ? 1 : 0;
+		v.distance = std::clamp(Float("Table", "Distance", v.distance), 20.0f, 400.0f);
+		v.brightness = std::clamp(Float("Table", "Brightness", v.brightness), 0.0f, 4.0f);
 		v.tiltDeg = Float("Table", "TiltDegrees", v.tiltDeg);
 		v.fitWidth = std::clamp(Float("Table", "FitWidth", v.fitWidth), 0.2f, 1.5f);
 		v.centerX = Float("Table", "CenterX", v.centerX);
@@ -60,11 +63,11 @@ namespace Config
 		v.tableReach = Float("Play", "TableReach", v.tableReach);
 		v.mouseSpeed = std::clamp(Float("Play", "MouseSpeed", v.mouseSpeed), 0.1f, 5.0f);
 		v.uiScale = std::clamp(Float("Play", "UiScale", v.uiScale), 0.5f, 2.0f);
-		v.diceSet = Str("Play", "DiceSet", "");
+		v.volume = std::clamp(Float("Play", "Volume", v.volume), 0.0f, 2.0f);
 		v.debugOverlay = Bool("Debug", "Overlay", v.debugOverlay);
 		v.logInput = Bool("Debug", "LogInput", v.logInput);
 		g_values = v;
-		spdlog::info("Settings: tilt {} fit {} centre {},{} bets {}-{} reach {}", v.tiltDeg, v.fitWidth, v.centerX, v.centerY, v.minBet,
+		spdlog::info("Settings: {} table, tilt {} fit {} centre {},{} bets {}-{} reach {}", v.mode == 0 ? "world" : "item view", v.tiltDeg, v.fitWidth, v.centerX, v.centerY, v.minBet,
 			v.maxBet, v.tableReach);
 	}
 }

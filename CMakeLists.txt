@@ -17,13 +17,13 @@ find_package(imgui CONFIG REQUIRED)
 add_commonlibsse_plugin(${PROJECT_NAME}
     AUTHOR "evodube"
     USE_ADDRESS_LIBRARY
-    SOURCES src/plugin/main.cpp src/plugin/Config.cpp src/plugin/Overlay.cpp src/plugin/Scene.cpp src/plugin/Game.cpp
+    SOURCES src/plugin/main.cpp src/plugin/Config.cpp src/plugin/Overlay.cpp src/plugin/Scene.cpp src/plugin/Game.cpp src/plugin/Audio.cpp
             src/sim/Dice.cpp src/sim/Yacht.cpp src/sim/Ai.cpp)
 
 target_include_directories(${PROJECT_NAME} PRIVATE src/plugin)
 target_precompile_headers(${PROJECT_NAME} PRIVATE src/plugin/PCH.h)
 target_compile_definitions(${PROJECT_NAME} PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
-target_link_libraries(${PROJECT_NAME} PRIVATE imgui::imgui d3d11 dxgi)
+target_link_libraries(${PROJECT_NAME} PRIVATE imgui::imgui d3d11 dxgi ole32)
 
 if (MSVC)
     target_compile_options(${PROJECT_NAME} PRIVATE /utf-8 /permissive- /Zc:preprocessor)

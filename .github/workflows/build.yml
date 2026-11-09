@@ -133,6 +133,8 @@ jobs:
           New-Item -ItemType Directory -Force -Path "$out/Data/SKSE/Plugins/SkyrimYacht" | Out-Null
           Copy-Item build/Release/SkyrimYacht.dll "$out/Data/SKSE/Plugins/"
           Copy-Item SkyrimYacht.ini "$out/Data/SKSE/Plugins/"
+          New-Item -ItemType Directory -Force -Path "$out/Data/SKSE/Plugins/SkyrimYacht/Sounds" | Out-Null
+          Copy-Item assets/game_sounds/*.wav "$out/Data/SKSE/Plugins/SkyrimYacht/Sounds/"
           Copy-Item SkyrimYacht.esp "$out/Data/"
           Copy-Item -Recurse assets/seq "$out/Data/Seq"
           Copy-Item -Recurse assets/meshes "$out/Data/meshes"

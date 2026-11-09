@@ -7,7 +7,10 @@ namespace Config
 {
 	struct Values
 	{
-		// The table in the inventory 3D view
+		// The table: drawn in the world in front of the camera (0), or in the game's 3D item view (1)
+		int   mode = 0;
+		float distance = 60.0f;     // world mode: how far in front of the camera (game units)
+		float brightness = 1.0f;    // world mode: lifts the table out of a dark room (1 = as the room lights it)
 		float tiltDeg = 55.0f;      // how far you look down on the tray
 		float fitWidth = 0.80f;     // the whole table (both cups) across this much of the screen width
 		float centerX = 0.50f;      // where its middle sits on screen, 0..1
@@ -21,7 +24,7 @@ namespace Config
 		float tableReach = 180.0f;  // a seated NPC this close to a table can be asked to play
 		float mouseSpeed = 1.0f;
 		float uiScale = 1.0f;
-		std::string diceSet = "";   // test: force a dice set (bone, iron, steel, ...); empty = earned sets
+		float volume = 1.0f;        // dice and table sounds
 
 		// Diagnostics
 		bool debugOverlay = false;  // draws the projected tray outline over the 3D, to check picking

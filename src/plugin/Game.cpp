@@ -2,6 +2,7 @@
 // Copyright (C) 2026 evodube. GPL-3.0 (LICENSE.txt).
 #include "Game.h"
 
+#include "Audio.h"
 #include "Config.h"
 #include "EspIds.h"
 #include "Overlay.h"
@@ -243,6 +244,113 @@ namespace Game
 		}
 		void Sound(const char* a_id) { RE::PlaySound(a_id); }
 
+		// ---------------------------------------------------------------- the table's sounds (as the preview's)
+		// Each dice set's material: bone, stone and stalhrim play the recordings almost as they are; metal is pitched down
+		// with the metal tone; gold and silver heavier still.
+		const char* DiceMaterial(const std::string& a_set)
+		{
+			static const std::unordered_map<std::string, const char*> kMat = { { "bone", "bone" }, { "dragonbone", "bone" },
+				{ "iron", "metal" }, { "steel", "metal" }, { "corundum", "metal" }, { "dwemer", "metal" }, { "orichalcum", "metal" },
+				{ "ebony", "metal" }, { "daedric", "metal" }, { "silver", "precious" }, { "quicksilver", "precious" }, { "gold", "precious" },
+				{ "malachite", "stone" }, { "moonstone", "stone" }, { "stalhrim", "ice" } };
+			const auto it = kMat.find(a_set);
+			return it == kMat.end() ? "bone" : it->second;
+		}
+		float MaterialPitch(const char* a_mat)
+		{
+			const std::string m = a_mat;
+			return m == "metal" ? 0.88f : m == "precious" ? 0.84f : m == "stone" ? 0.95f : m == "ice" ? 1.15f : 1.0f;
+		}
+		constexpr float kDieTune[5] = { 0.97f, 1.0f, 1.035f, 0.985f, 1.02f };  // every die has its own voice
+		constexpr float kSurfGain[4] = { 0.3f, 0.55f, 0.6f, 0.35f };            // die-die, linen, tray wall, cup
+		constexpr float kClangLevel[5] = { 0.2f, 0.17f, 0.22f, 0.17f, 0.2f };  // tankard, goblet, dwemer, silver, golden
+		double g_lastHit[24];
+		double g_burstT = -1, g_lastClang = -1;
+		int    g_burstN = 0;
+		std::string g_soundSet = "bone";  // the dice on the table
+		std::string g_soundCup = "tankard";
+
+		float Rand01() { return static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX); }
+		int   Pick(const std::string& a_prefix)
+		{
+			const int n = Audio::Count(a_prefix);
+			return n > 0 ? std::rand() % n : 0;
+		}
+
+		void Ui(const char* a_name, float a_vol = 1.0f) { Audio::Play({ a_name, a_vol }); }
+
+		// type: 0 die-die, 1 linen, 2 tray wall, 3 cup. die: which die (its pitch, where it is), or -1. inCup: the hit is
+		// inside the cup (shaking).
+		void Hit(int a_type, double a_speed, int a_die, bool a_inCup, double a_x)
+		{
+			if (Audio::Busy() > 20) {
+				return;
+			}
+			const float v = static_cast<float>(std::clamp((a_speed - 6.0) / 95.0, 0.0, 1.0));
+			if (v < 0.04f) {
+				return;  // the little taps of a settling die stay silent
+			}
+			const double now = Audio::Now();
+			if (a_die >= 0) {
+				const int k = a_die * 4 + a_type;
+				if (now - g_lastHit[k] < 0.05) {
+					return;
+				}
+				g_lastHit[k] = now;
+			}
+			// a few hits in any 40 ms at most: five dice in a cup report far more contacts than an ear can tell apart
+			if (now - g_burstT > 0.04) {
+				g_burstT = now;
+				g_burstN = 0;
+			}
+			if (++g_burstN > 3) {
+				return;
+			}
+			const char*       mat = DiceMaterial(g_soundSet);
+			const std::string m = mat;
+			const std::string tone = m == "metal" ? "metal_" : m == "precious" ? "precious_" : "";
+			const bool        metal = !tone.empty();
+			// dice on dice and in the cup click; dice landing on the tray knock
+			const std::string kind = (a_type == 0 || a_type == 3) ? "click_" : "knock_";
+			const float pitch = MaterialPitch(mat) * (a_die >= 0 ? kDieTune[a_die] : 1.0f) * (1.0f + (Rand01() - 0.5f) * 0.08f);
+			float       lp = a_type == 1 ? 1400.0f + 3000.0f * v : 2500.0f + 12000.0f * v * v;  // the linen damps the knock
+			const float gain = std::pow(v, 1.6f) * kSurfGain[a_type];
+			const float pan = static_cast<float>(std::clamp(a_x / (kX + 6.0), -1.0, 1.0) * 0.5);
+			const bool  inside = a_type == 3 || (a_type == 0 && a_inCup);
+			// shaking: the cup clangs a little with each hit, in its own voice (once, even when several dice hit it)
+			if (inside && v > 0.08f && now - g_lastClang > 0.07) {
+				g_lastClang = now;
+				int ci = 0;
+				for (int c = 0; c < 5; ++c) {
+					if (g_soundCup == kCups[c].id) {
+						ci = c;
+					}
+				}
+				Audio::Play({ "clang_" + g_soundCup + "_" + std::to_string(std::rand() % 4), kClangLevel[ci] * (a_type == 0 ? 0.6f : 1.0f) * gain,
+					1.0f + (Rand01() - 0.5f) * 0.04f, 0.0f, pan });
+			}
+			if (metal && inside) {
+				// in the cup a metal die is a dull clunk, not a click: a knock under it gives it its weight
+				lp = (std::min)(lp, 2200.0f + 4500.0f * v);
+				Audio::Play({ "knock_" + tone + std::to_string(Pick("knock_" + tone)), gain * 0.8f, pitch * 0.95f, lp, pan });
+			}
+			Audio::Play({ kind + tone + std::to_string(Pick(kind + tone)), gain, pitch, lp, pan });
+		}
+
+		// Dice sliding and rolling on the linen: a soft scuff under the knocks.
+		Vec3 g_prevPos[5];
+		bool g_bedsPrimed = false;
+		void UpdateRoll(double a_dt);
+
+		// A few sounds that come a moment after something (the dice dropping back into the cup after the Shout).
+		struct Later
+		{
+			double at;
+			int    type, die;
+			double speed;
+		};
+		std::vector<Later> g_later;
+
 		const CupInfo& CupById(const std::string& a_id)
 		{
 			for (const auto& c : kCups) {
@@ -313,6 +421,7 @@ namespace Game
 		{
 			g_turn = a_owner;
 			Scene::UseDice(a_owner == 0 ? PlayerDice() : "bone");
+			g_soundSet = a_owner == 0 ? PlayerDice() : "bone";
 			auto& c = g_cups[a_owner];
 			c.p = c.rest;
 			c.v = {};
@@ -428,6 +537,7 @@ namespace Game
 			c.v.x += dx * 22;
 			c.v.y += dy * 22;
 			g_phase = Phase::Pouring;
+			Ui("swoosh", 0.25f);
 		}
 
 		void RedoThrow()
@@ -528,6 +638,9 @@ namespace Game
 			Refund();
 			g_phase = Phase::Idle;
 			Scene::Close();
+			Audio::StopAll();
+			g_later.clear();
+			g_bedsPrimed = false;
 			spdlog::info("Left the table");
 		}
 
@@ -613,6 +726,7 @@ namespace Game
 					const int cat = g_ai.ChooseCategory(dice, g_cards[1]);
 					const int pts = g_cards[1].Fill(cat, dice);
 					Toast(fmt::format("{} scores {}: {}", g_oppName, yacht::CategoryName(cat), pts));
+					Ui("quill");
 					g_npc.step = NpcStep::Done;
 					g_npc.t = 0;
 					g_phase = Phase::Scored;
@@ -642,6 +756,7 @@ namespace Game
 				return;
 			}
 			Toast(pts > 0 ? fmt::format("+{}", pts) : "Scratched");
+			Ui("quill");
 			g_phase = Phase::Scored;
 			g_scoredTime = 0;
 		}
@@ -656,14 +771,22 @@ namespace Game
 				return;
 			}
 			bool any = false;
+			int  n = 0;
 			for (int i = 0; i < 5; ++i) {
 				if (Active(i) && !InCup(i)) {
+					// it drops into the cup with a knock, and a smaller one as it settles against the others
+					const double delay = 0.04 + n++ * 0.06;
+					g_later.push_back({ Audio::Now() + delay + 0.78, 3, i, 70 + Rand() * 20 });
+					g_later.push_back({ Audio::Now() + delay + 0.9 + Rand() * 0.06, 0, i, 30 + Rand() * 10 });
 					TweenFrom(i, 0.8, 6);
 					g_anim[i].spins = true;
 					g_anim[i].spin = Vec3{ Rand() - 0.5, Rand() - 0.5, Rand() - 0.5 }.Normalized();
 					g_sim.AddToCup(i);
 					any = true;
 				}
+			}
+			if (any) {
+				Ui("shout");
 			}
 			Toast(any ? "FUS RO DAH!" : "The board is already clear");
 		}
@@ -705,6 +828,25 @@ namespace Game
 		}
 
 		Quat FaceUp(int a_face) { return yacht::DiceSim::FaceUp(a_face ? a_face : 1); }
+
+		void UpdateRoll(double a_dt)
+		{
+			double rolling = 0;
+			for (int i = 0; i < 5; ++i) {
+				const Vec3   p = g_sim.DieAt(i).pos;
+				const double sp = g_bedsPrimed ? (p - g_prevPos[i]).Length() / (std::max)(a_dt, 1e-3) : 0.0;
+				g_prevPos[i] = p;
+				if (!Active(i) || InCup(i)) {
+					continue;
+				}
+				// only a die sliding or rolling on the linen, inside the tray, scuffs
+				if (p.z < kHalf + 0.15 && std::fabs(p.x) < kX && std::fabs(p.y) < kYh && sp > 1.5 && sp < 60) {
+					rolling += (std::min)(sp, 25.0);
+				}
+			}
+			g_bedsPrimed = true;
+			Audio::SetRoll(static_cast<float>((std::min)(0.07, rolling * 0.002)));
+		}
 
 		// ---------------------------------------------------------------- the pointer on the table
 		int PickDie(float mx, float my)
@@ -990,7 +1132,22 @@ namespace Game
 				}
 			}
 
-			g_sim.Step(dt, c.p, c.q);
+			const int nEv = g_sim.Step(dt, c.p, c.q);
+			g_soundCup = g_turn == 0 ? PlayerCup().id : "tankard";
+			for (int e = 0; e < nEv; ++e) {
+				const auto& ev = g_sim.Events()[e];
+				const double x = ev.die >= 0 ? g_sim.DieAt(ev.die).pos.x : c.p.x;
+				Hit(static_cast<int>(ev.type), ev.speed, ev.die, ev.die >= 0 && InCup(ev.die), x);
+			}
+			UpdateRoll(dt);
+			for (auto it = g_later.begin(); it != g_later.end();) {
+				if (Audio::Now() >= it->at) {
+					Hit(it->type, it->speed, it->die, true, it->die >= 0 ? g_sim.DieAt(it->die).pos.x : 0.0);
+					it = g_later.erase(it);
+				} else {
+					++it;
+				}
+			}
 
 			if (g_phase == Phase::Rolling) {
 				g_rollingTime += dt;
@@ -1214,6 +1371,8 @@ namespace Game
 			Scene::UseCup(0, PlayerCup().id);
 			Scene::UseCup(1, "tankard");
 			Scene::UseDice(PlayerDice());
+			g_soundSet = PlayerDice();
+			Audio::Ready();  // load the sounds now, not on the first hit
 			g_sim.PlaceCup(kRest, {});
 			g_sim.LoadCup(0x1F);
 			for (int i = 0; i < 5; ++i) {
@@ -1242,12 +1401,24 @@ namespace Game
 		const ImVec4 kInkSoft{ 0.30f, 0.21f, 0.13f, 1.0f };
 		const ImVec4 kRubric{ 0.55f, 0.14f, 0.07f, 1.0f };
 
+		ImGuiID g_hoverId = 0;
 		bool Button(const char* a_label, float a_w = 0.0f)
 		{
 			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
 			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1, 1, 1, 0.08f));
 			ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1, 1, 1, 0.16f));
 			const bool r = ImGui::Button(a_label, ImVec2(a_w, 0));
+			if (ImGui::IsItemHovered()) {
+				if (g_hoverId != ImGui::GetItemID()) {
+					g_hoverId = ImGui::GetItemID();
+					Ui("ui_hover");
+				}
+			} else if (g_hoverId == ImGui::GetItemID()) {
+				g_hoverId = 0;
+			}
+			if (r) {
+				Ui("ui_select");
+			}
 			ImGui::PopStyleColor(3);
 			return r;
 		}
