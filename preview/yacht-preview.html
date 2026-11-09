@@ -75,6 +75,27 @@ canvas#view.over-die { cursor: pointer; }
 .ledger.npc { right: auto; left: max(14px, env(safe-area-inset-left, 0px)); }
 .ledger.turn { border-color: var(--brass); box-shadow: 0 0 0 1px var(--brass), 0 6px 24px rgba(0, 0, 0, 0.45); }
 .row.flash { background: rgba(202, 164, 87, 0.35); }
+.record { font-size: 12px; color: var(--muted); letter-spacing: 0.04em; margin: -2px 0 2px; font-variant-numeric: tabular-nums; }
+.forfeit-btn { display: inline-flex; align-items: center; gap: 6px; }
+.forfeit-btn:hover { border-color: #b4553d; color: #f0c2b2; }
+.forfeit-btn:disabled { opacity: 0.4; cursor: default; }
+[hidden] { display: none !important; }
+.veil { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; background: rgba(10, 7, 5, 0.55); }
+.prompt { zoom: var(--ui, 1); width: 380px; max-width: calc(100vw - 32px); padding: 26px 28px 24px; text-align: center; }
+.prompt-title { margin: 0; font-family: var(--display); font-weight: 400; font-size: 52px; line-height: 1.05; color: var(--brass);
+  text-wrap: balance; }
+.prompt-title.small { font-size: 32px; }
+.prompt-title.lose { color: #d88a70; }
+.prompt-score { margin: 10px 0 0; font-size: 17px; color: var(--parchment); font-variant-numeric: tabular-nums; }
+.prompt-record { margin: 6px 0 0; font-size: 13px; color: var(--muted); letter-spacing: 0.04em; font-variant-numeric: tabular-nums; }
+.prompt-actions { display: flex; gap: 10px; justify-content: center; margin-top: 20px; }
+.prompt-btn { font: inherit; font-size: 16px; font-weight: 700; min-width: 128px; padding: 10px 16px; border-radius: 7px; cursor: pointer;
+  color: var(--parchment); background: rgba(0, 0, 0, 0.25); border: 1px solid var(--oak-edge); }
+.prompt-btn:hover { border-color: var(--brass); }
+.prompt-btn.primary { color: var(--soot); background: var(--brass); border-color: var(--brass); }
+.prompt-btn.primary:hover { filter: brightness(1.08); }
+.prompt-btn.danger { color: #fff1ec; background: #9c3f2a; border-color: #9c3f2a; }
+.prompt-btn:focus-visible { outline: 2px solid var(--parchment); outline-offset: 2px; }
 .turn-label { font-family: var(--display); font-size: 18px; color: var(--parchment); padding: 2px 10px; border-left: 1px solid var(--oak-edge); }
 .ledger {
   position: absolute; top: 12px; right: max(14px, env(safe-area-inset-right, 0px)); width: min(370px, calc(100% - 28px));
@@ -160,6 +181,10 @@ canvas#view.over-die { cursor: pointer; }
       <button class="icon-btn" id="sound" type="button" aria-pressed="true">Sound on</button>
       <button class="shout-btn" id="shout" type="button" title="Shout the dice on the pad back into the cup">Fus Ro Dah<span class="cool" id="shoutCool"></span></button>
       <button class="icon-btn" id="helpBtn" type="button" aria-expanded="false" aria-controls="help">How to play</button>
+      <button class="icon-btn forfeit-btn" id="forfeitBtn" type="button" title="Forfeit this game" aria-label="Forfeit this game">
+        <svg viewBox="0 0 20 20" width="15" height="15" aria-hidden="true"><path d="M4 18V2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/><path d="M4.9 3.2c3-1.6 5.2 1.4 8.2.2l2.6-.9v8.2l-2.6.9c-3 1.2-5.2-1.8-8.2-.2z" fill="currentColor"/></svg>
+        Forfeit
+      </button>
     </div>
     <div class="help panel" id="help" hidden>
       <b>Hold</b> the left button and <b>move</b> to pick up the cup and shake it. <b>Let go</b> to flick the dice out the
@@ -170,11 +195,38 @@ canvas#view.over-die { cursor: pointer; }
     </div>
     <div class="hint" id="hint">Loading…</div>
     <div class="toast" id="toast"></div>
+    <div class="veil" id="veil" hidden>
+      <div class="prompt panel" id="resultPrompt" role="dialog" aria-modal="true" aria-labelledby="resultTitle" hidden>
+        <h2 class="prompt-title" id="resultTitle">You Win!</h2>
+        <p class="prompt-score" id="resultScore"></p>
+        <p class="prompt-record" id="resultRecord"></p>
+        <div class="prompt-actions">
+          <button class="prompt-btn primary" id="rematchBtn" type="button">Rematch</button>
+          <button class="prompt-btn" id="leaveBtn" type="button">Leave</button>
+        </div>
+      </div>
+      <div class="prompt panel" id="forfeitPrompt" role="dialog" aria-modal="true" aria-labelledby="forfeitTitle" hidden>
+        <h2 class="prompt-title small" id="forfeitTitle">Forfeit this game?</h2>
+        <p class="prompt-score">It counts as a loss.</p>
+        <div class="prompt-actions">
+          <button class="prompt-btn danger" id="forfeitYes" type="button">Forfeit</button>
+          <button class="prompt-btn" id="forfeitNo" type="button">Keep playing</button>
+        </div>
+      </div>
+      <div class="prompt panel" id="leftPrompt" role="dialog" aria-modal="true" aria-labelledby="leftTitle" hidden>
+        <h2 class="prompt-title small" id="leftTitle">You get up from the table.</h2>
+        <p class="prompt-record" id="leftRecord"></p>
+        <div class="prompt-actions">
+          <button class="prompt-btn primary" id="sitBtn" type="button">Sit down again</button>
+        </div>
+      </div>
+    </div>
     <div class="loading" id="loading">Setting up the table…</div>
 
   </div>
   <aside class="ledger npc panel" aria-label="Opponent's scorecard">
     <h2>Opponent <span id="ntotal">0</span></h2>
+    <div class="record" id="nrecord">Record 0–0</div>
     <div class="cols">
       <div class="col" id="ncolUpper"></div>
       <div class="col" id="ncolLower"></div>
@@ -183,6 +235,7 @@ canvas#view.over-die { cursor: pointer; }
 
   <aside class="ledger you panel" aria-label="Your scorecard">
     <h2>You <span id="total">0</span></h2>
+    <div class="record" id="record">Record 0–0</div>
     <div class="cols">
       <div class="col" id="colUpper"></div>
       <div class="col" id="colLower"></div>
@@ -741,7 +794,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   function resize() {
     const r = canvas.parentElement.getBoundingClientRect();
     // The HUD and panels are sized for 1080p and scale with the window, so every screen keeps the same proportions.
-    const ui = Math.max(0.6, Math.min(r.width / 1920, r.height / 1080) * 1.3);
+    const ui = Math.max(0.55, Math.min(r.width / 1920, r.height / 1080) * 1.105);
     document.documentElement.style.setProperty("--ui", ui.toFixed(3));
     renderer.setSize(r.width, r.height, false);
     camera.aspect = r.width / Math.max(1, r.height);
@@ -910,7 +963,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
       updateUI();
     } else if (npc.step === "done" && npc.t > 1.6) {
       npc = null;
-      if (gameFinished()) endGame(); else startTurn("player", true);
+      if (gameFinished()) endGame(); else if (phase !== "over") startTurn("player", true);
     }
   }
   function gameFinished() { return Y.y_card_full(0) && Y.y_card_full(1); }
@@ -920,12 +973,54 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     el.classList.add("flash");
     setTimeout(() => el.classList.remove("flash"), 1800);
   }
-  function endGame() {
-    phase = "over";
+  // ---- Win/loss record, kept per opponent (in the mod, per NPC with the save; here, in this browser).
+  const OPPONENT = "tavern-regular";
+  let records = {};
+  try { records = JSON.parse(localStorage.getItem("yacht-records") || "{}") || {}; } catch (e) { records = {}; }
+  const rec = () => (records[OPPONENT] = records[OPPONENT] || { w: 0, l: 0, d: 0 });
+  function saveRecords() { try { localStorage.setItem("yacht-records", JSON.stringify(records)); } catch (e) { /* ignore */ } }
+  function recordText(r, theirs) {
+    const w = theirs ? r.l : r.w, l = theirs ? r.w : r.l;
+    return `Record ${w}–${l}` + (r.d ? `, ${r.d} drawn` : "");
+  }
+  function showRecords() {
+    $("record").textContent = recordText(rec(), false);
+    $("nrecord").textContent = recordText(rec(), true);
+  }
+
+  function showPrompt(id) {
+    for (const p of ["resultPrompt", "forfeitPrompt", "leftPrompt"]) $(p).hidden = p !== id;
+    $("veil").hidden = !id;
+    if (id) { const b = $(id).querySelector(".prompt-btn"); if (b) setTimeout(() => b.focus(), 50); }
+  }
+
+  // outcome: "win", "lose", "draw" or "forfeit" (a loss)
+  function endGame(outcome) {
     const mine = Y.y_card_total(0), theirs = Y.y_card_total(1);
+    if (!outcome) outcome = mine > theirs ? "win" : mine < theirs ? "lose" : "draw";
+    phase = "over";
+    npc = null;
+    pourPending = false;
+    Y.y_set_lid(0);
+    canvas.classList.remove("shaking");
+    const r = rec();
+    if (outcome === "win") r.w++; else if (outcome === "draw") r.d++; else r.l++;
+    saveRecords();
+    showRecords();
     updateUI();
-    setTimeout(() => toast(mine > theirs ? `You win, ${mine} to ${theirs}` : mine < theirs ? `They win, ${theirs} to ${mine}` : `A draw at ${mine}`), 600);
-    finishGame(mine);
+    const title = $("resultTitle");
+    title.textContent = outcome === "win" ? "You Win!" : outcome === "draw" ? "A Draw" : "You Lose!";
+    title.classList.toggle("lose", outcome === "lose" || outcome === "forfeit");
+    $("resultScore").textContent = outcome === "forfeit" ? "You forfeited." : `${mine} to ${theirs}`;
+    $("resultRecord").textContent = recordText(r, false).replace("Record", "Your record");
+    setTimeout(() => showPrompt("resultPrompt"), outcome === "forfeit" ? 0 : 700);
+    if (outcome !== "forfeit") finishGame(mine);
+  }
+
+  function newGame() {
+    Y.y_card_reset(0); Y.y_card_reset(1);
+    showPrompt(null);
+    startTurn("player", true);
   }
 
   // Dice still lying on the pad have to go back in the cup or onto the rack before the cup can be picked up.
@@ -1153,7 +1248,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     phase = "scored";
     updateUI();
     // The opponent's turn next (the dice fly over to its cup).
-    setTimeout(() => { if (gameFinished()) endGame(); else startTurn("npc", true); }, 900);
+    setTimeout(() => { if (phase === "over") return; if (gameFinished()) endGame(); else startTurn("npc", true); }, 900);
   }
 
   let toastTimer = 0;
@@ -1197,9 +1292,21 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     const h = $("help"); h.hidden = !h.hidden;
     $("helpBtn").setAttribute("aria-expanded", String(!h.hidden));
   });
-  $("newgame").addEventListener("click", () => {
-    Y.y_card_reset(0); Y.y_card_reset(1); $("newgame").hidden = true; startTurn("player", true);
+  $("newgame").addEventListener("click", newGame);
+  $("rematchBtn").addEventListener("click", newGame);
+  $("leaveBtn").addEventListener("click", () => {
+    // In the mod this closes the game; here the table just waits until you sit back down.
+    $("leftRecord").textContent = recordText(rec(), false).replace("Record", "Your record");
+    showPrompt("leftPrompt");
   });
+  $("sitBtn").addEventListener("click", newGame);
+  $("forfeitBtn").addEventListener("click", () => { if (phase !== "over") showPrompt("forfeitPrompt"); });
+  $("forfeitNo").addEventListener("click", () => showPrompt(null));
+  $("forfeitYes").addEventListener("click", () => { showPrompt(null); endGame("forfeit"); });
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !$("forfeitPrompt").hidden) showPrompt(null);
+  });
+  showRecords();
 
   function updateUI() {
     const mine = turn === "player";
@@ -1228,6 +1335,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
       $(k + "ybonus").textContent = Y.y_card_yacht_bonus(card);
     }
     $("newgame").hidden = phase !== "over";
+    $("forfeitBtn").disabled = phase === "over";
     document.querySelector(".ledger.you").classList.toggle("turn", mine && phase !== "over");
     document.querySelector(".ledger.npc").classList.toggle("turn", !mine && phase !== "over");
     $("turnLabel").textContent = phase === "over" ? "Game over" : mine ? "Your turn" : "Their turn";
@@ -1307,7 +1415,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   // Press a die: click it to send it to the rack (or back), or drag it to lift it and carry it anywhere, such as
   // into the cup. Press anywhere else: the cup only lifts once the pointer moves while the button is held.
   canvas.addEventListener("pointerdown", (e) => {
-    if (e.button !== 0 || press || turn !== "player") return;
+    if (e.button !== 0 || press || turn !== "player" || !$("veil").hidden) return;
     initAudio();
     if (audio && audio.state === "suspended") audio.resume();
     setRay(e);
@@ -1580,6 +1688,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
 
   // Hooks for automated checks of the preview.
   window.__yacht = {
+    endGame: (o) => endGame(o), forfeit: () => endGame("forfeit"), record: () => rec(),
     setBest: (n) => { ranks.best = n; saveRanks(); updateRanks(); }, finishGame: (n) => finishGame(n),
     state: () => Array.from(state()), phase: () => phase, faces: () => faces.slice(), rolls: () => rollsUsed,
     screen: (i) => {
