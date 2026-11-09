@@ -157,6 +157,7 @@ canvas#view.over-die { cursor: pointer; }
   </aside>
 </div>
 
+<!--__LOCAL_CUPS__-->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 "use strict";
@@ -331,9 +332,9 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     scene.environment = pmrem.fromEquirectangular(env).texture;
   }
 
-  // The four cups, in rank order. Every cup has the same inside (radius S.R, depth S.H) so none rolls differently;
-  // only the outside changes. Shapes are drawn here in the spirit of the game's own tableware; in the mod the real
-  // vanilla meshes are used.
+  // The four cups, in rank order. Every cup has the same inside radius (S.R); the drawn stand-ins also share the
+  // depth S.H. A local build (LOCAL=1 ./preview/build.sh) carries the game's own meshes and textures in
+  // window.LOCAL_CUPS, scaled to that radius, each with its real inside depth.
   const CUPS = [
     { id: "tankard", name: "Tankard", rank: "Novice", need: 0 },
     { id: "dwemer", name: "Dwemer Cup", rank: "Apprentice", need: 150 },
@@ -343,6 +344,38 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   const cupGroup = new THREE.Group();
   world.add(cupGroup);
   let glowMats = [];
+  let cupH = S.H;  // inside depth of the cup in use
+  const texLoader = new THREE.TextureLoader();
+  function gameTex(uri, srgb) {
+    const t = texLoader.load(uri);
+    t.flipY = false;  // DirectX texture origin
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    if (srgb) t.encoding = THREE.sRGBEncoding;
+    t.anisotropy = 4;
+    return t;
+  }
+  // The game's own cup, from a local build: its shapes, scaled so the inside radius matches the physics cup, with
+  // the inside floor at z = 0.
+  function buildGameCup(c) {
+    const mat = new THREE.MeshStandardMaterial({ color: c.tint || "#ffffff", roughness: c.roughness, metalness: c.metalness,
+      side: THREE.DoubleSide });
+    if (c.map) mat.map = gameTex(c.map, true);
+    if (c.normal) mat.normalMap = gameTex(c.normal, false);
+    if (c.metal) mat.metalnessMap = gameTex(c.metal, false);
+    for (const sh of c.shapes) {
+      const g = new THREE.BufferGeometry();
+      g.setAttribute("position", new THREE.Float32BufferAttribute(sh.positions, 3));
+      if (sh.normals.length) g.setAttribute("normal", new THREE.Float32BufferAttribute(sh.normals, 3));
+      if (sh.uvs.length) g.setAttribute("uv", new THREE.Float32BufferAttribute(sh.uvs, 2));
+      g.setIndex(sh.indices);
+      g.scale(c.scale, c.scale, c.scale);
+      g.translate(0, 0, c.z);
+      const m = new THREE.Mesh(g, mat);
+      m.castShadow = m.receiveShadow = true;
+      cupGroup.add(m);
+    }
+    glowMats = [mat];
+  }
 
   function lathe(points, segments, mat, flat) {
     const g = new THREE.LatheGeometry(points.map(([x, y]) => new THREE.Vector2(x, y)), segments);
@@ -361,6 +394,10 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
 
   function buildCup(id) {
     while (cupGroup.children.length) cupGroup.remove(cupGroup.children[0]);
+    const game = window.LOCAL_CUPS && window.LOCAL_CUPS[id];
+    cupH = game ? game.height : S.H;
+    Y.y_set_cup_height(cupH);
+    if (game) { buildGameCup(game); return; }
     const R = S.R, W = S.W, H = S.H, O = R + W;
     const metal = (color, rough, metalness) => new THREE.MeshStandardMaterial({ color, roughness: rough, metalness, side: THREE.DoubleSide });
     let parts = [];
@@ -548,7 +585,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     // Tip the way the cup was last moving, from a spot where the mouth stays over the felt.
     const len = Math.hypot(aim.x, aim.y) || 1;
     const dx = aim.x / len, dy = aim.y / len;
-    const reach = S.H * 0.85;
+    const reach = cupH * 0.85;
     const px = THREE.MathUtils.clamp(cup.x, -S.X + 2, S.X - 2), py = THREE.MathUtils.clamp(cup.y, -S.Yh + 2, S.Yh - 2);
     const tipX = THREE.MathUtils.clamp(px + dx * reach, -S.X + 2.6, S.X - 2.6) - dx * reach;
     const tipY = THREE.MathUtils.clamp(py + dy * reach, -S.Yh + 2.6, S.Yh - 2.6) - dy * reach;
@@ -833,7 +870,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     const r = canvas.getBoundingClientRect();
     const toScreen = (v) => { v.project(camera); return [r.left + (v.x + 1) / 2 * r.width, r.top + (1 - v.y) / 2 * r.height]; };
     let best = Infinity, rad = 0;
-    for (const z of [S.H, S.H * 0.5]) {
+    for (const z of [cupH, cupH * 0.5]) {
       tmpA.set(0, 0, z).applyMatrix4(cupGroup.matrixWorld);
       tmpB.set(S.R + S.W, 0, z).applyMatrix4(cupGroup.matrixWorld);
       const a = toScreen(tmpA), b = toScreen(tmpB);
@@ -844,7 +881,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   }
   function carryHeight(x) {
     const k = THREE.MathUtils.smoothstep(x, S.X - 3, REST.x - S.R);
-    return CARRY_Z + (REST.z + S.H + S.die * 1.4 - CARRY_Z) * k;
+    return CARRY_Z + (REST.z + cupH + S.die * 1.4 - CARRY_Z) * k;
   }
   function overRack() {
     const pt = onPlane(tablePlane);
@@ -1132,7 +1169,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
       return [r.left + (v.x + 1) / 2 * r.width, r.top + (1 - v.y) / 2 * r.height];
     },
     cupScreen: () => {
-      const v = cupGroup.localToWorld(new THREE.Vector3(0, 0, S.H * 0.5)).project(camera); const r = canvas.getBoundingClientRect();
+      const v = cupGroup.localToWorld(new THREE.Vector3(0, 0, cupH * 0.5)).project(camera); const r = canvas.getBoundingClientRect();
       return [r.left + (v.x + 1) / 2 * r.width, r.top + (1 - v.y) / 2 * r.height];
     },
   };

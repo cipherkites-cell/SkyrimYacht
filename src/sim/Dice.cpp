@@ -335,6 +335,7 @@ namespace yacht
 		if (_drag >= 0) {
 			_dice[_drag].rot = held;
 		}
+		Contain();
 		UpdateSettle(a_dt);
 	}
 
@@ -725,6 +726,49 @@ namespace yacht
 
 			d.pos += d.vel * a_dt;
 			d.rot.Integrate(d.spin, a_dt);
+		}
+	}
+
+	void DiceSim::Contain()
+	{
+		// The impulse solve lets a die sink a little into a fast-moving cup for a substep. A die must never show
+		// through the cup, so after each substep every die inside it is moved back until no corner is past the
+		// inside wall, the base, or (while shaking) the palm over the mouth. Velocity is left to the solver.
+		const double e = HalfInner();
+		const double r = Radius();
+		const double R = _spec.cupRadius;
+		const double H = _spec.cupHeight;
+		for (int i = 0; i < kDice; ++i) {
+			Die& d = _dice[i];
+			if (d.state != DieState::kActive || d.frozen || !InCup(i)) {
+				continue;
+			}
+			for (int pass = 0; pass < 2; ++pass) {
+				Vec3 shift{};
+				double wallOut = 0.0, baseIn = 0.0, lidIn = 0.0;
+				Vec3   wallDir{};
+				for (const auto& corner : kCorners) {
+					const Vec3   l = _cupRot.InverseRotate(d.pos + d.rot.Rotate(Offset(corner, e)) - _cupPos);
+					const double sr = m::Sqrt(l.x * l.x + l.y * l.y);
+					if (l.z < H + r && sr + r - R > wallOut && sr > 1e-9) {
+						wallOut = sr + r - R;
+						wallDir = { l.x / sr, l.y / sr, 0.0 };
+					}
+					baseIn = m::Max(baseIn, r - l.z);
+					if (_lid) {
+						lidIn = m::Max(lidIn, l.z + r - H);
+					}
+				}
+				// Only step in past a small tolerance (well inside the cup wall's thickness), so resting contacts and
+				// die-on-die contacts are left to the solver.
+				const double tol = 0.02;
+				shift -= wallDir * m::Max(0.0, wallOut - tol);
+				shift.z += m::Max(0.0, baseIn - tol) - m::Max(0.0, lidIn - tol);
+				if (shift.LengthSq() < 1e-12) {
+					break;
+				}
+				d.pos += _cupRot.Rotate(shift);
+			}
 		}
 	}
 

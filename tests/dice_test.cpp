@@ -1,6 +1,7 @@
 // Native tests for the dice simulation. Build: see tests/build.sh (or CI).
 #include "../src/sim/Dice.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 
@@ -424,6 +425,37 @@ namespace
 		Check(sim.OffTable(0), "a die past an open side falls off the table");
 	}
 
+	void TestNoClipping()
+	{
+		// Hard, fast shaking: no part of a die may get further past the cup's inside wall, base or the palm over the
+		// mouth than a sliver that the wall's thickness hides.
+		double worst = 0.0;
+		for (unsigned int seed = 1; seed <= 30; ++seed) {
+			DiceSim         sim({}, seed);
+			const DiceSpec& s = sim.Spec();
+			const Vec3      home{ 0.0, 0.0, 5.6 };
+			sim.PlaceCup(home, {});
+			sim.LoadCup(0x1F);
+			sim.SetLid(true);
+			const double h = s.dieSize * 0.5, r = s.dieSize * s.dieRound, e = h - r;
+			for (int f = 0; f < 240; ++f) {
+				const double t = f / 60.0, w = 14.0 + seed % 9;
+				const Vec3   p = home + Vec3{ std::cos(t * w) * 2.2, std::sin(t * w * 1.3) * 2.2, std::sin(t * w * 0.7) * 0.8 };
+				sim.Step(kFrame, p, Quat::FromAxisAngle({ std::sin(t * w), std::cos(t * w), 0.0 }, 0.35));
+				for (int i = 0; i < DiceSim::kDice; ++i) {
+					const Die& d = sim.DieAt(i);
+					for (int c = 0; c < 8; ++c) {
+						const Vec3 o{ (c & 1 ? 1 : -1) * e, (c & 2 ? 1 : -1) * e, (c & 4 ? 1 : -1) * e };
+						const Vec3 l = sim.CupRot().InverseRotate(d.pos + d.rot.Rotate(o) - sim.CupPos());
+						worst = std::max({ worst, std::hypot(l.x, l.y) + r - s.cupRadius, r - l.z, l.z + r - s.cupHeight });
+					}
+				}
+			}
+		}
+		std::printf("deepest a die gets into the cup wall while shaking: %.3f\n", worst);
+		Check(worst < DiceSpec{}.cupWall * 0.25, "dice never show through the cup");
+	}
+
 	void TestSideTable()
 	{
 		// The cup can stand on the side table with dice in it without the tray walls grabbing them.
@@ -445,6 +477,7 @@ int main()
 	TestDrag();
 	TestSideTable();
 	TestKeepers();
+	TestNoClipping();
 	TestBarriers();
 	TestDropManyAtOnce();
 	TestUnjam();

@@ -10,7 +10,15 @@ clang++ --target=wasm32 -std=c++20 -O2 -nostdlib -ffreestanding -fno-exceptions 
 python3 - <<'PY'
 import base64
 wasm = base64.b64encode(open("build/yacht.wasm", "rb").read()).decode()
+import os
 page = open("preview/template.html").read().replace("__WASM_BASE64__", wasm)
-open("preview/yacht-preview.html", "w").write(page)
-print("preview/yacht-preview.html", len(page), "bytes")
+if os.environ.get("LOCAL") == "1":
+    # The game's own cups (tools/make_local_cups.py). Bethesda's assets: this page stays on your own machine.
+    cups = open("local-assets/cups.js").read()
+    page = page.replace("<!--__LOCAL_CUPS__-->", "<script>" + cups + "</script>")
+    open("preview/yacht-local.html", "w").write(page)
+    print("preview/yacht-local.html", len(page), "bytes")
+else:
+    open("preview/yacht-preview.html", "w").write(page)
+    print("preview/yacht-preview.html", len(page), "bytes")
 PY

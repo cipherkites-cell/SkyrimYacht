@@ -101,6 +101,8 @@ namespace yacht
 		explicit DiceSim(const DiceSpec& a_spec = {}, unsigned int a_seed = 1);
 
 		const DiceSpec& Spec() const { return _spec; }
+		// Changes the cup's inside depth (cups of different shapes); dice already in it are left as they are.
+		void SetCupHeight(double a_height) { _spec.cupHeight = a_height; }
 		const Die&      DieAt(int a_index) const { return _dice[a_index]; }
 
 		// The cup: position of the centre of its inside base, and orientation (its axis is local +z).
@@ -186,6 +188,7 @@ namespace yacht
 		void Solve();
 		void Correct();
 		void Integrate(double a_dt);
+		void Contain();
 		void UpdateSettle(double a_dt);
 		void Emit(DiceEvent::Type a_type, int a_die, double a_speed);
 
