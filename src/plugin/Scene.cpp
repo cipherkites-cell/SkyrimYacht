@@ -435,6 +435,10 @@ namespace Scene
 			const float s = kCupRadius / c.inner * c.room;
 			mesh->local.scale = s;
 			mesh->local.translate = { 0.0f, 0.0f, -c.floor * s };
+			if (a_which == 1) {  // the opponent's: turned about its own axis so the handle points away from the tray (left)
+				mesh->local.rotate.entry[0][0] = -1.0f;
+				mesh->local.rotate.entry[1][1] = -1.0f;
+			}
 			holder->AttachChild(mesh.get(), true);
 			// hidden until the game puts it where the old one stood (else it shows a frame at the table's middle)
 			holder->CullNode(true);
