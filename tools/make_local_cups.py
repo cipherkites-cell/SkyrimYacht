@@ -23,7 +23,7 @@ ROOT = os.path.dirname(HERE)
 # Measured from the meshes (tools/nif2json.py + the up-facing triangles): the inside floor and rim heights, and the
 # inside radius at the rim, in game units. Each cup is scaled so its inside radius matches the physics cup's.
 CUPS = {
-    "tankard": {"nif": "basictankard01", "floor": 2.9, "top": 12.1, "inner": 4.32, "room": 1.22,
+    "tankard": {"nif": "basictankard01", "floor": 2.9, "top": 12.1, "inner": 4.32, "room": 1.04,  # 15% smaller than it was (1.22)
                 "map": "diningset01", "normal": "diningset01_n", "metalness": 0.3, "roughness": 0.5},
     "dwemer": {"nif": "dwecup01", "floor": 0.8, "top": 10.4, "inner": 4.36, "room": 1.22,
                "map": "dwemetalsheet01", "normal": "dwemetalsheet01_n", "metalness": 0.45, "roughness": 0.5},
