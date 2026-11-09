@@ -1264,7 +1264,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     ringCache.set(key, set);
     return set;
   }
-  const SURF_GAIN = [0.3, 0.55, 0.6, 0.35];
+  const SURF_GAIN = [0.3, 0.55, 0.6, 0.45];
   const lastHit = new Float64Array(24).fill(-1);
   const activeCupId = () => (turn === "npc" ? "tankard" : ranks.selected);
   // type: 0 die-die, 1 linen, 2 tray wall, 3 cup. die: which die (for its pitch and where it is), or -1.
@@ -1275,15 +1275,18 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     const now = audio.currentTime;
     if (die >= 0) { const k = die * 4 + type; if (now - lastHit[k] < 0.05) return; lastHit[k] = now; }
     if (!hitBank) return;
-    // Dice on dice and dice in the cup click; dice landing on the tray knock.
-    const set = type === 0 || type === 3 ? hitBank.click : hitBank.knock;
+    // Inside the cup every hit is a muffled thump against its walls and floor; out on the tray, dice click off
+    // each other and knock on the wood.
+    const inside = type === 3 || (type === 0 && die >= 0 && inCup(state(), die));
+    const set = inside || type !== 0 ? hitBank.knock : hitBank.click;
     const src = audio.createBufferSource();
     src.buffer = set[(Math.random() * set.length) | 0];
-    src.playbackRate.value = (MAT_PITCH[DIE_MAT[curDiceStyle]] || 1) * (die >= 0 ? dieTune[die] : 1) * (1 + (Math.random() - 0.5) * 0.08);
-    // The linen damps the knock; soft hits are darker than hard ones.
+    src.playbackRate.value = (MAT_PITCH[DIE_MAT[curDiceStyle]] || 1) * (die >= 0 ? dieTune[die] : 1) * (1 + (Math.random() - 0.5) * 0.08)
+      * (inside ? 0.82 : 1);
+    // The linen damps the knock, the cup more so; soft hits are darker than hard ones.
     const f = audio.createBiquadFilter(); f.type = "lowpass"; f.Q.value = 0.5;
-    f.frequency.value = (type === 1 ? 1400 + 3000 * v : 2500 + 12000 * v * v);
-    const g = audio.createGain(); g.gain.value = Math.pow(v, 1.6) * SURF_GAIN[type];
+    f.frequency.value = inside ? 900 + 2200 * v : type === 1 ? 1400 + 3000 * v : 2500 + 12000 * v * v;
+    const g = audio.createGain(); g.gain.value = Math.pow(v, 1.6) * (inside ? 0.4 : SURF_GAIN[type]);
     const mat = DIE_MAT[curDiceStyle] || "bone", col = MAT_COLOR[mat];
     let tail = src;
     if (col.low) {
@@ -1298,10 +1301,19 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
       const sh = audio.createBiquadFilter(); sh.type = "highshelf";
       [sh.frequency.value, sh.gain.value] = col.shelf; tail.connect(sh); tail = sh;
     }
+    if (inside) {
+      // The cup's hollow body: more weight, and a wooden tankard's boxy "tok".
+      const body = audio.createBiquadFilter(); body.type = "lowshelf"; body.frequency.value = 220; body.gain.value = 6;
+      tail.connect(body); tail = body;
+      if (CUP_MAT[activeCupId()] === "wood") {
+        const box = audio.createBiquadFilter(); box.type = "peaking"; box.frequency.value = 380; box.gain.value = 4; box.Q.value = 1.2;
+        tail.connect(box); tail = box;
+      }
+    }
     tail.connect(f); f.connect(g);
     // A metal goblet's soft ring under the hit, only on firmer hits.
     const rings = [];
-    if (type === 3 && CUP_MAT[activeCupId()] === "metal" && v > 0.12) rings.push([ringBufs("goblet", GOBLET_RING), 0.07]);
+    if (type === 3 && CUP_MAT[activeCupId()] === "metal" && v > 0.12) rings.push([ringBufs("goblet", GOBLET_RING), 0.04]);
     for (const [set, level] of rings) {
       const r = audio.createBufferSource(); r.buffer = set[(Math.random() * set.length) | 0];
       r.playbackRate.value = (die >= 0 ? dieTune[die] : 1) * (1 + (Math.random() - 0.5) * 0.03);
