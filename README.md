@@ -20,9 +20,24 @@ every frame, so dice can't be flung off the table or wedge in level geometry.
 - **Keepers:** dice left on the pad are frozen (`SetFrozen`) while the rest roll, so a throw can't knock them over. Fairness is checked with a chi-square test over 400 throws.
   (`SetLid`), so dice can't jump out; tipping it pours them onto the tray.
 - **Opponent:** `src/sim/Ai` picks which dice to keep (every keep choice tried against simulated rerolls) and which box to score; it averages about 233 a game in `tests/ai_test.cpp`. In the preview it plays its turns on the table: its cup on the left, its rack across the far side.
-- **Dice sets:** fifteen cosmetic sets (same physics) sold by innkeepers once you've won enough games: Bone (start),
-  Iron, Steel, Corundum, Dwemer, Orichalcum, Silver, Quicksilver, Moonstone, Gold, Malachite, Ebony, Stalhrim,
-  Dragonbone, Daedric. See `docs/dice-sets.png`. Your cup tier follows your last finished game's score.
+- **Dice sets:** fifteen cosmetic sets (same physics). Innkeepers sell a new one every ten wins: Bone (start),
+  Iron (10), Steel (20), Corundum (30), Dwemer (40), Orichalcum (50), Silver (60), Quicksilver (70), Moonstone (80),
+  Gold (90), Malachite (100), Ebony (110), Stalhrim (120), Dragonbone (130), Daedric (140). See `docs/dice-sets.png`.
+  Your cup tier follows your last finished game's score.
+- **Sound:** every contact the sim reports is synthesised from the die's material (bone, iron and steel, precious
+  metal, stone, stalhrim) and what it struck (another die, the linen, the tray, a wooden or metal cup), as hard as
+  the hit and panned to where it happened, in a small room reverb. Rolling and the rattle inside the cup are
+  continuous layers that follow the dice.
+- **Fus Ro Dah:** an easter egg modelled on Unrelenting Force: the three words appear as they're spoken, then the
+  blast bends the air in a cone across the board, kicks the view and throws the dice back into the cup.
+
+## In game
+
+Playing pauses the world and blurs it behind the table, the way Skyrim's own menus do: the game is a menu with
+`kPausesGame`, and it raises the menu blur with `RE::UIBlurManager::IncrementBlurCount()` on open and lowers it on
+close. The preview stands in a blurred tavern for that world. The overlay follows Skyrim's interface: the compass
+across the top (whose turn, the three rolls, the Thu'um recharging), parchment tally sheets, an inventory-style
+panel for cups and dice, and key prompts in the corner (Z shout, H help, M sound, Tab forfeit).
 - **Scoring:** `src/sim/Yacht` has the thirteen boxes, the 35-point upper bonus at 63, 100-point bonuses for extra
   five-of-a-kinds and the joker rule.
 

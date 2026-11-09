@@ -1,30 +1,32 @@
 <title>Yacht Dice Cup</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Barlow+Condensed:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;500;600&family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=Fondamento&display=swap">
 <style>
-/* Cinematic overlay in Skyrim's manner: no boxes, dark gradients edged with thin gold rules and diamond ornaments,
-   a carved serif for titles and a condensed sans for everything read at a glance. */
+/* Skyrim's own interface language: off-white condensed capitals on smoke-black gradients, thin rules that fade at the
+   ends, a compass across the top, key prompts in the corner. The scorecards are notes on parchment, written in ink. */
 :root {
-  --ink: #0b0806;        /* deepest shadow */
-  --soot: #120d0a;       /* room behind the table */
-  --gold: #dcb872;       /* ornament and accent */
-  --gold-hi: #f6dfa4;
-  --gold-dim: #7d6740;
-  --bone: #efe6d2;       /* primary text */
-  --ash: #a39782;        /* secondary text */
-  --ember: #f2a85e;      /* score previews */
-  --blood: #d0644a;      /* defeat, forfeit */
-  --frost: #b9d4f2;      /* the Thu'um */
-  --display: "Cinzel", "Trajan Pro", "Palatino Linotype", Georgia, serif;
-  --body: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", system-ui, sans-serif;
-  --rule: linear-gradient(90deg, transparent, var(--gold-dim) 12%, var(--gold) 50%, var(--gold-dim) 88%, transparent);
-  --panel: linear-gradient(180deg, rgba(10, 7, 5, 0.86), rgba(10, 7, 5, 0.66));
+  --white: #f1eee8;       /* primary text */
+  --grey: #a29d94;        /* secondary text */
+  --dim: #66625b;         /* locked, disabled */
+  --line: rgba(241, 238, 232, 0.62);
+  --frost: #cfe2ff;       /* the Thu'um */
+  --blood: #d06a52;       /* defeat, forfeit */
+  --ink: #2a1c11;         /* ink on parchment */
+  --ink-soft: #5e4631;
+  --rubric: #8e2f1b;      /* red ink: headings and pencilled previews */
+  --soot: #0d0a08;
+  --ui: 1;
+  --sans: "Barlow Condensed", "Futura Condensed", "Arial Narrow", "Roboto Condensed", system-ui, sans-serif;
+  --book: "IM Fell English", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  --book-sc: "IM Fell English SC", "IM Fell English", "Palatino Linotype", Georgia, serif;
+  --hand: "Fondamento", "IM Fell English", "Palatino Linotype", Georgia, serif;
+  --fade-rule: linear-gradient(90deg, transparent, var(--line) 18%, var(--line) 82%, transparent);
   color-scheme: dark;
 }
 html, body { height: 100%; }
 body {
-  background: var(--soot); color: var(--bone); font-family: var(--body); font-size: 16px; letter-spacing: 0.02em;
+  background: var(--soot); color: var(--white); font-family: var(--sans); font-size: 16px; letter-spacing: 0.03em;
   overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none;
 }
 [hidden] { display: none !important; }
@@ -33,242 +35,281 @@ body {
 canvas#view { display: block; width: 100%; height: 100%; cursor: grab; }
 canvas#view.shaking { cursor: grabbing; }
 canvas#view.over-die { cursor: pointer; }
-/* Lens vignette and soft bars top and bottom so the overlay reads over the scene. */
 .vignette {
   position: absolute; inset: 0; pointer-events: none;
   background:
-    radial-gradient(ellipse 75% 70% at 50% 52%, transparent 55%, rgba(4, 3, 2, 0.6) 100%),
-    linear-gradient(180deg, rgba(4, 3, 2, 0.55), transparent 14%, transparent 86%, rgba(4, 3, 2, 0.5));
+    radial-gradient(ellipse 80% 75% at 50% 52%, transparent 60%, rgba(0, 0, 0, 0.5) 100%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.45), transparent 13%, transparent 84%, rgba(0, 0, 0, 0.55));
 }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 1px solid var(--white); outline-offset: 3px; }
 
-/* ---- Shared ornament: a panel with gold rules top and bottom and a diamond at the top centre */
-.panel { position: relative; background: var(--panel); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
-.panel::before, .panel::after { content: ""; position: absolute; left: 0; right: 0; height: 1px; background: var(--rule); opacity: 0.75; }
-.panel::before { top: 0; }
-.panel::after { bottom: 0; }
-.gem { position: absolute; top: -4px; left: 50%; width: 8px; height: 8px; transform: translateX(-50%) rotate(45deg);
-  background: var(--soot); border: 1px solid var(--gold); box-shadow: 0 0 8px rgba(220, 184, 114, 0.45); }
-
-/* ---- Top centre: title, whose turn, rolls, controls */
+/* ---- Top centre: the compass */
 .hud {
-  position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
-  display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; white-space: nowrap;
+  position: absolute; top: 18px; left: 50%; transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 7px; pointer-events: none;
 }
-.banner { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-.game-name { font-family: var(--display); font-size: 13px; font-weight: 600; letter-spacing: 0.5em; color: var(--gold); padding-left: 0.5em; opacity: 0.85; }
+.compass { display: flex; align-items: center; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.8)); }
+.compass .cap { width: 34px; height: 34px; flex: none; fill: none; stroke: var(--white); stroke-width: 1.3; stroke-linejoin: round; opacity: 0.9; }
+.compass .cap circle { fill: var(--white); stroke: none; }
+.compass .cap.l { margin-right: -1px; }
+.compass .cap.r { margin-left: -1px; }
+.compass-track {
+  position: relative; width: 560px; height: 30px; display: grid; place-items: center;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.62), rgba(0, 0, 0, 0.38));
+  border-top: 1px solid rgba(241, 238, 232, 0.72); border-bottom: 1px solid rgba(241, 238, 232, 0.72);
+}
+.compass-track .tick { position: absolute; top: 0; width: 1px; height: 7px; background: rgba(241, 238, 232, 0.45); }
+.compass-track .tick:nth-child(odd) { height: 11px; }
 .turn {
-  display: flex; align-items: center; gap: 16px; font-family: var(--display); font-weight: 600; font-size: 28px; letter-spacing: 0.14em;
-  text-transform: uppercase; color: var(--bone); text-shadow: 0 0 18px rgba(246, 223, 164, 0.25), 0 2px 6px rgba(0, 0, 0, 0.9);
+  font-weight: 400; font-size: 21px; line-height: 1; letter-spacing: 0.32em; padding-left: 0.32em; text-transform: uppercase; white-space: nowrap;
+  color: var(--white); text-shadow: 0 0 10px rgba(255, 255, 255, 0.25), 0 1px 3px #000;
 }
-.turn::before, .turn::after { content: ""; width: 120px; height: 1px; background: linear-gradient(90deg, transparent, var(--gold)); }
-.turn::after { transform: scaleX(-1); }
-.turn.theirs { color: #e7cfc4; }
-.turn.flip { animation: turnIn 0.7s cubic-bezier(.2, .8, .2, 1); }
-@keyframes turnIn { from { opacity: 0; letter-spacing: 0.4em; filter: blur(4px); } to { opacity: 1; letter-spacing: 0.14em; filter: none; } }
-.rolls { display: flex; gap: 9px; align-items: center; font-size: 12px; font-weight: 600; color: var(--ash); letter-spacing: 0.3em; text-transform: uppercase; }
-.rolls i { width: 9px; height: 9px; transform: rotate(45deg); border: 1px solid var(--gold); display: inline-block; transition: background 0.25s, box-shadow 0.25s; }
-.rolls i.used { background: var(--gold); box-shadow: 0 0 8px rgba(220, 184, 114, 0.7); }
-.controls { display: flex; gap: 10px; align-items: center; pointer-events: auto; margin-top: 2px; }
-.icon-btn {
-  width: 36px; height: 36px; display: grid; place-items: center; padding: 0; cursor: pointer; color: var(--bone);
-  background: radial-gradient(circle at 50% 35%, rgba(40, 30, 20, 0.9), rgba(10, 7, 5, 0.9)); border: 1px solid var(--gold-dim); border-radius: 50%;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6), inset 0 0 0 2px rgba(0, 0, 0, 0.5); transition: border-color 0.2s, color 0.2s, box-shadow 0.2s;
-}
-.icon-btn svg { width: 17px; height: 17px; }
-.icon-btn:hover:not(:disabled) { border-color: var(--gold); color: var(--gold-hi); box-shadow: 0 0 12px rgba(220, 184, 114, 0.35), inset 0 0 0 2px rgba(0, 0, 0, 0.5); }
-.icon-btn:disabled { opacity: 0.35; cursor: default; }
-.icon-btn.off .wave { display: none; }
-.icon-btn.off .mute { display: inline; }
-.icon-btn .mute { display: none; }
-.forfeit-btn:hover:not(:disabled) { border-color: var(--blood); color: #ffc3b3; box-shadow: 0 0 12px rgba(208, 100, 74, 0.45), inset 0 0 0 2px rgba(0, 0, 0, 0.5); }
-.shout-btn {
-  position: relative; overflow: hidden; cursor: pointer; height: 36px; padding: 0 20px;
-  font-family: var(--display); font-weight: 700; font-size: 15px; letter-spacing: 0.28em; color: var(--frost);
-  background: linear-gradient(180deg, rgba(20, 28, 40, 0.9), rgba(8, 10, 16, 0.92)); border: 1px solid rgba(185, 212, 242, 0.45);
-  clip-path: polygon(10px 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 10px 100%, 0 50%);
-  text-shadow: 0 0 10px rgba(185, 212, 242, 0.6); transition: color 0.2s, filter 0.2s;
-}
-.shout-btn:hover:not(:disabled) { color: #fff; filter: drop-shadow(0 0 10px rgba(185, 212, 242, 0.55)); }
-.shout-btn:disabled { cursor: default; color: rgba(185, 212, 242, 0.35); text-shadow: none; }
-.shout-btn .cool { position: absolute; left: 0; bottom: 0; height: 2px; width: 0; background: var(--frost); box-shadow: 0 0 6px var(--frost); }
-.icon-btn:focus-visible, .shout-btn:focus-visible, .row:focus-visible, .newgame:focus-visible,
-.cup-chip:focus-visible, .dice-chip:focus-visible, .menu-btn:focus-visible, .test-btn:focus-visible { outline: 1px solid var(--gold-hi); outline-offset: 3px; }
+.turn.theirs { color: #d9c4bb; }
+.turn.flip { animation: turnIn 0.8s cubic-bezier(.2, .8, .2, 1); }
+@keyframes turnIn { from { opacity: 0; letter-spacing: 0.7em; } to { opacity: 1; letter-spacing: 0.32em; } }
+/* The three rolls sit on the compass like quest markers. */
+.rolls { position: absolute; right: 22px; top: 50%; transform: translateY(-50%); display: flex; gap: 9px; }
+.rolls i { width: 8px; height: 8px; transform: rotate(45deg); border: 1px solid var(--white); transition: background 0.3s, box-shadow 0.3s, opacity 0.3s; opacity: 0.85; }
+.rolls i.used { background: var(--white); box-shadow: 0 0 7px rgba(255, 255, 255, 0.8); }
+.thuum-meter { width: 240px; height: 3px; background: rgba(0, 0, 0, 0.55); outline: 1px solid rgba(241, 238, 232, 0.22); }
+.thuum-meter span { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #8fb4e8, var(--frost)); box-shadow: 0 0 8px rgba(207, 226, 255, 0.85); }
 
-.help.panel {
-  position: absolute; top: 132px; left: 50%; transform: translateX(-50%); width: 420px; padding: 18px 22px; z-index: 3;
-  font-size: 15.5px; line-height: 1.55; color: var(--ash); letter-spacing: 0.03em;
+/* ---- The dragon tongue: each word appears as it's spoken */
+.words {
+  position: absolute; left: 50%; top: 27%; transform: translateX(-50%); display: flex; gap: 0.55em; pointer-events: none; white-space: nowrap;
+  font-weight: 300; font-size: 92px; letter-spacing: 0.24em; text-transform: uppercase; color: #f6f9ff;
+  text-shadow: 0 0 24px rgba(160, 200, 255, 0.85), 0 0 60px rgba(110, 160, 240, 0.5), 0 3px 10px rgba(0, 0, 0, 0.9);
 }
-.help b { color: var(--bone); font-weight: 600; }
+.words span { opacity: 0; display: inline-block; }
+.words span.on { animation: word 0.45s cubic-bezier(.15, .9, .2, 1) forwards; }
+.words.out span.on { animation: wordOut 0.9s ease-in forwards; }
+@keyframes word { from { opacity: 0; transform: scale(1.5); filter: blur(10px); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes wordOut { from { opacity: 1; } to { opacity: 0; transform: scale(1.08); filter: blur(6px); } }
 
-/* ---- Bottom centre: what to do now, as a key prompt */
+/* ---- Message boxes: help, forfeit, leave */
+.msgbox {
+  position: relative; padding: 24px 32px 22px; text-align: center;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.86), rgba(0, 0, 0, 0.78));
+  border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7);
+}
+.msgbox::before, .msgbox::after { content: ""; position: absolute; top: 6px; bottom: 6px; width: 10px; border: 1px solid rgba(241, 238, 232, 0.45); }
+.msgbox::before { left: 6px; border-right: none; }
+.msgbox::after { right: 6px; border-left: none; }
+.msgbox h3 { margin: 0 0 10px; font-weight: 400; font-size: 24px; letter-spacing: 0.26em; text-transform: uppercase; color: var(--white); }
+.help { position: absolute; top: 112px; left: 50%; transform: translateX(-50%); width: 480px; z-index: 3; text-align: left; }
+.help h3 { text-align: center; }
+.help p { margin: 0 0 9px; font-size: 17px; line-height: 1.45; color: var(--grey); letter-spacing: 0.03em; }
+.help b { color: var(--white); font-weight: 500; }
+
+/* ---- Bottom centre: what to do now */
 .hint {
-  position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); max-width: 640px;
-  display: flex; align-items: center; gap: 12px; padding: 10px 26px 10px 18px; pointer-events: none;
-  font-size: 17px; font-weight: 500; letter-spacing: 0.06em; color: var(--bone); text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
-  background: linear-gradient(90deg, transparent, rgba(8, 6, 4, 0.8) 18%, rgba(8, 6, 4, 0.8) 82%, transparent);
+  position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%); max-width: 720px;
+  display: flex; align-items: center; gap: 12px; pointer-events: none; white-space: nowrap;
+  font-size: 20px; font-weight: 400; letter-spacing: 0.07em; color: var(--white);
+  text-shadow: 0 0 8px #000, 0 1px 3px #000;
 }
 .hint::before {
-  content: ""; flex: none; width: 22px; height: 28px; border: 1.5px solid var(--gold); border-radius: 11px 11px 10px 10px;
-  background: linear-gradient(90deg, var(--gold) 0 50%, transparent 50%) top left / 100% 45% no-repeat; opacity: 0.9;
-  box-shadow: 0 0 8px rgba(220, 184, 114, 0.4);
+  content: ""; flex: none; width: 18px; height: 25px; border: 1.5px solid var(--white); border-radius: 9px 9px 9px 9px;
+  background: linear-gradient(90deg, var(--white) 0 50%, transparent 50%) top left / 100% 42% no-repeat;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.9);
 }
-.hint.waiting::before { background: none; border-radius: 50%; width: 14px; height: 14px; border-top-color: transparent; animation: spin 1.1s linear infinite; }
+.hint.waiting::before { background: none; border-radius: 50%; width: 13px; height: 13px; border-color: var(--white) transparent var(--white) transparent; animation: spin 1.2s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ---- Notifications in the middle of the screen */
+/* ---- Notifications, like "Location Discovered" */
 .toast {
-  position: absolute; left: 50%; top: 36%; transform: translate(-50%, -50%); padding: 10px 40px; pointer-events: none;
-  font-family: var(--display); font-weight: 600; font-size: 40px; letter-spacing: 0.12em; color: var(--gold-hi); white-space: nowrap;
-  text-shadow: 0 0 22px rgba(220, 184, 114, 0.45), 0 2px 10px rgba(0, 0, 0, 0.95); opacity: 0; transition: opacity 0.3s, transform 0.7s;
+  position: absolute; left: 50%; top: 34%; transform: translate(-50%, -50%); padding: 12px 60px; pointer-events: none; white-space: nowrap;
+  font-weight: 300; font-size: 44px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--white);
+  text-shadow: 0 0 16px rgba(255, 255, 255, 0.3), 0 2px 8px #000; opacity: 0; transition: opacity 0.35s, transform 0.8s;
 }
-.toast::before, .toast::after { content: ""; position: absolute; left: 0; right: 0; height: 1px; background: var(--rule); }
+.toast::before, .toast::after { content: ""; position: absolute; left: 0; right: 0; height: 1px; background: var(--fade-rule); }
 .toast::before { top: 0; }
 .toast::after { bottom: 0; }
-.toast.show { opacity: 1; transform: translate(-50%, -64%); }
-.toast.long { font-family: var(--body); font-weight: 500; font-size: 22px; letter-spacing: 0.08em; color: var(--bone); white-space: normal; text-align: center; }
-.toast.shout { font-size: 66px; letter-spacing: 0.22em; color: #f4f8ff;
-  text-shadow: 0 0 30px rgba(185, 212, 242, 0.8), 0 0 60px rgba(120, 170, 230, 0.5), 0 2px 12px rgba(0, 0, 0, 0.9); }
-.toast.shout::before, .toast.shout::after { background: linear-gradient(90deg, transparent, var(--frost), transparent); }
+.toast.show { opacity: 1; transform: translate(-50%, -60%); }
+.toast.long { font-size: 26px; font-weight: 400; letter-spacing: 0.16em; }
 
-/* ---- Scorecards: the opponent's top left, yours top right */
-.ledger { position: absolute; top: 16px; width: 380px; max-height: calc(100% - 32px); overflow-y: auto; padding: 16px 20px 16px; }
-.ledger.you { right: max(16px, env(safe-area-inset-right, 0px)); }
-.ledger.npc { left: max(16px, env(safe-area-inset-left, 0px)); }
-.ledger.active::before, .ledger.active::after { opacity: 1; height: 2px; filter: drop-shadow(0 0 6px rgba(220, 184, 114, 0.8)); }
-.ledger.active .gem { background: var(--gold); box-shadow: 0 0 12px rgba(246, 223, 164, 0.9); }
-.card-head { display: flex; justify-content: space-between; align-items: flex-end; }
-.card-head h2 { margin: 0; font-family: var(--display); font-weight: 700; font-size: 19px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--gold); }
-.card-head .total { font-family: var(--display); font-weight: 700; font-size: 34px; line-height: 1; color: var(--bone); font-variant-numeric: tabular-nums;
-  text-shadow: 0 0 14px rgba(246, 223, 164, 0.3); }
-.record { margin: 2px 0 8px; font-size: 12.5px; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase; color: var(--ash); font-variant-numeric: tabular-nums; }
-.cols { display: grid; grid-template-columns: 1fr 1fr; column-gap: 22px; }
-.col { min-width: 0; }
-.section-label { margin: 6px 0 2px; font-size: 11.5px; font-weight: 600; letter-spacing: 0.32em; text-transform: uppercase; color: var(--gold-dim); }
-.row {
-  position: relative; display: flex; justify-content: space-between; align-items: baseline; gap: 10px; width: 100%;
-  font: inherit; font-size: 16px; font-weight: 500; letter-spacing: 0.04em; color: var(--bone); background: none; border: none;
-  padding: 2px 4px 2px 12px; text-align: left; cursor: default;
+/* ---- Bottom right: the button bar */
+.keybar {
+  position: absolute; right: 0; bottom: 0; display: flex; align-items: center; gap: 26px; padding: 26px max(30px, env(safe-area-inset-right, 0px)) 22px 120px;
+  background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.62) 30%); transform-origin: bottom right;
 }
-.row::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(125, 103, 64, 0.5), transparent); }
-.row .val { font-variant-numeric: tabular-nums; font-weight: 600; min-width: 2.2em; text-align: right; }
-.row.filled .name { color: var(--ash); }
-.row.filled .val { color: var(--bone); }
-.row.open .val { color: var(--ember); font-weight: 500; }
-.row.open.zero .val { color: rgba(163, 151, 130, 0.6); }
+.key-btn { position: relative; display: flex; align-items: center; gap: 9px; padding: 2px 0; background: none; border: none; cursor: pointer; color: var(--grey); transition: color 0.2s; }
+.key-btn kbd {
+  min-width: 26px; height: 24px; padding: 0 5px; display: grid; place-items: center; border: 1.5px solid currentColor; border-radius: 4px;
+  font-family: var(--sans); font-size: 13px; font-weight: 600; letter-spacing: 0.04em; background: rgba(0, 0, 0, 0.35);
+}
+.key-btn span { font-size: 18px; letter-spacing: 0.14em; text-transform: uppercase; }
+.key-btn:hover:not(:disabled), .key-btn:focus-visible { color: var(--white); text-shadow: 0 0 10px rgba(255, 255, 255, 0.35); }
+.key-btn:disabled { color: var(--dim); cursor: default; }
+.key-btn .off { display: none; }
+.key-btn.off .on { display: none; }
+.key-btn.off .off { display: inline; }
+.key-btn.shout { color: #b9cdea; }
+.key-btn.shout:hover:not(:disabled) { color: #fff; text-shadow: 0 0 12px rgba(160, 200, 255, 0.8); }
+.key-btn.shout:disabled { color: #4c586a; }
+.key-btn .cool { position: absolute; left: 35px; bottom: -5px; height: 2px; width: 0; background: var(--frost); box-shadow: 0 0 6px var(--frost); }
+.key-btn.forfeit:hover:not(:disabled) { color: #f0b6a6; text-shadow: 0 0 10px rgba(208, 106, 82, 0.6); }
+
+/* ---- Tally sheets: notes on parchment (the texture is drawn at load, see paintParchment) */
+.ledger {
+  position: absolute; top: 18px; width: 384px; padding: 22px 30px 22px 30px; color: var(--ink);
+  background: #d6bf95 center / 100% 100% no-repeat; font-family: var(--book);
+  filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.75)) brightness(0.52) saturate(0.7);
+  transition: filter 0.6s, transform 0.6s;
+}
+.ledger.you { right: max(22px, env(safe-area-inset-right, 0px)); transform: rotate(0.7deg); }
+.ledger.npc { left: max(22px, env(safe-area-inset-left, 0px)); transform: rotate(-0.8deg); }
+.ledger.active { filter: drop-shadow(0 14px 22px rgba(0, 0, 0, 0.8)) brightness(1) saturate(1); }
+.ledger.you.active { transform: rotate(0.7deg) translateY(2px) scale(1.012); }
+.ledger.npc.active { transform: rotate(-0.8deg) translateY(2px) scale(1.012); }
+.card-head { display: flex; justify-content: space-between; align-items: flex-end; }
+.card-head h2 { margin: 0; font-family: var(--book-sc); font-weight: 400; font-size: 27px; line-height: 1; letter-spacing: 0.04em; color: var(--ink); }
+.card-head .total { font-family: var(--hand); font-size: 40px; line-height: 0.9; color: var(--ink); font-variant-numeric: tabular-nums; }
+.record { margin: 3px 0 8px; font-style: italic; font-size: 15px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.cols { display: grid; grid-template-columns: 1fr 1.18fr; column-gap: 22px; }
+.col { min-width: 0; }
+.section-label { margin: 4px 0 1px; font-family: var(--book-sc); font-size: 15px; letter-spacing: 0.08em; color: var(--rubric); }
+.row {
+  position: relative; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; width: 100%;
+  font-family: var(--book); font-size: 17.5px; line-height: 1.2; color: var(--ink); background: none; border: none;
+  padding: 1px 2px 1px 10px; text-align: left; cursor: default; border-radius: 2px;
+}
+.row::after { content: ""; position: absolute; left: 6px; right: 0; bottom: 1px; border-bottom: 1px dotted rgba(42, 28, 17, 0.35); }
+.row .name { white-space: nowrap; }
+.row .val { font-family: var(--hand); font-size: 20px; line-height: 1; min-width: 1.8em; text-align: right; font-variant-numeric: tabular-nums; }
+.row.filled .name { color: var(--ink-soft); }
+.row.open .val { color: var(--rubric); font-style: italic; opacity: 0.85; }
+.row.open.zero .val { opacity: 0.45; }
 .row.locked .val { color: transparent; }
 .row.pickable { cursor: pointer; }
-.row.pickable::before { content: ""; position: absolute; left: 1px; top: 50%; width: 5px; height: 5px; transform: translateY(-50%) rotate(45deg); background: var(--gold); opacity: 0; transition: opacity 0.15s; }
-.row.pickable:hover { background: linear-gradient(90deg, rgba(220, 184, 114, 0.22), rgba(220, 184, 114, 0.04) 80%, transparent); color: #fff; }
+.row.pickable::before { content: ""; position: absolute; left: 0; top: 50%; width: 5px; height: 5px; transform: translateY(-50%) rotate(45deg); background: var(--rubric); opacity: 0; transition: opacity 0.15s; }
+.row.pickable:hover { background: radial-gradient(ellipse at 40% 60%, rgba(142, 47, 27, 0.2), transparent 75%); }
 .row.pickable:hover::before { opacity: 1; }
-.row.pickable:hover .val { color: var(--gold-hi); text-shadow: 0 0 8px rgba(246, 223, 164, 0.6); }
-.row.flash { animation: flash 1.8s ease-out; }
-@keyframes flash { 0% { background: rgba(220, 184, 114, 0.55); } 100% { background: transparent; } }
-.sub { display: flex; justify-content: space-between; gap: 6px; padding: 5px 4px 0 12px; font-size: 13px; letter-spacing: 0.06em; color: var(--ash); font-variant-numeric: tabular-nums; }
+.row.pickable:hover .val { opacity: 1; }
+.row.flash .val { animation: ink 0.9s ease-out both; }
+@keyframes ink { from { clip-path: inset(0 100% 0 0); filter: blur(1px); } to { clip-path: inset(0 0 0 0); filter: none; } }
+.sub { display: flex; justify-content: space-between; gap: 6px; padding: 3px 2px 0 10px; font-style: italic; font-size: 14.5px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
 .newgame {
-  margin-top: 12px; width: 100%; padding: 9px 12px; cursor: pointer; font-family: var(--display); font-weight: 700; font-size: 15px; letter-spacing: 0.24em;
-  text-transform: uppercase; color: var(--ink); background: linear-gradient(180deg, var(--gold-hi), var(--gold)); border: none;
-  clip-path: polygon(10px 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 10px 100%, 0 50%);
+  display: block; margin: 14px auto 0; padding: 7px 26px; cursor: pointer; font-family: var(--book-sc); font-size: 19px; letter-spacing: 0.08em;
+  color: #f3e3c7; background: radial-gradient(circle at 50% 40%, #9c2d1c, #5f160b); border: none; border-radius: 3px;
+  box-shadow: 0 2px 0 #3d0d06, 0 4px 10px rgba(0, 0, 0, 0.45), inset 0 0 0 2px rgba(0, 0, 0, 0.25);
 }
+.newgame:hover { filter: brightness(1.15); }
+.ledger :focus-visible { outline: 1px dashed var(--ink); outline-offset: 2px; }
 
-/* ---- Bottom left: rank, cups and dice */
-.dock { position: absolute; left: max(16px, env(safe-area-inset-left, 0px)); bottom: 18px; width: 360px; padding: 16px 18px 12px; }
-.rank-line { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 8px; }
-.rank-name { font-family: var(--display); font-weight: 700; font-size: 20px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); }
-.rank-next { font-size: 12.5px; letter-spacing: 0.04em; color: var(--ash); text-align: right; line-height: 1.3; }
-.cup-chips { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 10px; }
+/* ---- Bottom left: like the inventory, a smoke-black panel fading to the right */
+.dock {
+  position: absolute; left: 0; bottom: 0; width: 420px; padding: 34px 44px 16px max(30px, env(safe-area-inset-left, 0px));
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.84), rgba(0, 0, 0, 0.72) 62%, transparent);
+  -webkit-mask-image: linear-gradient(180deg, transparent, #000 34px); mask-image: linear-gradient(180deg, transparent, #000 34px);
+  transform-origin: bottom left;
+}
+.skill-line { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.skill-name { font-weight: 300; font-size: 30px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--white); line-height: 1; }
+.skill-next { font-size: 14px; letter-spacing: 0.05em; color: var(--grey); text-align: right; line-height: 1.25; }
+.skill-bar { position: relative; height: 7px; margin: 9px 9px 2px; background: rgba(0, 0, 0, 0.6); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.skill-bar::before, .skill-bar::after { content: ""; position: absolute; top: 50%; width: 7px; height: 7px; border: 1px solid var(--white); background: #000; transform: translateY(-50%) rotate(45deg); }
+.skill-bar::before { left: -9px; }
+.skill-bar::after { right: -9px; }
+.skill-bar span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #6d6b67, #fdfbf7); box-shadow: 0 0 6px rgba(255, 255, 255, 0.5); transition: width 0.8s cubic-bezier(.2, .8, .2, 1); }
+.skill-bar.thin { height: 4px; margin-top: 10px; }
+.list-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin: 16px 0 6px; padding-bottom: 5px;
+  font-size: 13px; font-weight: 500; letter-spacing: 0.32em; text-transform: uppercase; color: var(--grey); position: relative; }
+.list-head::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: linear-gradient(90deg, var(--line), transparent); }
+.dock-note { font-weight: 400; letter-spacing: 0.14em; font-size: 12px; }
+.cup-list { display: grid; grid-template-columns: 1fr 1fr; column-gap: 18px; }
 .cup-chip {
   position: relative; display: flex; justify-content: space-between; align-items: baseline; gap: 6px; padding: 3px 4px 3px 14px; cursor: pointer;
-  font: inherit; font-size: 15px; font-weight: 500; letter-spacing: 0.04em; color: var(--bone); background: none; border: none; text-align: left;
+  font-size: 18px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--grey); background: none; border: none; text-align: left; transition: color 0.15s;
 }
-.cup-chip::before { content: ""; position: absolute; left: 2px; top: 50%; width: 6px; height: 6px; transform: translateY(-50%) rotate(45deg); border: 1px solid var(--gold-dim); }
-.cup-chip small { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ash); }
-.cup-chip:hover:not(:disabled) { background: linear-gradient(90deg, rgba(220, 184, 114, 0.16), transparent); }
-.cup-chip[aria-pressed="true"] { color: var(--gold-hi); }
-.cup-chip[aria-pressed="true"]::before { background: var(--gold); border-color: var(--gold); box-shadow: 0 0 6px rgba(246, 223, 164, 0.8); }
-.cup-chip:disabled { cursor: default; color: rgba(163, 151, 130, 0.55); }
+.cup-chip small { font-size: 12px; letter-spacing: 0.12em; color: var(--dim); }
+.cup-chip:hover:not(:disabled) { color: var(--white); }
+.cup-chip[aria-pressed="true"] { color: var(--white); text-shadow: 0 0 10px rgba(255, 255, 255, 0.35); }
+.cup-chip[aria-pressed="true"]::before { content: ""; position: absolute; left: 1px; top: 50%; width: 0; height: 0; transform: translateY(-50%);
+  border-left: 6px solid var(--white); border-top: 4px solid transparent; border-bottom: 4px solid transparent; }
+.cup-chip:disabled { cursor: default; color: var(--dim); }
 .cup-chip:last-child:nth-child(odd) { grid-column: 1 / -1; }
-.dock-head { display: flex; justify-content: space-between; align-items: baseline; margin: 12px 0 7px; padding-top: 10px; position: relative; }
-.dock-head::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 1px; background: var(--rule); opacity: 0.45; }
-.dock-label { font-family: var(--display); font-weight: 700; font-size: 15px; letter-spacing: 0.24em; text-transform: uppercase; color: var(--gold); }
-.dock-note { font-size: 11.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ash); }
-.dice-chips { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
-.dice-chip {
-  position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0; padding: 0 0 2px; cursor: pointer;
-  font: inherit; color: var(--bone); background: none; border: none;
-}
-.dice-chip canvas { width: 40px; height: 40px; border-radius: 4px; outline: 1px solid rgba(125, 103, 64, 0.6); outline-offset: 2px;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.7); transition: outline-color 0.2s, box-shadow 0.2s, transform 0.2s; }
-.dice-chip span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11.5px; font-weight: 500; letter-spacing: 0.04em; line-height: 1.1; }
-.dice-chip small { font-size: 10px; letter-spacing: 0.1em; color: var(--ash); line-height: 1.1; white-space: nowrap; }
-.dice-chip:hover:not(:disabled) canvas { transform: translateY(-2px); outline-color: var(--gold); }
-.dice-chip[aria-pressed="true"] canvas { outline: 2px solid var(--gold); box-shadow: 0 0 14px rgba(246, 223, 164, 0.55), 0 3px 8px rgba(0, 0, 0, 0.7); }
-.dice-chip[aria-pressed="true"] span { color: var(--gold-hi); }
+.dice-chips { display: grid; grid-template-columns: repeat(5, 1fr); gap: 9px 8px; }
+.dice-chip { position: relative; display: grid; place-items: center; padding: 3px 0; cursor: pointer; background: none; border: none; }
+.dice-chip canvas { width: 46px; height: 46px; border-radius: 4px; box-shadow: 0 3px 8px rgba(0, 0, 0, 0.8); outline: 1px solid rgba(241, 238, 232, 0.2); outline-offset: 2px;
+  transition: outline-color 0.2s, box-shadow 0.2s, transform 0.2s, filter 0.2s; }
+.dice-chip span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.dice-chip small { position: absolute; right: 2px; bottom: 0; min-width: 20px; padding: 0 3px; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; color: var(--white);
+  background: rgba(0, 0, 0, 0.8); border: 1px solid rgba(241, 238, 232, 0.35); text-align: center; line-height: 15px; }
+.dice-chip small:empty { display: none; }
+.dice-chip:hover:not(:disabled) canvas { transform: translateY(-2px); outline-color: rgba(241, 238, 232, 0.7); }
+.dice-chip[aria-pressed="true"] canvas { outline: 2px solid var(--white); box-shadow: 0 0 14px rgba(255, 255, 255, 0.45), 0 3px 8px rgba(0, 0, 0, 0.8); }
 .dice-chip:disabled { cursor: default; }
-.dice-chip:disabled canvas { filter: grayscale(0.9) brightness(0.45); }
-.dice-chip:disabled span { color: rgba(163, 151, 130, 0.6); }
-.test-row { display: flex; gap: 16px; margin-top: 10px; }
-.test-btn { font: inherit; font-size: 11.5px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(163, 151, 130, 0.75); background: none; border: none; padding: 0; cursor: pointer; }
-.test-btn:hover { color: var(--bone); }
+.dice-chip:disabled canvas { filter: grayscale(1) brightness(0.32); }
+.item-card { margin-top: 12px; padding: 9px 4px 10px; text-align: center; position: relative; }
+.item-card::before, .item-card::after { content: ""; position: absolute; left: 0; right: 0; height: 1px; background: var(--fade-rule); }
+.item-card::before { top: 0; }
+.item-card::after { bottom: 0; }
+.item-name { font-size: 22px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--white); }
+.item-stats { display: flex; justify-content: center; gap: 22px; margin-top: 3px; font-size: 12px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--grey); }
+.item-stats b { margin-left: 7px; font-size: 17px; font-weight: 500; letter-spacing: 0.04em; color: var(--white); }
+.item-blurb { margin-top: 4px; font-size: 14.5px; line-height: 1.3; color: var(--grey); letter-spacing: 0.03em; text-wrap: balance; }
+.test-row { display: flex; gap: 18px; margin-top: 10px; }
+.test-btn { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--dim); background: none; border: none; padding: 0; cursor: pointer; }
+.test-btn:hover { color: var(--white); }
 
-/* ---- Full-screen menus: result, forfeit, leave */
+/* ---- Full-screen menus. The table blurs behind them, as Skyrim's menus blur the world. */
 .veil {
   position: absolute; inset: 0; z-index: 20; display: grid; place-items: center;
-  background: radial-gradient(ellipse at 50% 45%, rgba(6, 4, 3, 0.55), rgba(3, 2, 1, 0.9) 75%);
-  animation: veilIn 0.5s ease-out;
+  background: radial-gradient(ellipse at 50% 45%, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.85) 75%);
+  backdrop-filter: blur(7px) saturate(0.7); -webkit-backdrop-filter: blur(7px) saturate(0.7); animation: veilIn 0.5s ease-out;
 }
-@keyframes veilIn { from { opacity: 0; } to { opacity: 1; } }
-.prompt { width: 640px; max-width: calc(100vw - 32px); padding: 34px 40px 30px; text-align: center; background: none; backdrop-filter: none; animation: promptIn 0.8s cubic-bezier(.2, .8, .2, 1); }
-.prompt::before, .prompt::after { left: 8%; right: 8%; }
-@keyframes promptIn { from { opacity: 0; transform: scale(1.06); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes veilIn { from { opacity: 0; backdrop-filter: blur(0); } to { opacity: 1; } }
+.prompt { width: 720px; max-width: calc(100vw - 32px); text-align: center; animation: promptIn 0.9s cubic-bezier(.2, .8, .2, 1); }
+.prompt.msgbox { width: 520px; }
+@keyframes promptIn { from { opacity: 0; transform: scale(1.05); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
+.prompt-kicker { margin: 0 0 6px; font-size: 16px; letter-spacing: 0.6em; padding-left: 0.6em; text-transform: uppercase; color: var(--grey); }
 .prompt-title {
-  margin: 0; font-family: var(--display); font-weight: 700; font-size: 84px; line-height: 1; letter-spacing: 0.08em; text-transform: uppercase;
-  background: linear-gradient(180deg, #fff6dc 0%, var(--gold-hi) 35%, var(--gold) 60%, #8f6b2e 100%); -webkit-background-clip: text; background-clip: text; color: transparent;
-  filter: drop-shadow(0 0 22px rgba(220, 184, 114, 0.45)) drop-shadow(0 3px 4px rgba(0, 0, 0, 0.9)); text-wrap: balance;
+  margin: 0; font-weight: 300; font-size: 108px; line-height: 1; letter-spacing: 0.16em; padding-left: 0.16em; text-transform: uppercase; color: #fff;
+  text-shadow: 0 0 30px rgba(255, 255, 255, 0.35), 0 4px 14px rgba(0, 0, 0, 0.9); text-wrap: balance;
 }
-.prompt-title.lose { background-image: linear-gradient(180deg, #ffe0d6 0%, #f09a80 40%, var(--blood) 65%, #6e2416 100%);
-  filter: drop-shadow(0 0 22px rgba(208, 100, 74, 0.45)) drop-shadow(0 3px 4px rgba(0, 0, 0, 0.9)); }
-.prompt-title.small { font-size: 40px; letter-spacing: 0.1em; }
-.divider { display: flex; align-items: center; gap: 12px; margin: 16px auto 0; width: 70%; }
-.divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--gold)); }
-.divider::after { transform: scaleX(-1); }
-.divider i { width: 8px; height: 8px; transform: rotate(45deg); background: var(--gold); box-shadow: 0 0 8px rgba(246, 223, 164, 0.8); }
-.prompt-score { margin: 14px 0 0; font-family: var(--display); font-weight: 600; font-size: 26px; letter-spacing: 0.12em; color: var(--bone); font-variant-numeric: tabular-nums; }
-.prompt-record { margin: 6px 0 0; font-size: 14px; font-weight: 600; letter-spacing: 0.3em; text-transform: uppercase; color: var(--ash); font-variant-numeric: tabular-nums; }
-.prompt-actions { display: flex; gap: 34px; justify-content: center; margin-top: 26px; }
+.prompt-title.lose { color: #f0c3b6; text-shadow: 0 0 30px rgba(208, 106, 82, 0.5), 0 4px 14px rgba(0, 0, 0, 0.9); }
+.rule { position: relative; width: 560px; max-width: 90%; height: 1px; margin: 20px auto 0; background: var(--fade-rule); }
+.rule::after { content: ""; position: absolute; left: 50%; top: 50%; width: 7px; height: 7px; border: 1px solid var(--white); background: #000; transform: translate(-50%, -50%) rotate(45deg); }
+.prompt-score { margin: 16px 0 0; font-size: 32px; font-weight: 400; letter-spacing: 0.18em; color: var(--white); font-variant-numeric: tabular-nums; }
+.prompt-record { margin: 6px 0 0; font-size: 15px; font-weight: 500; letter-spacing: 0.34em; text-transform: uppercase; color: var(--grey); font-variant-numeric: tabular-nums; }
+.prompt-actions { display: flex; gap: 46px; justify-content: center; margin-top: 30px; }
+.msgbox .prompt-actions { margin-top: 20px; }
 .menu-btn {
-  position: relative; padding: 8px 22px; cursor: pointer; font-family: var(--display); font-weight: 700; font-size: 20px; letter-spacing: 0.22em;
-  text-transform: uppercase; color: var(--ash); background: none; border: none; transition: color 0.2s, text-shadow 0.2s;
+  position: relative; padding: 6px 26px; cursor: pointer; font-size: 24px; font-weight: 400; letter-spacing: 0.24em; padding-left: calc(26px + 0.24em);
+  text-transform: uppercase; color: var(--grey); background: none; border: none; transition: color 0.2s, text-shadow 0.2s;
 }
-.menu-btn::before, .menu-btn::after { content: ""; position: absolute; top: 50%; width: 7px; height: 7px; background: var(--gold); transform: translateY(-50%) rotate(45deg); opacity: 0; transition: opacity 0.2s; }
-.menu-btn::before { left: 2px; }
-.menu-btn::after { right: 2px; }
-.menu-btn:hover, .menu-btn:focus-visible, .menu-btn.primary { color: var(--bone); text-shadow: 0 0 14px rgba(246, 223, 164, 0.5); }
+.menu-btn::before, .menu-btn::after { content: ""; position: absolute; top: 50%; width: 12px; height: 1px; background: var(--white); opacity: 0; transition: opacity 0.2s, width 0.2s; }
+.menu-btn::before { left: 0; }
+.menu-btn::after { right: 0; }
+.menu-btn:hover, .menu-btn:focus-visible { color: #fff; text-shadow: 0 0 14px rgba(255, 255, 255, 0.5); outline: none; }
 .menu-btn:hover::before, .menu-btn:hover::after, .menu-btn:focus-visible::before, .menu-btn:focus-visible::after { opacity: 1; }
-.menu-btn.danger:hover, .menu-btn.danger:focus-visible { color: #ffc3b3; text-shadow: 0 0 14px rgba(208, 100, 74, 0.7); }
+.menu-btn.danger:hover, .menu-btn.danger:focus-visible { color: #f4b9a9; text-shadow: 0 0 14px rgba(208, 106, 82, 0.7); }
 .menu-btn.danger::before, .menu-btn.danger::after { background: var(--blood); }
 
-.loading { position: absolute; inset: 0; display: grid; place-items: center; align-content: center; gap: 18px; background: var(--soot);
-  font-family: var(--display); font-weight: 600; font-size: 16px; letter-spacing: 0.4em; text-transform: uppercase; color: var(--ash); }
-.loading::before { content: ""; width: 16px; height: 16px; border: 1.5px solid var(--gold); transform: rotate(45deg); animation: loadSpin 1.6s ease-in-out infinite; }
-@keyframes loadSpin { 50% { transform: rotate(225deg); background: rgba(220, 184, 114, 0.35); } 100% { transform: rotate(405deg); } }
+.loading { position: absolute; inset: 0; display: grid; place-items: end; padding: 0 60px 50px 0; background: #000; z-index: 30; }
+.loading span { display: flex; align-items: center; gap: 16px; font-size: 18px; letter-spacing: 0.4em; text-transform: uppercase; color: var(--grey); }
+.loading span::after { content: ""; width: 14px; height: 14px; border: 1.5px solid var(--white); transform: rotate(45deg); animation: loadSpin 1.6s ease-in-out infinite; }
+@keyframes loadSpin { 50% { transform: rotate(225deg); background: rgba(255, 255, 255, 0.3); } 100% { transform: rotate(405deg); } }
 
 /* Entrance */
-.hud, .ledger, .dock { animation: rise 0.9s cubic-bezier(.2, .8, .2, 1) both; }
+.hud, .ledger, .dock, .keybar { animation: rise 0.9s cubic-bezier(.2, .8, .2, 1) both; }
 .ledger.npc { animation-delay: 0.08s; }
 .ledger.you { animation-delay: 0.16s; }
 .dock { animation-delay: 0.24s; }
-@keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-.hud { animation-name: riseHud; }
-@keyframes riseHud { from { opacity: 0; transform: translate(-50%, -8px); } to { opacity: 1; transform: translateX(-50%); } }
+@keyframes rise { from { opacity: 0; translate: 0 10px; } to { opacity: 1; translate: 0 0; } }
 
 /* Overlay UI is laid out at 1080p sizes and zoomed with the window (see resize()). */
-.hud, .ledger, .dock, .hint, .help.panel, .toast, .prompt { zoom: var(--ui, 1); }
+.hud, .ledger, .dock, .hint, .help, .toast, .prompt, .keybar, .words { zoom: var(--ui, 1); }
 @media (max-width: 760px) {
   .app { display: flex; flex-direction: column; overflow-y: auto; }
   .stage { position: relative; flex: 0 0 58%; min-height: 340px; }
-  .ledger, .dock { position: static; flex: none; width: auto; max-height: none;
+  .ledger, .dock { position: static; flex: none; width: auto; transform: none !important;
     padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-  .hint { bottom: 10px; font-size: 14px; max-width: calc(100% - 32px); }
+  .hint { bottom: 10px; font-size: 14px; max-width: calc(100% - 32px); white-space: normal; }
+  .keybar { padding-left: 16px; gap: 14px; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
@@ -279,71 +320,77 @@ canvas#view.over-die { cursor: pointer; }
   <div class="stage" id="stage">
     <canvas id="view" aria-label="Dice tray. Hold the left mouse button and move to pick up and shake the cup, release to throw."></canvas>
     <div class="vignette" aria-hidden="true"></div>
+
+    <!-- Top centre: the compass. Whose turn, the three rolls, and the Thu'um recharging underneath. -->
     <div class="hud">
-      <div class="banner">
-        <span class="game-name">Yacht</span>
-        <span class="turn" id="turnLabel" aria-live="polite">Your turn</span>
-        <div class="rolls" id="rolls"><span>Roll</span><i></i><i></i><i></i></div>
+      <div class="compass">
+        <svg class="cap l" viewBox="0 0 40 40" aria-hidden="true"><path d="M40 6H22L4 20l18 14h18" /><path d="M30 12l-8 8 8 8" /><circle cx="12" cy="20" r="2" /></svg>
+        <div class="compass-track">
+          <span class="tick" style="left:8%"></span><span class="tick" style="left:20%"></span><span class="tick" style="left:32%"></span>
+          <span class="tick" style="left:68%"></span><span class="tick" style="left:80%"></span><span class="tick" style="left:92%"></span>
+          <div class="rolls" id="rolls" aria-label="Rolls used"><i></i><i></i><i></i></div>
+          <span class="turn" id="turnLabel" aria-live="polite">Your turn</span>
+        </div>
+        <svg class="cap r" viewBox="0 0 40 40" aria-hidden="true"><path d="M0 6h18l18 14-18 14H0" /><path d="M10 12l8 8-8 8" /><circle cx="28" cy="20" r="2" /></svg>
       </div>
-      <div class="controls">
-        <button class="icon-btn" id="sound" type="button" aria-pressed="true" title="Sound" aria-label="Sound on">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"/><path class="wave" d="M15.5 9a4.2 4.2 0 0 1 0 6M18 6.5a7.6 7.6 0 0 1 0 11"/><path class="mute" d="M16 9.5l5 5m0-5l-5 5"/>
-          </svg>
-        </button>
-        <button class="shout-btn" id="shout" type="button" title="Shout the dice on the pad back into the cup">Fus Ro Dah<span class="cool" id="shoutCool"></span></button>
-        <button class="icon-btn" id="helpBtn" type="button" aria-expanded="false" aria-controls="help" title="How to play" aria-label="How to play">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M9.2 9.2a2.9 2.9 0 1 1 3.9 2.7c-.7.3-1.1.9-1.1 1.6v.8"/><circle cx="12" cy="17.6" r="0.6" fill="currentColor"/></svg>
-        </button>
-        <button class="icon-btn forfeit-btn" id="forfeitBtn" type="button" title="Forfeit this game" aria-label="Forfeit this game">
-          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 18V2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/><path d="M4.9 3.2c3-1.6 5.2 1.4 8.2.2l2.6-.9v8.2l-2.6.9c-3 1.2-5.2-1.8-8.2-.2z" fill="currentColor"/></svg>
-        </button>
-      </div>
+      <div class="thuum-meter" aria-hidden="true"><span id="shoutMeter"></span></div>
     </div>
-    <div class="help panel" id="help" hidden>
-      <i class="gem"></i>
-      <b>Hold</b> the left button and <b>move</b> to pick up the cup and shake it. <b>Let go</b> to flick the dice out the
-      way you last moved. A die that lands off the table means throw again.
-      <b>Click</b> a die to keep it on the rack; <b>drag</b> one into the cup to roll it again. The cup waits until the
-      pad is clear. <b>Fus Ro Dah</b> shouts the pad's dice back into the cup.
-      Finish games with higher scores to rank up and unlock better cups.
+
+    <!-- The dragon tongue, spoken word by word -->
+    <div class="words" id="words" aria-hidden="true"><span>Fus</span><span>Ro</span><span>Dah</span></div>
+
+    <div class="msgbox help" id="help" hidden>
+      <h3>Yacht</h3>
+      <p><b>Hold</b> the left button and <b>move</b> to lift the cup and shake it. <b>Let go</b> to flick the dice out the way you last moved.
+        A die that leaves the board means throw again.</p>
+      <p><b>Click</b> a die to set it on the rack. <b>Drag</b> one back into the cup to roll it again. The cup waits until the board is clear.</p>
+      <p>Finish games with high scores to earn better cups. Every ten wins, the innkeepers sell you a finer set of dice.</p>
     </div>
+
     <div class="hint" id="hint">Loading…</div>
     <div class="toast" id="toast"></div>
+
+    <!-- Bottom right: the button bar, as on Skyrim's menus -->
+    <div class="keybar" role="toolbar" aria-label="Actions">
+      <button class="key-btn shout" id="shout" type="button" title="Shout the dice on the board back into the cup"><kbd>Z</kbd><span>Fus Ro Dah</span><i class="cool" id="shoutCool"></i></button>
+      <button class="key-btn" id="helpBtn" type="button" aria-expanded="false" aria-controls="help"><kbd>H</kbd><span>How to play</span></button>
+      <button class="key-btn" id="sound" type="button" aria-pressed="true"><kbd>M</kbd><span class="on">Sound</span><span class="off">Muted</span></button>
+      <button class="key-btn forfeit" id="forfeitBtn" type="button"><kbd>Tab</kbd><span>Forfeit</span></button>
+    </div>
+
     <div class="veil" id="veil" hidden>
-      <div class="prompt panel" id="resultPrompt" role="dialog" aria-modal="true" aria-labelledby="resultTitle" hidden>
+      <div class="prompt result" id="resultPrompt" role="dialog" aria-modal="true" aria-labelledby="resultTitle" hidden>
+        <p class="prompt-kicker">Game over</p>
         <h2 class="prompt-title" id="resultTitle">You Win!</h2>
-        <div class="divider" aria-hidden="true"><i></i></div>
+        <div class="rule" aria-hidden="true"></div>
         <p class="prompt-score" id="resultScore"></p>
         <p class="prompt-record" id="resultRecord"></p>
         <div class="prompt-actions">
-          <button class="menu-btn primary" id="rematchBtn" type="button">Rematch</button>
+          <button class="menu-btn" id="rematchBtn" type="button">Rematch</button>
           <button class="menu-btn" id="leaveBtn" type="button">Leave</button>
         </div>
       </div>
-      <div class="prompt panel" id="forfeitPrompt" role="dialog" aria-modal="true" aria-labelledby="forfeitTitle" hidden>
-        <h2 class="prompt-title small" id="forfeitTitle">Forfeit this game?</h2>
-        <div class="divider" aria-hidden="true"><i></i></div>
+      <div class="msgbox prompt" id="forfeitPrompt" role="dialog" aria-modal="true" aria-labelledby="forfeitTitle" hidden>
+        <h3 id="forfeitTitle">Forfeit this game?</h3>
         <p class="prompt-record">It counts as a loss</p>
         <div class="prompt-actions">
           <button class="menu-btn danger" id="forfeitYes" type="button">Forfeit</button>
           <button class="menu-btn" id="forfeitNo" type="button">Keep playing</button>
         </div>
       </div>
-      <div class="prompt panel" id="leftPrompt" role="dialog" aria-modal="true" aria-labelledby="leftTitle" hidden>
-        <h2 class="prompt-title small" id="leftTitle">You leave the table</h2>
-        <div class="divider" aria-hidden="true"><i></i></div>
+      <div class="msgbox prompt" id="leftPrompt" role="dialog" aria-modal="true" aria-labelledby="leftTitle" hidden>
+        <h3 id="leftTitle">You leave the table</h3>
         <p class="prompt-record" id="leftRecord"></p>
         <div class="prompt-actions">
-          <button class="menu-btn primary" id="sitBtn" type="button">Sit down again</button>
+          <button class="menu-btn" id="sitBtn" type="button">Sit down again</button>
         </div>
       </div>
     </div>
-    <div class="loading" id="loading">Setting up the table</div>
+    <div class="loading" id="loading"><span>Setting up the table</span></div>
   </div>
 
-  <aside class="ledger npc panel" aria-label="Opponent's scorecard">
-    <i class="gem"></i>
+  <!-- The two tally sheets: notes on parchment, the opponent's top left, yours top right -->
+  <aside class="ledger npc" aria-label="Opponent's scorecard">
     <div class="card-head"><h2>Opponent</h2><span class="total" id="ntotal">0</span></div>
     <div class="record" id="nrecord">Record 0–0</div>
     <div class="cols">
@@ -352,9 +399,8 @@ canvas#view.over-die { cursor: pointer; }
     </div>
   </aside>
 
-  <aside class="ledger you panel" aria-label="Your scorecard">
-    <i class="gem"></i>
-    <div class="card-head"><h2>You</h2><span class="total" id="total">0</span></div>
+  <aside class="ledger you" aria-label="Your scorecard">
+    <div class="card-head"><h2>Yours</h2><span class="total" id="total">0</span></div>
     <div class="record" id="record">Record 0–0</div>
     <div class="cols">
       <div class="col" id="colUpper"></div>
@@ -363,12 +409,22 @@ canvas#view.over-die { cursor: pointer; }
     <button class="newgame" id="newgame" type="button" hidden>New game</button>
   </aside>
 
-  <aside class="dock panel" aria-label="Rank, cups and dice">
-    <i class="gem"></i>
-    <div class="rank-line"><span class="rank-name" id="rankName">Novice</span><span class="rank-next" id="rankNext"></span></div>
-    <div class="cup-chips" id="cupChips" role="group" aria-label="Choose a cup"></div>
-    <div class="dock-head"><span class="dock-label">Dice</span><span class="dock-note" id="diceNote">Sold by innkeepers</span></div>
+  <!-- Bottom left: like the inventory. Your standing, cups and dice, with an item card. -->
+  <aside class="dock" aria-label="Rank, cups and dice">
+    <div class="skill">
+      <div class="skill-line"><span class="skill-name" id="rankName">Novice</span><span class="skill-next" id="rankNext"></span></div>
+      <div class="skill-bar" aria-hidden="true"><span id="rankBar"></span></div>
+    </div>
+    <div class="list-head">Cups</div>
+    <div class="cup-list" id="cupChips" role="group" aria-label="Choose a cup"></div>
+    <div class="list-head"><span>Dice</span><span class="dock-note" id="diceNote">Sold by innkeepers</span></div>
     <div class="dice-chips" id="diceChips" role="group" aria-label="Choose your dice"></div>
+    <div class="skill-bar thin" aria-hidden="true"><span id="diceBar"></span></div>
+    <div class="item-card" id="itemCard" aria-live="polite">
+      <div class="item-name" id="itemName">Bone</div>
+      <div class="item-stats" id="itemStats"></div>
+      <div class="item-blurb" id="itemBlurb"></div>
+    </div>
     <div class="test-row">
       <button class="test-btn" id="unlockAll" type="button">Unlock all (test)</button>
       <button class="test-btn" id="resetRank" type="button">Reset rank</button>
@@ -685,20 +741,20 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   // games. All of them are cosmetic: same size, weight and physics, so no set rolls differently.
   const DICE = [
     { id: "bone", name: "Bone", wins: 0, gold: 0, blurb: "Hand-carved bone. Yellowed, scratched, and dirty in the pips." },
-    { id: "iron", name: "Iron", wins: 2, gold: 50, blurb: "Hammered iron, pocked and spotted with rust, punched pips." },
-    { id: "steel", name: "Steel", wins: 4, gold: 100, blurb: "Brushed steel with crisp engraved pips." },
-    { id: "corundum", name: "Corundum", wins: 6, gold: 150, blurb: "Coppery corundum, a little green at the edges." },
-    { id: "dwemer", name: "Dwemer", wins: 8, gold: 200, blurb: "Dwarven bronze with gear-ring pips, green with age." },
-    { id: "orichalcum", name: "Orichalcum", wins: 10, gold: 250, blurb: "Orc-forged orichalcum, dark green-bronze, scored with claw marks." },
-    { id: "silver", name: "Silver", wins: 12, gold: 300, blurb: "Polished silver, tarnished in the corners, black niello pips." },
-    { id: "quicksilver", name: "Quicksilver", wins: 15, gold: 400, blurb: "Mirror-bright quicksilver that looks wet." },
-    { id: "moonstone", name: "Moonstone", wins: 18, gold: 500, blurb: "Pale elven moonstone with fine leaf lines." },
-    { id: "gold", name: "Gold", wins: 21, gold: 650, blurb: "Solid gold with garnet pips." },
-    { id: "malachite", name: "Malachite", wins: 24, gold: 750, blurb: "Polished glass-green malachite, banded, with white pips." },
-    { id: "ebony", name: "Ebony", wins: 28, gold: 900, blurb: "Black ebony with inlaid gold pips." },
-    { id: "stalhrim", name: "Stalhrim", wins: 32, gold: 1100, blurb: "Enchanted ice from Solstheim. Cold blue, cracked, faintly glowing." },
-    { id: "dragonbone", name: "Dragonbone", wins: 40, gold: 1500, blurb: "Pale dragon bone, fibrous grain, pips stained dark red." },
-    { id: "daedric", name: "Daedric", wins: 50, gold: 2500, blurb: "Black and red, cut with runes, the pips smouldering like coals." },
+    { id: "iron", name: "Iron", wins: 10, gold: 50, blurb: "Hammered iron, pocked and spotted with rust, punched pips." },
+    { id: "steel", name: "Steel", wins: 20, gold: 100, blurb: "Brushed steel with crisp engraved pips." },
+    { id: "corundum", name: "Corundum", wins: 30, gold: 150, blurb: "Coppery corundum, a little green at the edges." },
+    { id: "dwemer", name: "Dwemer", wins: 40, gold: 200, blurb: "Dwarven bronze with gear-ring pips, green with age." },
+    { id: "orichalcum", name: "Orichalcum", wins: 50, gold: 250, blurb: "Orc-forged orichalcum, dark green-bronze, scored with claw marks." },
+    { id: "silver", name: "Silver", wins: 60, gold: 300, blurb: "Polished silver, tarnished in the corners, black niello pips." },
+    { id: "quicksilver", name: "Quicksilver", wins: 70, gold: 400, blurb: "Mirror-bright quicksilver that looks wet." },
+    { id: "moonstone", name: "Moonstone", wins: 80, gold: 500, blurb: "Pale elven moonstone with fine leaf lines." },
+    { id: "gold", name: "Gold", wins: 90, gold: 650, blurb: "Solid gold with garnet pips." },
+    { id: "malachite", name: "Malachite", wins: 100, gold: 750, blurb: "Polished glass-green malachite, banded, with white pips." },
+    { id: "ebony", name: "Ebony", wins: 110, gold: 900, blurb: "Black ebony with inlaid gold pips." },
+    { id: "stalhrim", name: "Stalhrim", wins: 120, gold: 1100, blurb: "Enchanted ice from Solstheim. Cold blue, cracked, faintly glowing." },
+    { id: "dragonbone", name: "Dragonbone", wins: 130, gold: 1500, blurb: "Pale dragon bone, fibrous grain, pips stained dark red." },
+    { id: "daedric", name: "Daedric", wins: 140, gold: 2500, blurb: "Black and red, cut with runes, the pips smouldering like coals." },
   ];
   // Plain metals share one recipe: two-tone base, brushing or hammering, tarnish or rust, and their own pips.
   const METALS = {
@@ -1097,39 +1153,219 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   resize();
 
   // ------------------------------------------------------------------ sound
-  let audio = null, master = null, noiseBuf = null, soundOn = true, recent = 0;
-  function initAudio() {
-    if (audio) return;
+  // Every knock is synthesised from the physics. Each contact the sim reports plays a struck-object sound made from the
+  // die's material and what it hit (another die, the linen, the tray's wood, the cup), as hard as the impact, panned to
+  // where it happened, in a small tavern room. Dice rolling on the linen and rattling in the cup are continuous layers.
+  let audio = null, master = null, noiseBuf = null, soundOn = true, recent = 0, sfx = null, voices = 0;
+  let roomIR = null, hallIR = null, rollGain = null, rattleGain = null, rattleBand = null;
+  const bufCache = new Map();
+  // Modes as [frequency Hz, decay s, amplitude]. Small dice ring high; precious metal rings longest.
+  const DIE_MODES = {
+    bone: [[2950, 0.014, 1], [5200, 0.010, 0.6], [7600, 0.007, 0.35], [1350, 0.012, 0.25]],
+    metal: [[4300, 0.05, 1], [6950, 0.036, 0.55], [9700, 0.026, 0.35], [12300, 0.018, 0.2]],
+    precious: [[3500, 0.075, 1], [5950, 0.055, 0.5], [8800, 0.038, 0.3], [11200, 0.026, 0.15]],
+    stone: [[2500, 0.022, 1], [4550, 0.016, 0.55], [7100, 0.011, 0.3]],
+    ice: [[3900, 0.04, 1], [7500, 0.03, 0.55], [10400, 0.022, 0.35]],
+  };
+  const DIE_MAT = { bone: "bone", dragonbone: "bone", iron: "metal", steel: "metal", corundum: "metal", dwemer: "metal",
+    orichalcum: "metal", ebony: "metal", daedric: "metal", silver: "precious", quicksilver: "precious", gold: "precious",
+    malachite: "stone", moonstone: "stone", stalhrim: "ice" };
+  const CUP_MODES = {
+    wood: [[310, 0.07, 1], [720, 0.05, 0.6], [1460, 0.03, 0.35], [2600, 0.018, 0.2]],
+    metal: [[1180, 0.42, 1], [2710, 0.3, 0.6], [4890, 0.2, 0.4], [7620, 0.12, 0.25]],
+  };
+  const CUP_MAT = { tankard: "wood", dwemer: "metal", goblet: "metal", silver: "metal", golden: "metal" };
+  const TRAY_MODES = [[195, 0.05, 0.8], [430, 0.04, 0.6], [810, 0.025, 0.4], [1390, 0.016, 0.25]];
+  const LINEN_MODES = [[150, 0.035, 0.9], [290, 0.02, 0.5], [520, 0.012, 0.25]];
+  const dieTune = [0.97, 1.0, 1.035, 0.985, 1.02];  // every die has its own voice
+  let curDiceStyle = "bone";
+
+  function makeIR(seconds, decay, early) {
+    const sr = audio.sampleRate, n = Math.floor(seconds * sr), b = audio.createBuffer(2, n, sr);
+    for (let ch = 0; ch < 2; ch++) {
+      const d = b.getChannelData(ch);
+      let lp = 0;
+      for (let i = 0; i < n; i++) {
+        const t = i / sr;
+        lp += (Math.random() * 2 - 1 - lp) * (0.5 - 0.42 * Math.min(1, t / seconds));  // darker as it dies away
+        d[i] = lp * Math.exp(-t / decay) * Math.min(1, t / 0.004);
+      }
+      for (const [ms, g] of early) { const i = Math.floor((ms + ch * 1.7) / 1000 * sr); if (i < n) d[i] += g * (Math.random() < 0.5 ? -1 : 1); }
+    }
+    return b;
+  }
+  function initAudio(ctx) {
+    if (audio && !ctx) return;
     try {
-      audio = new (window.AudioContext || window.webkitAudioContext)();
-      master = audio.createGain(); master.gain.value = 0.7; master.connect(audio.destination);
-      noiseBuf = audio.createBuffer(1, audio.sampleRate * 0.25, audio.sampleRate);
+      audio = ctx || new (window.AudioContext || window.webkitAudioContext)();
+      const comp = audio.createDynamicsCompressor();
+      comp.threshold.value = -16; comp.knee.value = 10; comp.ratio.value = 4; comp.attack.value = 0.003; comp.release.value = 0.18;
+      master = audio.createGain(); master.gain.value = 0.85;
+      master.connect(comp); comp.connect(audio.destination);
+      noiseBuf = audio.createBuffer(1, audio.sampleRate * 2, audio.sampleRate);
       const d = noiseBuf.getChannelData(0);
       for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      // The tavern: wood walls, low beams, short and warm.
+      roomIR = makeIR(1.3, 0.28, [[9, 0.5], [14, 0.35], [23, 0.3], [31, 0.22], [44, 0.15]]);
+      hallIR = makeIR(3.4, 0.95, [[60, 0.45], [130, 0.35], [210, 0.25]]);
+      sfx = audio.createGain(); sfx.gain.value = 1;
+      const room = audio.createConvolver(); room.buffer = roomIR;
+      const send = audio.createGain(); send.gain.value = 0.2;
+      sfx.connect(master); sfx.connect(send); send.connect(room); room.connect(master);
+      // Rolling on the linen: a soft broadband scuff. The cup rattle rings at the cup's own pitch.
+      const roll = audio.createBufferSource(); roll.buffer = noiseBuf; roll.loop = true;
+      const rbp = audio.createBiquadFilter(); rbp.type = "bandpass"; rbp.frequency.value = 900; rbp.Q.value = 0.6;
+      const rlp = audio.createBiquadFilter(); rlp.type = "lowpass"; rlp.frequency.value = 2600;
+      rollGain = audio.createGain(); rollGain.gain.value = 0;
+      roll.connect(rbp); rbp.connect(rlp); rlp.connect(rollGain); rollGain.connect(sfx); roll.start();
+      const rat = audio.createBufferSource(); rat.buffer = noiseBuf; rat.loop = true; rat.loopStart = 0.7;
+      rattleBand = audio.createBiquadFilter(); rattleBand.type = "bandpass"; rattleBand.frequency.value = 1500; rattleBand.Q.value = 1.4;
+      rattleGain = audio.createGain(); rattleGain.gain.value = 0;
+      rat.connect(rattleBand); rattleBand.connect(rattleGain); rattleGain.connect(sfx); rat.start();
     } catch (e) { audio = null; }
   }
-  // type: 0 die-die (bone click), 1 felt (soft thud), 2 wall (wood knock), 3 cup (leather thock)
-  function hit(type, speed) {
-    if (!audio || !soundOn || recent > 10) return;
-    recent++;
-    const t = audio.currentTime, src = audio.createBufferSource();
-    src.buffer = noiseBuf;
-    const f = audio.createBiquadFilter(), g = audio.createGain();
-    const vol = Math.min(0.9, Math.max(0.04, (speed - 5) / 110));
-    let decay = 0.04;
-    if (type === 0) { f.type = "bandpass"; f.frequency.value = 2600 + Math.random() * 2200; f.Q.value = 4; decay = 0.025; g.gain.value = vol * 1.3; }
-    else if (type === 1) { f.type = "lowpass"; f.frequency.value = 380; decay = 0.05; g.gain.value = vol * 0.9; }
-    else if (type === 2) { f.type = "bandpass"; f.frequency.value = 900 + Math.random() * 300; f.Q.value = 3; decay = 0.05; g.gain.value = vol * 1.1; }
-    else { f.type = "lowpass"; f.frequency.value = 650 + Math.random() * 200; decay = 0.06; g.gain.value = vol * 0.8; }
-    g.gain.setValueAtTime(g.gain.value, t);
-    g.gain.exponentialRampToValueAtTime(0.0008, t + decay);
-    src.connect(f); f.connect(g); g.connect(master);
-    src.start(t, Math.random() * 0.15, decay + 0.02);
+
+  // A struck object as a buffer: damped modes plus a short noise click for the contact itself.
+  function strike(modes, len, clickAmp, clickTone) {
+    const sr = audio.sampleRate, n = Math.ceil(len * sr), b = audio.createBuffer(1, n, sr), o = b.getChannelData(0);
+    for (const [f0, dec, a] of modes) {
+      const w = (2 * Math.PI * f0 * (1 + (Math.random() - 0.5) * 0.05)) / sr, k = Math.exp(-1 / (dec * sr)), ph = Math.random() * 6.283;
+      let env = a * (0.85 + Math.random() * 0.3);
+      for (let i = 0; i < n && env > 1e-5; i++) { o[i] += env * Math.sin(w * i + ph); env *= k; }
+    }
+    let lp = 0;
+    const cn = Math.min(n, Math.floor(sr * 0.008));
+    for (let i = 0; i < cn; i++) { lp += (Math.random() * 2 - 1 - lp) * clickTone; o[i] += lp * clickAmp * Math.exp(-i / (sr * 0.0012)); }
+    let peak = 0;
+    for (let i = 0; i < n; i++) { if (i < 24) o[i] *= i / 24; peak = Math.max(peak, Math.abs(o[i])); }
+    if (peak > 0) for (let i = 0; i < n; i++) o[i] *= 0.9 / peak;
+    return b;
+  }
+  const scaled = (modes, amp, pitch) => modes.map(([f, d, a]) => [f * (pitch || 1), d, a * amp]);
+  const ringLen = (modes) => Math.min(1.6, Math.max(...modes.map((m) => m[1])) * 7 + 0.02);
+  function hitSet(surf, dieMat, cupMat) {
+    const key = surf + dieMat + (surf === "cup" ? cupMat : "");
+    let set = bufCache.get(key);
+    if (set) return set;
+    const dm = DIE_MODES[dieMat];
+    set = [];
+    for (let v = 0; v < 5; v++) {
+      let modes, click, tone;
+      if (surf === "die") { modes = [...dm, ...scaled(dm, 0.8, 1.07)]; click = 0.6; tone = 0.6; }
+      else if (surf === "felt") { modes = [...LINEN_MODES, ...scaled(dm, 0.12)]; click = 0.55; tone = 0.07; }
+      else if (surf === "wall") { modes = [...TRAY_MODES, ...scaled(dm, 0.45)]; click = 0.5; tone = 0.3; }
+      else { modes = [...CUP_MODES[cupMat], ...scaled(dm, 0.4)]; click = 0.45; tone = 0.25; }
+      set.push(strike(modes, ringLen(modes), click, tone));
+    }
+    bufCache.set(key, set);
+    return set;
+  }
+  const SURF = ["die", "felt", "wall", "cup"], SURF_GAIN = [0.5, 0.75, 0.8, 0.6];
+  const lastHit = new Float64Array(24).fill(-1);
+  const activeCupId = () => (turn === "npc" ? "tankard" : ranks.selected);
+  // type: 0 die-die, 1 linen, 2 tray wall, 3 cup. die: which die (for its pitch and where it is), or -1.
+  function hit(type, speed, die) {
+    if (!audio || !soundOn || voices > 28) return;
+    const v = Math.min(1, Math.max(0, (speed - 3) / 95));
+    if (v < 0.015) return;
+    const now = audio.currentTime;
+    if (die >= 0) { const k = die * 4 + type; if (now - lastHit[k] < 0.024) return; lastHit[k] = now; }
+    const set = hitSet(SURF[type], DIE_MAT[curDiceStyle] || "bone", CUP_MAT[activeCupId()] || "wood");
+    const src = audio.createBufferSource();
+    src.buffer = set[(Math.random() * set.length) | 0];
+    src.playbackRate.value = (die >= 0 ? dieTune[die] : 1) * (1 + (Math.random() - 0.5) * 0.05);
+    // Soft knocks are dark, hard ones bright.
+    const f = audio.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = 700 + 17000 * v * v; f.Q.value = 0.4;
+    const g = audio.createGain(); g.gain.value = Math.pow(v, 1.15) * SURF_GAIN[type];
+    src.connect(f); f.connect(g);
+    let out = g;
+    if (audio.createStereoPanner) {
+      const p = audio.createStereoPanner();
+      const x = die >= 0 ? state()[die * 11] : cup.x;
+      p.pan.value = THREE.MathUtils.clamp(x / (S.X + 6), -1, 1) * 0.7;
+      g.connect(p); out = p;
+    }
+    out.connect(sfx);
+    voices++;
+    src.onended = () => { voices--; };
+    src.start(now);
+  }
+
+  // The continuous layers follow the dice every frame.
+  const prevPos = Array.from({ length: 5 }, () => new THREE.Vector3());
+  let bedsPrimed = false;
+  function updateBeds(dt, st) {
+    if (!audio || !rollGain) return;
+    let rolling = 0, rattle = 0;
+    const cupSpeed = Math.hypot(cup.vx || 0, cup.vy || 0, cup.vz || 0);
+    for (let i = 0; i < 5; i++) {
+      const o = i * 11, x = st[o], y = st[o + 1], z = st[o + 2];
+      const sp = bedsPrimed ? Math.hypot(x - prevPos[i].x, y - prevPos[i].y, z - prevPos[i].z) / Math.max(dt, 1e-3) : 0;
+      prevPos[i].set(x, y, z);
+      if (!active(st, i)) continue;
+      if (inCup(st, i)) rattle += Math.min(cupSpeed, 40);
+      else if (z < half + 0.25) rolling += Math.min(sp, 30);
+    }
+    bedsPrimed = true;
+    const on = soundOn ? 1 : 0, now = audio.currentTime;
+    rollGain.gain.setTargetAtTime(on * Math.min(0.32, rolling * 0.0065), now, 0.05);
+    rattleGain.gain.setTargetAtTime(on * Math.min(0.12, rattle * 0.0009), now, 0.06);
+    rattleBand.frequency.setTargetAtTime(CUP_MAT[activeCupId()] === "metal" ? 2300 : 1100, now, 0.2);
+  }
+
+  // A swing of the cup through the air.
+  function swoosh(amp) {
+    if (!audio || !soundOn) return;
+    const t = audio.currentTime, n = audio.createBufferSource(); n.buffer = noiseBuf;
+    const bp = audio.createBiquadFilter(); bp.type = "bandpass"; bp.Q.value = 1.1;
+    bp.frequency.setValueAtTime(500, t); bp.frequency.exponentialRampToValueAtTime(1700, t + 0.16); bp.frequency.exponentialRampToValueAtTime(600, t + 0.38);
+    const g = audio.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(amp, t + 0.12); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.42);
+    n.connect(bp); bp.connect(g); g.connect(sfx); n.start(t, Math.random()); n.stop(t + 0.45);
+  }
+  // A quill scratching a number onto the tally sheet.
+  function quill() {
+    if (!audio || !soundOn) return;
+    const t0 = audio.currentTime + 0.05;
+    const n = audio.createBufferSource(); n.buffer = noiseBuf;
+    const bp = audio.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = 3800; bp.Q.value = 1.2;
+    const hp = audio.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 1500;
+    const g = audio.createGain(); g.gain.value = 0;
+    let t = t0;
+    for (let k = 0; k < 4 + ((Math.random() * 3) | 0); k++) {
+      const len = 0.05 + Math.random() * 0.07;
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.1 + Math.random() * 0.06, t + 0.012);
+      g.gain.linearRampToValueAtTime(0.03, t + len * 0.6); g.gain.linearRampToValueAtTime(0, t + len);
+      bp.frequency.setValueAtTime(3000 + Math.random() * 2200, t);
+      t += len + 0.02 + Math.random() * 0.04;
+    }
+    n.connect(hp); hp.connect(bp); bp.connect(g); g.connect(sfx); n.start(t0, Math.random()); n.stop(t + 0.05);
+  }
+  // Menu sounds: a light tick on hover, a muffled wooden thunk to choose, a low buzz when something is locked.
+  function uiSound(kind) {
+    if (!audio || !soundOn) return;
+    const t = audio.currentTime;
+    if (kind === "hover") {
+      const n = audio.createBufferSource(); n.buffer = noiseBuf;
+      const bp = audio.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = 2600; bp.Q.value = 2;
+      const g = audio.createGain(); g.gain.setValueAtTime(0.05, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.03);
+      n.connect(bp); bp.connect(g); g.connect(master); n.start(t, Math.random()); n.stop(t + 0.04);
+    } else if (kind === "deny") {
+      const o = audio.createOscillator(); o.type = "triangle"; o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(90, t + 0.14);
+      const g = audio.createGain(); g.gain.setValueAtTime(0.12, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+      o.connect(g); g.connect(master); o.start(t); o.stop(t + 0.18);
+    } else {
+      const o = audio.createOscillator(); o.type = "sine"; o.frequency.setValueAtTime(kind === "equip" ? 240 : 190, t); o.frequency.exponentialRampToValueAtTime(90, t + 0.08);
+      const g = audio.createGain(); g.gain.setValueAtTime(0.22, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.1);
+      o.connect(g); g.connect(master); o.start(t); o.stop(t + 0.12);
+      if (kind === "equip") hit(2, 40, -1);
+      else { const n = audio.createBufferSource(); n.buffer = noiseBuf; const bp = audio.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = 1800; bp.Q.value = 1.4;
+        const ng = audio.createGain(); ng.gain.setValueAtTime(0.09, t); ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.04);
+        n.connect(bp); bp.connect(ng); ng.connect(master); n.start(t, Math.random()); n.stop(t + 0.05); }
+    }
   }
   $("sound").addEventListener("click", () => {
     soundOn = !soundOn;
     $("sound").classList.toggle("off", !soundOn);
-    $("sound").setAttribute("aria-label", soundOn ? "Sound on" : "Sound off");
     $("sound").setAttribute("aria-pressed", String(soundOn));
   });
 
@@ -1172,7 +1408,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   function tweenFrom(i, dur) { anim[i] = { from: dice[i].position.clone(), fromQ: dice[i].quaternion.clone(), t: 0, dur: dur || 0.25 }; }
   function freeSlot() { const used = new Set(rackSlot.filter((v) => v >= 0)); let k = 0; while (used.has(k)) k++; return k; }
 
-  function setDiceStyle(style) { const mats = diceMats(style); for (const d of dice) d.material = mats; }
+  function setDiceStyle(style) { curDiceStyle = style; const mats = diceMats(style); for (const d of dice) d.material = mats; }
 
   function startTurn(owner, animate) {
     turn = owner;
@@ -1336,6 +1572,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
 
   function beginPour() {
     if (phase !== "shaking") return;
+    swoosh(0.22);
     canvas.classList.remove("shaking");
     Y.y_set_lid(0);
     // Tip the way the cup was last moving, from a spot where the mouth stays over the felt.
@@ -1390,7 +1627,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     Y.y_set_active(i, 0);
     kept[i] = true;
     rackSlot[i] = freeSlot();
-    hit(2, 22);
+    hit(2, 30, i);
     updateUI();
   }
   function placeOnPad(i, x, y, drop) {
@@ -1399,7 +1636,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     rackSlot[i] = -1;
     Y.y_place_die(i, THREE.MathUtils.clamp(x, -S.X + half, S.X - half), THREE.MathUtils.clamp(y, -S.Yh + half, S.Yh - half),
       half + (drop ? 0.5 : 0.02), faces[i] || 1);
-    hit(1, 22);
+    hit(1, 34, i);
     updateUI();
   }
   function putInCup(i) {
@@ -1407,31 +1644,105 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     kept[i] = false;
     rackSlot[i] = -1;
     Y.y_add_to_cup(i);
-    hit(3, 25);
+    hit(3, 32, i);
     updateUI();
   }
-  // ---- Fus Ro Dah: an easter egg that shouts every die on the pad back into the cup.
-  const wave = new THREE.Mesh(new THREE.RingGeometry(0.85, 1, 64),
-    new THREE.MeshBasicMaterial({ color: 0x9fc2ff, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide,
-      blending: THREE.AdditiveBlending }));
-  wave.position.set(0, -S.Yh - wallT, 0.05);
-  world.add(wave);
-  let waveT = -1, shakeT = 0, shouting = false, shoutReady = 0;
+  // ---- Fus Ro Dah: an easter egg that shouts every die on the board back into the cup.
+  // Modelled on Unrelenting Force: three words, the last one a blast. A cone of bent, shimmering air rolls out from
+  // where you stand, the view kicks, and whatever it reaches is thrown. The voice is synthesised: a deep shouted
+  // vowel per word with a dragon's sub-octave under it, the consonants as breath, all of it ringing off the walls.
+  let shoutHold = false, shoutT = -1, punchT = -1, shakeT = 0, shouting = false, shoutReady = 0;
   const SHOUT_COOLDOWN = 4;
+  const WORD_AT = [0, 0.56, 0.98];          // seconds from the start: FUS, RO, DAH
+  const BLAST_AT = WORD_AT[2];
 
+  let growl = null;
+  function voiceWord(bus, t, dur, f0, F, opts) {
+    const src = audio.createGain(); src.gain.value = 1;
+    const detune = audio.createOscillator(); detune.frequency.value = 5.8;           // a shaking, straining voice
+    const dg = audio.createGain(); dg.gain.value = 22; detune.connect(dg);
+    for (const [mult, amp, type] of [[1, 0.55, "sawtooth"], [0.5, 0.5, "sawtooth"], [0.502, 0.25, "triangle"], [1.004, 0.2, "square"]]) {
+      const o = audio.createOscillator(); o.type = type;
+      o.frequency.setValueAtTime(f0 * mult * 1.14, t);
+      o.frequency.exponentialRampToValueAtTime(f0 * mult, t + 0.09);
+      o.frequency.exponentialRampToValueAtTime(f0 * mult * (opts.fall || 0.86), t + dur);
+      dg.connect(o.detune);
+      const g = audio.createGain(); g.gain.value = amp; o.connect(g); g.connect(src);
+      o.start(t); o.stop(t + dur + 0.05);
+    }
+    detune.start(t); detune.stop(t + dur + 0.05);
+    const breath = audio.createBufferSource(); breath.buffer = noiseBuf;
+    const bg = audio.createGain(); bg.gain.value = 0.35; breath.connect(bg); bg.connect(src);
+    breath.start(t, Math.random()); breath.stop(t + dur + 0.05);
+    if (!growl) { growl = new Float32Array(1024); for (let i = 0; i < 1024; i++) { const x = (i / 511.5) - 1; growl[i] = Math.tanh(x * 3.2) / Math.tanh(3.2); } }
+    const sh = audio.createWaveShaper(); sh.curve = growl; sh.oversample = "2x";
+    src.connect(sh);
+    const env = audio.createGain(); env.gain.value = 0;
+    // Three formants make the vowel; they can glide to a second vowel (o to u in "Ro").
+    F.forEach(([f, bw, a], k) => {
+      const bp = audio.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.setValueAtTime(f, t); bp.Q.value = f / bw;
+      if (opts.glide) bp.frequency.linearRampToValueAtTime(opts.glide[k], t + dur);
+      const g = audio.createGain(); g.gain.value = a;
+      sh.connect(bp); bp.connect(g); g.connect(env);
+    });
+    // A rolled R: the voice flutters for its first few beats.
+    if (opts.trill) {
+      const curve = new Float32Array(64);
+      for (let i = 0; i < 64; i++) curve[i] = i < 48 ? 0.35 + 0.65 * Math.abs(Math.sin((i / 48) * Math.PI * 3)) : 1;
+      const tr = audio.createGain(); env.connect(tr); tr.gain.setValueCurveAtTime(curve, t, 0.12); tr.connect(bus);
+    } else env.connect(bus);
+    const peak = opts.loud || 0.8;
+    env.gain.setValueAtTime(0, t);
+    env.gain.linearRampToValueAtTime(peak, t + (opts.attack || 0.035));
+    env.gain.setValueAtTime(peak * 0.9, t + dur * 0.6);
+    env.gain.exponentialRampToValueAtTime(0.001, t + dur + 0.04);
+  }
+  function breathNoise(bus, t, dur, lo, hi, amp) {
+    const n = audio.createBufferSource(); n.buffer = noiseBuf;
+    const hp = audio.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = lo;
+    const lp = audio.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = hi;
+    const g = audio.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(amp, t + Math.min(0.04, dur / 3));
+    g.gain.setValueAtTime(amp, t + dur * 0.6); g.gain.linearRampToValueAtTime(0, t + dur);
+    n.connect(hp); hp.connect(lp); lp.connect(g); g.connect(bus); n.start(t, Math.random()); n.stop(t + dur + 0.02);
+  }
   function shoutSound() {
     if (!audio || !soundOn) return;
-    const t = audio.currentTime;
-    // A deep thrum that drops away, under a burst of rushing air.
-    const o = audio.createOscillator(), og = audio.createGain();
-    o.type = "sawtooth"; o.frequency.setValueAtTime(110, t); o.frequency.exponentialRampToValueAtTime(38, t + 0.9);
-    const lp = audio.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 420;
-    og.gain.setValueAtTime(0.0001, t); og.gain.exponentialRampToValueAtTime(0.7, t + 0.05); og.gain.exponentialRampToValueAtTime(0.0005, t + 1.1);
-    o.connect(lp); lp.connect(og); og.connect(master); o.start(t); o.stop(t + 1.2);
-    const n = audio.createBufferSource(); n.buffer = noiseBuf; n.loop = true;
-    const bp = audio.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.setValueAtTime(1400, t); bp.frequency.exponentialRampToValueAtTime(300, t + 0.8); bp.Q.value = 0.8;
-    const ng = audio.createGain(); ng.gain.setValueAtTime(0.0001, t); ng.gain.exponentialRampToValueAtTime(0.5, t + 0.04); ng.gain.exponentialRampToValueAtTime(0.0005, t + 0.9);
-    n.connect(bp); bp.connect(ng); ng.connect(master); n.start(t); n.stop(t + 1.0);
+    const t0 = audio.currentTime + 0.03;
+    const bus = audio.createGain(); bus.gain.value = 0.55;
+    const hall = audio.createConvolver(); hall.buffer = hallIR;
+    const wet = audio.createGain(); wet.gain.value = 0.6;
+    // The Voice rolls back off the walls.
+    const echo = audio.createDelay(1); echo.delayTime.value = 0.23;
+    const fb = audio.createGain(); fb.gain.value = 0.32;
+    const elp = audio.createBiquadFilter(); elp.type = "lowpass"; elp.frequency.value = 1800;
+    const eg = audio.createGain(); eg.gain.value = 0.35;
+    bus.connect(master); bus.connect(hall); hall.connect(wet); wet.connect(master);
+    bus.connect(echo); echo.connect(elp); elp.connect(fb); fb.connect(echo); elp.connect(eg); eg.connect(master);
+    const [tF, tR, tD] = WORD_AT.map((w) => t0 + w);
+    // FUS: breath through the teeth, a deep "oo", a hiss.
+    breathNoise(bus, tF, 0.11, 1300, 6500, 0.3);
+    voiceWord(bus, tF + 0.07, 0.29, 112, [[320, 80, 1], [880, 110, 0.55], [2250, 160, 0.3]], { loud: 0.75 });
+    breathNoise(bus, tF + 0.33, 0.17, 4200, 10000, 0.26);
+    // RO: a rolled R into "oh".
+    voiceWord(bus, tR, 0.32, 118, [[470, 90, 1], [880, 110, 0.6], [2450, 170, 0.3]], { loud: 0.8, trill: true, glide: [420, 800, 2400] });
+    // DAH: a hard D and a long, open "ah" that throws everything.
+    breathNoise(bus, tD - 0.01, 0.025, 600, 4000, 0.45);
+    voiceWord(bus, tD, 0.66, 132, [[760, 100, 1], [1180, 120, 0.65], [2550, 180, 0.35]], { loud: 1.0, attack: 0.02, fall: 0.74 });
+    // The force itself: a pressure boom, a rushing wall of air, and a rumble that dies away.
+    const tb = t0 + BLAST_AT;
+    const boom = audio.createOscillator(); boom.type = "sine";
+    boom.frequency.setValueAtTime(70, tb); boom.frequency.exponentialRampToValueAtTime(26, tb + 1.3);
+    const bg = audio.createGain(); bg.gain.setValueAtTime(0.0001, tb); bg.gain.exponentialRampToValueAtTime(0.85, tb + 0.03); bg.gain.exponentialRampToValueAtTime(0.0005, tb + 1.4);
+    boom.connect(bg); bg.connect(master); boom.start(tb); boom.stop(tb + 1.5);
+    const air = audio.createBufferSource(); air.buffer = noiseBuf;
+    const abp = audio.createBiquadFilter(); abp.type = "bandpass"; abp.Q.value = 0.8;
+    abp.frequency.setValueAtTime(2600, tb); abp.frequency.exponentialRampToValueAtTime(240, tb + 1.0);
+    const ag = audio.createGain(); ag.gain.setValueAtTime(0.0001, tb); ag.gain.exponentialRampToValueAtTime(0.55, tb + 0.05); ag.gain.exponentialRampToValueAtTime(0.0005, tb + 1.1);
+    air.connect(abp); abp.connect(ag); ag.connect(master); ag.connect(hall); air.start(tb, 0.3); air.stop(tb + 1.2);
+    const rum = audio.createBufferSource(); rum.buffer = noiseBuf;
+    const rlp = audio.createBiquadFilter(); rlp.type = "lowpass"; rlp.frequency.value = 140;
+    const rg = audio.createGain(); rg.gain.setValueAtTime(0.0001, tb); rg.gain.exponentialRampToValueAtTime(0.9, tb + 0.08); rg.gain.exponentialRampToValueAtTime(0.0005, tb + 1.8);
+    rum.connect(rlp); rlp.connect(rg); rg.connect(master); rum.start(tb, 0.9); rum.stop(tb + 1.9);
   }
 
   function shout() {
@@ -1442,22 +1753,32 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     if (rollsUsed >= 3) { toast("No rolls left"); return; }
     const st = state(), targets = [];
     for (let i = 0; i < 5; i++) if (active(st, i) && !inCup(st, i)) targets.push(i);
-    if (!targets.length) { toast("The pad is already clear"); return; }
+    if (!targets.length) { toast("The board is already clear"); return; }
 
     shouting = true;
-    shoutReady = performance.now() / 1000 + SHOUT_COOLDOWN;
-    toast("FUS RO DAH!");
+    shoutReady = performance.now() / 1000 + SHOUT_COOLDOWN + BLAST_AT;
     shoutSound();
-    waveT = 0; shakeT = 0.6;
-    // Farthest dice from the shout go last, so the blast reads as a wave rolling across the pad.
-    targets.sort((a, b) => st[a * 11 + 1] - st[b * 11 + 1]);
-    targets.forEach((i, n) => {
-      const delay = 0.08 + n * 0.07;
-      anim[i] = { from: dice[i].position.clone(), fromQ: dice[i].quaternion.clone(), t: -delay, dur: 0.75, arc: 6 + n,
-        spin: new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize() };
-      Y.y_add_to_cup(i);
-    });
-    setTimeout(() => { shouting = false; updateUI(); }, 1100);
+    // The words appear as they're spoken.
+    const w = $("words"), spans = w.querySelectorAll("span");
+    w.classList.remove("out"); spans.forEach((s) => s.classList.remove("on"));
+    WORD_AT.forEach((at, k) => setTimeout(() => spans[k].classList.add("on"), at * 1000));
+    setTimeout(() => w.classList.add("out"), (BLAST_AT + 0.7) * 1000);
+    setTimeout(() => { if (w.classList.contains("out")) { w.classList.remove("out"); spans.forEach((s) => s.classList.remove("on")); } }, (BLAST_AT + 1.7) * 1000);
+    // On "Dah", the blast: the air bends, the view kicks, and the dice are thrown back into the cup,
+    // the nearest first so it reads as a wave rolling across the board.
+    setTimeout(() => {
+      shoutT = 0; punchT = 0; shakeT = 0.55;
+      const now = state();
+      targets.sort((a, b) => now[a * 11 + 1] - now[b * 11 + 1]);
+      targets.forEach((i, n) => {
+        const delay = 0.04 + n * 0.06;
+        anim[i] = { from: dice[i].position.clone(), fromQ: dice[i].quaternion.clone(), t: -delay, dur: 0.8, arc: 6 + n,
+          spin: new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize() };
+        Y.y_add_to_cup(i);
+      });
+      setTimeout(() => { shouting = false; updateUI(); }, 1100);
+      updateUI();
+    }, BLAST_AT * 1000);
     updateUI();
   }
   $("shout").addEventListener("click", shout);
@@ -1496,9 +1817,10 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     b.type = "button"; b.className = "cup-chip"; b.id = "cup-" + c.id;
     b.innerHTML = `<span>${c.name}</span><small></small>`;
     b.addEventListener("click", () => {
-      if (!unlocked(c) || phase === "shaking" || phase === "pouring") return;
-      ranks.selected = c.id; saveRanks(); buildCup(c.id); updateRanks();
+      if (!unlocked(c) || phase === "shaking" || phase === "pouring") { uiSound("deny"); return; }
+      ranks.selected = c.id; saveRanks(); buildCup(c.id); updateRanks(); uiSound("equip");
     });
+    b.addEventListener("mouseenter", () => uiSound("hover"));
     chipsEl.appendChild(b);
   });
   const diceEl = $("diceChips");
@@ -1506,22 +1828,36 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     const b = document.createElement("button");
     b.type = "button"; b.className = "dice-chip"; b.id = "dice-" + d.id;
     b.title = d.blurb;
-    b.appendChild(diceThumb(d.id, 68));
+    b.appendChild(diceThumb(d.id, 92));
     b.insertAdjacentHTML("beforeend", `<span>${d.name}</span><small></small>`);
     b.addEventListener("click", () => {
-      if (!diceOwned(d)) return;
+      if (!diceOwned(d)) { uiSound("deny"); return; }
       ranks.dice = d.id; saveRanks(); updateRanks();
       if (turn === "player") setDiceStyle(d.id);
-      toast(`${d.name} dice`);
+      uiSound("equip");
     });
+    // The item card follows the pointer, like the inventory; it falls back to the dice you're using.
+    b.addEventListener("mouseenter", () => { showItem(d); uiSound("hover"); });
+    b.addEventListener("focus", () => showItem(d));
+    b.addEventListener("mouseleave", () => showItem(null));
+    b.addEventListener("blur", () => showItem(null));
     diceEl.appendChild(b);
   });
-  if (DICE.length % 5) diceEl.lastChild.style.gridColumn = `span ${5 - (DICE.length % 5) + 1}`;
+  function showItem(d) {
+    if (!d) d = DICE.find((x) => x.id === ranks.dice) || DICE[0];
+    const owned = diceOwned(d);
+    $("itemName").textContent = `${d.name} dice`;
+    $("itemStats").innerHTML = d.wins === 0 ? "<span>Your own set</span>"
+      : owned ? `<span>Wins<b>${d.wins}</b></span><span>Value<b>${d.gold}</b></span>`
+      : `<span>Wins<b>${wins()} / ${d.wins}</b></span><span>Value<b>${d.gold}</b></span>`;
+    $("itemBlurb").textContent = owned ? d.blurb : `Innkeepers sell these after ${d.wins} wins. ${d.blurb}`;
+  }
 
   function updateRanks() {
     const r = currentRank(), next = CUPS.find((c) => !unlocked(c));
     $("rankName").textContent = r.rank;
-    $("rankNext").textContent = next ? `Last game ${ranks.last}. Score ${next.need}+ for the ${next.name}` : `Last game ${ranks.last}`;
+    $("rankNext").innerHTML = next ? `Last game ${ranks.last}<br>${next.need} for the ${next.name}` : `Last game ${ranks.last}<br>The finest cup is yours`;
+    $("rankBar").style.width = `${next ? Math.min(100, (ranks.last / next.need) * 100) : 100}%`;
     CUPS.forEach((c) => {
       const b = $("cup-" + c.id);
       b.disabled = !unlocked(c);
@@ -1532,10 +1868,13 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
       const b = $("dice-" + d.id), owned = diceOwned(d);
       b.disabled = !owned;
       b.setAttribute("aria-pressed", String(ranks.dice === d.id));
-      b.querySelector("small").textContent = d.wins === 0 ? "Yours" : owned ? `${d.gold}g` : `${Math.min(wins(), d.wins)}/${d.wins}`;
+      b.querySelector("small").textContent = owned ? "" : String(d.wins);
       b.setAttribute("aria-label", `${d.name} dice. ${d.blurb} ${owned ? "" : `Sold once you've won ${d.wins} games, for ${d.gold} gold.`}`);
     });
-    $("diceNote").textContent = `Sold by innkeepers · ${wins()} wins`;
+    const nextSet = DICE.find((d) => !diceOwned(d));
+    $("diceNote").textContent = nextSet ? `${wins()} wins · next set at ${nextSet.wins}` : `${wins()} wins · every set owned`;
+    $("diceBar").style.width = `${nextSet ? ((wins() % 10) / 10) * 100 : 100}%`;
+    showItem(null);
   }
   function finishGame(total) {
     const before = currentRank();
@@ -1574,6 +1913,10 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     if (pts < 0) return;
     toast(pts > 0 ? `+${pts}` : "Scratched");
     phase = "scored";
+    const el = rowEls[cat];
+    el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash");
+    setTimeout(() => el.classList.remove("flash"), 1000);
+    quill();
     updateUI();
     // The opponent's turn next (the dice fly over to its cup).
     setTimeout(() => { if (phase === "over") return; if (gameFinished()) endGame(); else startTurn("npc", true); }, 900);
@@ -1632,7 +1975,20 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   $("forfeitNo").addEventListener("click", () => showPrompt(null));
   $("forfeitYes").addEventListener("click", () => { showPrompt(null); endGame("forfeit"); });
   window.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && !$("forfeitPrompt").hidden) showPrompt(null);
+    if (e.key === "Escape" && !$("forfeitPrompt").hidden) { showPrompt(null); return; }
+    if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+    const k = e.key.toLowerCase();
+    // The same keys as the button bar. Tab is Skyrim's "back", so here it asks to forfeit.
+    if (!$("veil").hidden) return;
+    if (k === "z") { e.preventDefault(); $("shout").click(); }
+    else if (k === "h") { e.preventDefault(); $("helpBtn").click(); }
+    else if (k === "m") { e.preventDefault(); $("sound").click(); }
+    else if (k === "tab") { e.preventDefault(); $("forfeitBtn").click(); }
+  });
+  // Menu sounds on the result and forfeit screens.
+  document.querySelectorAll(".menu-btn, .key-btn").forEach((b) => {
+    b.addEventListener("mouseenter", () => uiSound("hover"));
+    b.addEventListener("click", () => uiSound("select"));
   });
   showRecords();
 
@@ -1643,7 +1999,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     rowEls.forEach((el, c) => {
       const box = Y.y_card_box(0, c);
       const v = el.querySelector(".val");
-      el.className = "row";
+      el.className = el.classList.contains("flash") ? "row flash" : "row";
       if (box >= 0) { el.classList.add("filled"); v.textContent = box; el.disabled = true; return; }
       const p = rolledOnce ? Y.y_card_preview(0, c) : -1;
       el.classList.add("open");
@@ -1929,7 +2285,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     const n = Y.y_step(dt, cup.x, cup.y, cup.z, cup.q.w, cup.q.x, cup.q.y, cup.q.z);
     if (n > 0) {
       const ev = f64(Y.y_events(), n * 3);
-      for (let i = 0; i < n; i++) hit(ev[i * 3], ev[i * 3 + 2]);
+      for (let i = 0; i < n; i++) hit(ev[i * 3], ev[i * 3 + 2], ev[i * 3 + 1]);
     }
 
     if (phase === "rolling") {
@@ -1946,6 +2302,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
 
     // Dice moved by hand count as they now lie.
     const st = state();
+    updateBeds(dt, st);
     if (phase === "choose" && !(press && press.kind === "die" && press.moved)) {
       let changed = false;
       for (let i = 0; i < 5; i++) {
@@ -1998,28 +2355,219 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     npcCupGroup.quaternion.copy(cups.npc.q);
 
     candle.intensity = 0.95 + Math.sin(t * 7.3) * 0.04 + Math.sin(t * 13.1) * 0.03 + Math.sin(t * 2.1) * 0.05;
-    if (waveT >= 0) {
-      waveT += dt;
-      const k = Math.min(1, waveT / 0.7);
-      wave.scale.setScalar(1 + k * 26);
-      wave.material.opacity = 0.45 * (1 - k) * (1 - k);
-      if (k >= 1) { waveT = -1; wave.material.opacity = 0; }
+    if (shoutT >= 0 && !shoutHold) { shoutT += dt; if (shoutT > 1.05) shoutT = -1; }
+    // The blast punches the view: a quick widening of the lens that springs back, and a shake.
+    let fovKick = 0;
+    if (punchT >= 0) {
+      punchT += dt;
+      fovKick = punchT < 0.07 ? (punchT / 0.07) * 3.2 : 3.2 * Math.exp(-(punchT - 0.07) * 7) * Math.cos((punchT - 0.07) * 14);
+      if (punchT > 0.9) { punchT = -1; fovKick = 0; }
     }
-    const shakeAmt = shakeT > 0 ? shakeT * 0.6 : 0;
+    const shakeAmt = shakeT > 0 ? shakeT * shakeT * 1.1 : 0;
     shakeT = Math.max(0, shakeT - dt);
-    camera.position.x += (Math.random() - 0.5) * shakeAmt;
-    camera.position.y += (Math.random() - 0.5) * shakeAmt;
-    const left = shoutReady - now / 1000;
-    $("shoutCool").style.width = left > 0 ? `${(left / SHOUT_COOLDOWN) * 100}%` : "0";
+    const reframe = shakeAmt > 0 || fovKick !== 0 || camera.fov !== 38;
+    if (reframe) {
+      camera.fov = 38 + fovKick;
+      camera.position.x += (Math.random() - 0.5) * shakeAmt;
+      camera.position.y += (Math.random() - 0.5) * shakeAmt;
+      camera.updateProjectionMatrix();
+    }
+    const left = shoutReady - now / 1000, full = SHOUT_COOLDOWN + BLAST_AT;
+    $("shoutCool").style.width = left > 0 ? `${(left / full) * 100}%` : "0";
+    $("shoutMeter").style.width = left > 0 ? `${(1 - left / full) * 100}%` : "100%";
     $("shout").disabled = left > 0 || turn !== "player";
 
-    renderer.render(scene, camera);
-    if (shakeAmt) resize();
+    renderFrame();
+    if (reframe) { if (fovKick === 0) camera.fov = 38; resize(); }
     requestAnimationFrame(frame);
   }
 
+  // ------------------------------------------------------------------ the world behind the table
+  // In the game the world stops and blurs while you play, as it does behind Skyrim's own menus. Here that world is a
+  // tavern painted once and blurred: the hearth, candles and lanterns, a couple of drinkers, the table you sit at.
+  function paintTavern() {
+    const W = 960, H = 540, c = document.createElement("canvas"); c.width = W; c.height = H;
+    const g = c.getContext("2d"), { rnd, fbm } = makeNoise(9071);
+    const hz = H * 0.3;  // where the far wall meets the table top
+    let gr = g.createLinearGradient(0, 0, 0, H);
+    gr.addColorStop(0, "#080504"); gr.addColorStop(0.28, "#1f140c"); gr.addColorStop(0.34, "#3a2414"); gr.addColorStop(0.62, "#2a1a0f"); gr.addColorStop(1, "#0e0906");
+    g.fillStyle = gr; g.fillRect(0, 0, W, H);
+    // Log wall and posts.
+    for (let y = 0; y < hz; y += 22) { g.fillStyle = `rgba(0,0,0,${0.18 + rnd() * 0.12})`; g.fillRect(0, y, W, 3); }
+    for (const x of [120, 470, 820]) { g.fillStyle = "rgba(6,4,3,0.75)"; g.fillRect(x, 0, 34, hz + 6); }
+    g.fillStyle = "rgba(6,4,3,0.8)"; g.fillRect(0, 18, W, 26);
+    // The hearth, back left.
+    const glow = (x, y, r, col, a) => { const rg = g.createRadialGradient(x, y, 0, x, y, r); rg.addColorStop(0, `rgba(${col},${a})`); rg.addColorStop(1, `rgba(${col},0)`); g.fillStyle = rg; g.fillRect(x - r, y - r, r * 2, r * 2); };
+    g.fillStyle = "#15100c"; g.beginPath(); g.moveTo(170, hz + 4); g.lineTo(170, hz - 82); g.quadraticCurveTo(250, hz - 128, 330, hz - 82); g.lineTo(330, hz + 4); g.fill();
+    glow(250, hz - 30, 300, "255,120,40", 0.55);
+    glow(250, hz - 26, 90, "255,170,70", 0.9);
+    glow(250, hz - 20, 34, "255,225,150", 1);
+    // Lanterns, candles, a window's moonlight.
+    for (const [x, y, r] of [[560, hz - 70, 26], [700, hz - 8, 14], [860, hz - 60, 22], [70, hz - 12, 10], [400, hz - 4, 9], [930, hz + 2, 12], [620, 40, 18]]) {
+      glow(x, y, r * 5, "255,150,60", 0.28); glow(x, y, r, "255,205,130", 0.95);
+    }
+    glow(760, 70, 120, "120,150,200", 0.12);
+    // Drinkers at the far tables, lit from behind.
+    const drinker = (x, s, rim) => {
+      g.fillStyle = "#0b0705";
+      g.beginPath(); g.ellipse(x, hz + 10 * s, 48 * s, 40 * s, 0, Math.PI, 0); g.fill();
+      g.beginPath(); g.arc(x, hz - 44 * s, 19 * s, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = `rgba(255,150,70,${rim})`; g.lineWidth = 3 * s;
+      g.beginPath(); g.arc(x, hz - 44 * s, 19 * s, Math.PI * 0.9, Math.PI * 1.5); g.stroke();
+    };
+    drinker(400, 1.1, 0.5); drinker(660, 0.9, 0.3); drinker(905, 1.2, 0.2);
+    // Shelves of bottles, right.
+    for (let k = 0; k < 9; k++) { g.fillStyle = `rgba(${40 + rnd() * 50},${25 + rnd() * 20},${10 + rnd() * 20},0.9)`; g.fillRect(720 + k * 22, hz - 112 - rnd() * 6, 12, 26); }
+    // The table top: long planks running away from you.
+    gr = g.createLinearGradient(0, hz, 0, H);
+    gr.addColorStop(0, "#4b301b"); gr.addColorStop(0.45, "#6b4527"); gr.addColorStop(1, "#24170e");
+    g.fillStyle = gr; g.fillRect(0, hz + 6, W, H - hz);
+    const vx = W / 2, vy = hz - 260;
+    for (let k = -14; k <= 14; k++) {
+      const xb = W / 2 + k * 92;
+      g.strokeStyle = "rgba(15,8,4,0.55)"; g.lineWidth = 3;
+      g.beginPath(); g.moveTo(vx + (xb - vx) * ((hz + 6 - vy) / (H - vy)), hz + 6); g.lineTo(xb, H); g.stroke();
+    }
+    const img = g.getImageData(0, hz + 6, W, H - hz - 6), d = img.data;
+    for (let y = 0; y < H - hz - 6; y++) for (let x = 0; x < W; x++) {
+      const n = fbm(x / 9, y / 70, 3) - 0.5, i = (y * W + x) * 4;
+      d[i] += n * 40; d[i + 1] += n * 28; d[i + 2] += n * 18;
+    }
+    g.putImageData(img, 0, hz + 6);
+    // A candle on your table, just out of view, warms the middle.
+    glow(W * 0.5, H * 0.62, 420, "255,160,80", 0.22);
+    // Odds and ends on the table: a tankard, a plate, a loaf.
+    g.fillStyle = "rgba(20,12,8,0.85)"; g.fillRect(70, H * 0.58, 70, 110);
+    g.fillStyle = "rgba(160,150,140,0.35)"; g.beginPath(); g.ellipse(860, H * 0.72, 90, 40, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = "rgba(170,110,50,0.6)"; g.beginPath(); g.ellipse(845, H * 0.68, 50, 26, -0.3, 0, Math.PI * 2); g.fill();
+    // Blur it as Skyrim's menus blur the world, and dim it a touch.
+    const out = document.createElement("canvas"); out.width = W; out.height = H;
+    const o = out.getContext("2d");
+    o.filter = "blur(11px) saturate(0.82)";
+    o.drawImage(c, -20, -20, W + 40, H + 40);
+    o.filter = "none";
+    o.fillStyle = "rgba(8,5,3,0.32)"; o.fillRect(0, 0, W, H);
+    // Fine grain so the gradients don't band.
+    const im = o.getImageData(0, 0, W, H), dd = im.data;
+    for (let i = 0; i < dd.length; i += 4) { const n = (Math.random() - 0.5) * 5; dd[i] += n; dd[i + 1] += n; dd[i + 2] += n; }
+    o.putImageData(im, 0, 0);
+    const t = new THREE.CanvasTexture(out);
+    t.encoding = THREE.sRGBEncoding;
+    return t;
+  }
+  scene.background = paintTavern();
+
+  // ------------------------------------------------------------------ the shout's distortion
+  // Only while the Thu'um is in the air does the frame go through this pass: the scene is drawn to a texture, then
+  // a cone of air bends it, fringed with colour and lit faintly blue at the wavefront.
+  const postScene = new THREE.Scene(), postCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+  const postMat = new THREE.ShaderMaterial({
+    uniforms: { tScene: { value: null }, uT: { value: 0 }, uAspect: { value: 1 }, uOrigin: { value: new THREE.Vector2(0.5, -0.32) } },
+    vertexShader: "varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }",
+    fragmentShader: `
+      uniform sampler2D tScene; uniform float uT; uniform float uAspect; uniform vec2 uOrigin; varying vec2 vUv;
+      void main() {
+        vec2 d = vUv - uOrigin; d.x *= uAspect;
+        float r = length(d);
+        vec2 dir = d / max(r, 1e-4);
+        float ang = abs(atan(d.x, d.y));
+        float cone = 1.0 - smoothstep(0.42, 0.9, ang);
+        float x = r - uT * 2.0;
+        float band = exp(-x * x / 0.005) * cone;
+        float wake = (1.0 - smoothstep(-0.5, 0.0, x)) * smoothstep(-1.3, -0.35, x) * cone;
+        float fade = 1.0 - smoothstep(0.5, 1.0, uT);
+        float ripple = sin(x * 75.0 - uT * 45.0);
+        float amt = (band * 0.04 + wake * 0.007 * ripple) * fade;
+        vec2 off = dir * amt; off.x /= uAspect;
+        vec3 col;
+        col.r = texture2D(tScene, vUv - off).r;
+        col.g = texture2D(tScene, vUv - off * 1.1).g;
+        col.b = texture2D(tScene, vUv - off * 1.22).b;
+        col += vec3(0.55, 0.72, 1.0) * band * 0.22 * fade;
+        col = mix(col, col * vec3(0.92, 0.97, 1.08) + 0.02, wake * fade * 0.6);
+        gl_FragColor = vec4(col, 1.0);
+      }`,
+    depthTest: false, depthWrite: false, toneMapped: false,
+  });
+  postScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), postMat));
+  let postRT = null;
+  const bufSize = new THREE.Vector2();
+  function renderFrame() {
+    if (shoutT < 0) { renderer.render(scene, camera); return; }
+    renderer.getDrawingBufferSize(bufSize);
+    if (!postRT) {
+      // The scene is drawn into it exactly as it would be to the screen (tone mapped, sRGB), so the pass only bends it.
+      const opts = { encoding: THREE.sRGBEncoding };
+      postRT = renderer.capabilities.isWebGL2 && THREE.WebGLMultisampleRenderTarget
+        ? new THREE.WebGLMultisampleRenderTarget(bufSize.x, bufSize.y, opts) : new THREE.WebGLRenderTarget(bufSize.x, bufSize.y, opts);
+    } else if (postRT.width !== bufSize.x || postRT.height !== bufSize.y) postRT.setSize(bufSize.x, bufSize.y);
+    renderer.setRenderTarget(postRT);
+    renderer.render(scene, camera);
+    renderer.setRenderTarget(null);
+    postMat.uniforms.tScene.value = postRT.texture;
+    postMat.uniforms.uT.value = Math.min(1, shoutT / 1.0);
+    postMat.uniforms.uAspect.value = bufSize.x / Math.max(1, bufSize.y);
+    renderer.render(postScene, postCam);
+  }
+
+  // ------------------------------------------------------------------ parchment
+  // The tally sheets are notes: aged paper, stains and fibres, edges darkened and a little ragged.
+  function paintParchment(el, seed) {
+    const r = el.getBoundingClientRect();
+    const W = 768, H = Math.max(200, Math.round(W * (r.height / Math.max(1, r.width))));
+    const c = document.createElement("canvas"); c.width = W; c.height = H;
+    const g = c.getContext("2d"), { rnd, fbm } = makeNoise(seed);
+    // Ragged outline.
+    const pts = [], step = 10, j = 7;
+    const edge = (x, y) => (fbm(x / 40 + seed, y / 40, 3) - 0.5) * j * 2;
+    for (let x = 0; x <= W; x += step) pts.push([x, 10 + edge(x, 0)]);
+    for (let y = 0; y <= H; y += step) pts.push([W - 10 + edge(W, y), y]);
+    for (let x = W; x >= 0; x -= step) pts.push([x, H - 10 + edge(x, H)]);
+    for (let y = H; y >= 0; y -= step) pts.push([10 + edge(0, y), y]);
+    const outline = () => { g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); };
+    outline(); g.save(); g.clip();
+    g.fillStyle = "#dcc69c"; g.fillRect(0, 0, W, H);
+    const img = g.getImageData(0, 0, W, H), d = img.data;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const i = (y * W + x) * 4;
+      const blot = fbm(x / 120, y / 120, 4), fine = fbm(x / 6, y / 6, 2), fib = fbm(x / 2.5, y / 26, 2);
+      const n = (blot - 0.5) * 46 + (fine - 0.5) * 14 + (fib - 0.5) * 10 + (Math.random() - 0.5) * 8;
+      d[i] += n; d[i + 1] += n * 0.9; d[i + 2] += n * 0.75;
+    }
+    g.putImageData(img, 0, 0);
+    // A few old stains: a cup ring, drips.
+    g.strokeStyle = "rgba(120,72,30,0.16)"; g.lineWidth = 5;
+    g.beginPath(); g.arc(W * (0.62 + rnd() * 0.2), H * (0.55 + rnd() * 0.3), 46 + rnd() * 14, 0.3, 5.6); g.stroke();
+    for (let k = 0; k < 4; k++) {
+      const rg = g.createRadialGradient(0, 0, 0, 0, 0, 1);
+      rg.addColorStop(0, "rgba(130,80,35,0.14)"); rg.addColorStop(1, "rgba(130,80,35,0)");
+      g.save(); g.translate(rnd() * W, rnd() * H); g.scale(30 + rnd() * 70, 20 + rnd() * 50); g.fillStyle = rg; g.fillRect(-1, -1, 2, 2); g.restore();
+    }
+    // Darkened, slightly burnt edges.
+    g.filter = "blur(14px)"; g.strokeStyle = "rgba(92,52,20,0.55)"; g.lineWidth = 46; outline(); g.stroke();
+    g.filter = "blur(3px)"; g.strokeStyle = "rgba(48,24,8,0.75)"; g.lineWidth = 10; outline(); g.stroke();
+    g.filter = "none";
+    g.restore();
+    c.toBlob((b) => { if (b) { el.style.backgroundImage = `url(${URL.createObjectURL(b)})`; el.style.backgroundColor = "transparent"; } });
+  }
+  paintParchment(document.querySelector(".ledger.npc"), 311);
+  paintParchment(document.querySelector(".ledger.you"), 977);
+
   // Hooks for automated checks of the preview.
   window.__yacht = {
+    // Renders a sound offline, for checking the synthesis: "shout", or a hit type 0-3 with a dice style.
+    renderSound: async (what, style) => {
+      const keep = [audio, master, sfx, noiseBuf, roomIR, hallIR, rollGain, rattleGain, rattleBand, curDiceStyle];
+      const off = new OfflineAudioContext(2, 48000 * 3.5, 48000);
+      initAudio(off); bufCache.clear();
+      if (style) curDiceStyle = style;
+      if (what === "shout") shoutSound(); else hit(what, 70, 1);
+      const buf = await off.startRendering();
+      [audio, master, sfx, noiseBuf, roomIR, hallIR, rollGain, rattleGain, rattleBand, curDiceStyle] = keep; bufCache.clear();
+      return Array.from(buf.getChannelData(0));
+    },
+    shoutFx: (t, hold) => { shoutT = t || 0; shoutHold = !!hold; punchT = -1; shakeT = 0; },
+    words: (k) => { const sp = $("words").querySelectorAll("span"); sp.forEach((s, i) => s.classList.toggle("on", i < k)); },
     diceSheet: () => {
       const wrap = document.createElement("div");
       wrap.id = "sheet";
