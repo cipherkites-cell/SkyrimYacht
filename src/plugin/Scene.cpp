@@ -353,7 +353,7 @@ namespace Scene
 			if (!dh) {
 				return;
 			}
-			// the cups' paths, from whatever in the game uses each mesh: an item, or else a static or a piece of clutter
+			// the cups' paths, from whatever in the game uses each mesh: an item, or else a static
 			auto look = [&](const char* model, RE::TESForm* a_form, bool a_item) {
 				if (!model || !*model) {
 					return;
@@ -385,11 +385,6 @@ namespace Scene
 				}
 			}
 			for (auto* f : dh->GetFormArray<RE::TESObjectSTAT>()) {
-				if (f) {
-					look(f->GetModel(), f, false);
-				}
-			}
-			for (auto* f : dh->GetFormArray<RE::BGSMovableStatic>()) {
 				if (f) {
 					look(f->GetModel(), f, false);
 				}
