@@ -1163,27 +1163,16 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   // where it happened. Dice rolling on the linen and rattling in the cup are continuous layers.
   let audio = null, master = null, noiseBuf = null, soundOn = true, recent = 0, sfx = null, voices = 0;
   let roomIR = null, hallIR = null, rollGain = null, rattleGain = null, rattleBand = null;
-  const bufCache = new Map();
-  // Modes as [frequency Hz, decay s, amplitude]. A die is a small hard block: its own resonances die in a few
-  // milliseconds, so what you hear is a dry clack, coloured by the material, plus whatever it struck.
-  const DIE_MODES = {
-    bone: [[2300, 0.006, 1], [3600, 0.005, 0.8], [5200, 0.004, 0.6], [7300, 0.003, 0.4], [9800, 0.0025, 0.25]],
-    metal: [[3400, 0.018, 1], [5100, 0.014, 0.7], [7700, 0.011, 0.5], [10600, 0.008, 0.3]],
-    precious: [[3000, 0.024, 1], [4700, 0.018, 0.65], [7100, 0.013, 0.45], [9900, 0.009, 0.25]],
-    stone: [[2100, 0.007, 1], [3400, 0.006, 0.8], [5400, 0.005, 0.55], [7900, 0.004, 0.35]],
-    ice: [[2900, 0.012, 1], [4800, 0.01, 0.7], [7600, 0.008, 0.5], [10900, 0.006, 0.3]],
-  };
+  // The hits are real dice, cut from CC0 recordings by tools/make_dice_hits.py: sharp clicks of dice in a cup, and
+  // knocks of dice landing on a table. Each contact plays one, chosen at random, pitched for the dice's material,
+  // as loud as the impact, darker on the linen than on the wood.
+  const DICE_HITS = /*__DICE_HITS__*/null;
+  let hitBank = null;
   const DIE_MAT = { bone: "bone", dragonbone: "bone", iron: "metal", steel: "metal", corundum: "metal", dwemer: "metal",
     orichalcum: "metal", ebony: "metal", daedric: "metal", silver: "precious", quicksilver: "precious", gold: "precious",
     malachite: "stone", moonstone: "stone", stalhrim: "ice" };
   // What the dice strike: the cup (hollow wood, or a metal goblet that rings), the tray's wood, linen over boards.
-  const CUP_MODES = {
-    wood: [[240, 0.04, 1], [520, 0.03, 0.8], [960, 0.02, 0.6], [1700, 0.012, 0.4], [2900, 0.007, 0.25]],
-    metal: [[1250, 0.16, 0.7], [2800, 0.12, 0.5], [4900, 0.08, 0.35], [7400, 0.05, 0.2], [600, 0.02, 0.4]],
-  };
   const CUP_MAT = { tankard: "wood", dwemer: "metal", goblet: "metal", silver: "metal", golden: "metal" };
-  const TRAY_MODES = [[210, 0.032, 1], [470, 0.024, 0.8], [880, 0.016, 0.6], [1550, 0.01, 0.4], [2600, 0.006, 0.25]];
-  const LINEN_MODES = [[160, 0.022, 1], [330, 0.016, 0.7], [610, 0.01, 0.45], [1050, 0.006, 0.25]];
   const dieTune = [0.97, 1.0, 1.035, 0.985, 1.02];  // every die has its own voice
   let curDiceStyle = "bone";
 
@@ -1222,6 +1211,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
       sfx = audio.createGain(); sfx.gain.value = 1;
       // Dry: no room echo on the dice or the menus.
       sfx.connect(master);
+      loadHits();
       // Dice sliding and rolling on the linen: a soft scuff under the knocks.
       const roll = audio.createBufferSource(); roll.buffer = noiseBuf; roll.loop = true;
       const rbp = audio.createBiquadFilter(); rbp.type = "bandpass"; rbp.frequency.value = 900; rbp.Q.value = 0.6;
@@ -1231,50 +1221,21 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     } catch (e) { audio = null; }
   }
 
-  // A struck object as a buffer: damped modes plus a short noise click for the contact itself.
-  function strike(modes, len, clickAmp, clickTone) {
-    const sr = audio.sampleRate, n = Math.ceil(len * sr), b = audio.createBuffer(1, n, sr), o = b.getChannelData(0);
-    for (const [fm, dec, am] of modes) {
-      for (const [r, ra] of [[1, 1], [1 + 0.04 * (Math.random() + 0.5), 0.55], [1 - 0.035 * (Math.random() + 0.5), 0.45]]) {
-        const f = fm * r * (1 + (Math.random() - 0.5) * 0.06);
-        if (f > sr * 0.45) continue;
-        const w = (2 * Math.PI * f) / sr, k = Math.exp(-1 / (dec * (0.7 + Math.random() * 0.6) * sr)), ph = Math.random() * 6.283;
-        let env = am * ra * (0.7 + Math.random() * 0.6);
-        for (let i = 0; i < n && env > 1e-5; i++) { o[i] += env * Math.sin(w * i + ph); env *= k; }
-      }
-    }
-    // The contact itself: a sharp burst of noise, which is most of a dice click.
-    let lp = 0, lp2 = 0;
-    const cn = Math.min(n, Math.floor(sr * 0.01));
-    for (let i = 0; i < cn; i++) {
-      lp += (Math.random() * 2 - 1 - lp) * clickTone; lp2 += (lp - lp2) * Math.min(1, clickTone * 1.6);
-      o[i] += (lp - lp2 * 0.6) * clickAmp * Math.exp(-i / (sr * 0.0009));
-    }
-    let peak = 0;
-    for (let i = 0; i < n; i++) { if (i < 24) o[i] *= i / 24; peak = Math.max(peak, Math.abs(o[i])); }
-    if (peak > 0) for (let i = 0; i < n; i++) o[i] *= 0.9 / peak;
-    return b;
+  function loadHits() {
+    if (!DICE_HITS || hitBank) return;
+    const bytes = Uint8Array.from(atob(DICE_HITS.ogg), (c) => c.charCodeAt(0));
+    audio.decodeAudioData(bytes.buffer).then((buf) => {
+      const cutOut = ([start, len]) => {
+        const sr = buf.sampleRate, n = Math.round(len * sr), b = audio.createBuffer(1, n, sr);
+        b.getChannelData(0).set(buf.getChannelData(0).subarray(Math.round(start * sr), Math.round(start * sr) + n));
+        return b;
+      };
+      hitBank = { click: DICE_HITS.index.click.map(cutOut), knock: DICE_HITS.index.knock.map(cutOut) };
+    }).catch(() => {});
   }
-  const scaled = (modes, amp, pitch) => modes.map(([f, d, a]) => [f * (pitch || 1), d, a * amp]);
-  const ringLen = (modes) => Math.min(1.2, Math.max(...modes.map((m) => m[1])) * 9 + 0.03);
-  function hitSet(surf, dieMat, cupMat) {
-    const key = surf + dieMat + (surf === "cup" ? cupMat : "");
-    let set = bufCache.get(key);
-    if (set) return set;
-    const dm = DIE_MODES[dieMat];
-    set = [];
-    for (let v = 0; v < 5; v++) {
-      let modes, click, tone;
-      if (surf === "die") { modes = [...dm, ...scaled(dm, 0.85, 1.09)]; click = 1.6; tone = 0.6; }
-      else if (surf === "felt") { modes = [...LINEN_MODES, ...scaled(dm, 0.3)]; click = 0.8; tone = 0.15; }
-      else if (surf === "wall") { modes = [...TRAY_MODES, ...scaled(dm, 0.6)]; click = 1.2; tone = 0.4; }
-      else { modes = [...CUP_MODES[cupMat], ...scaled(dm, 0.55)]; click = 1.1; tone = 0.35; }
-      set.push(strike(modes, ringLen(modes), click, tone));
-    }
-    bufCache.set(key, set);
-    return set;
-  }
-  const SURF = ["die", "felt", "wall", "cup"], SURF_GAIN = [0.26, 0.4, 0.38, 0.32];
+  // Harder materials sound a little higher.
+  const MAT_PITCH = { bone: 1, metal: 1.12, precious: 1.06, stone: 0.95, ice: 1.15 };
+  const SURF_GAIN = [0.3, 0.55, 0.6, 0.35];
   const lastHit = new Float64Array(24).fill(-1);
   const activeCupId = () => (turn === "npc" ? "tankard" : ranks.selected);
   // type: 0 die-die, 1 linen, 2 tray wall, 3 cup. die: which die (for its pitch and where it is), or -1.
@@ -1284,12 +1245,15 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     if (v < 0.04) return;  // the little taps of a settling die stay silent
     const now = audio.currentTime;
     if (die >= 0) { const k = die * 4 + type; if (now - lastHit[k] < 0.05) return; lastHit[k] = now; }
-    const set = hitSet(SURF[type], DIE_MAT[curDiceStyle] || "bone", CUP_MAT[activeCupId()] || "wood");
+    if (!hitBank) return;
+    // Dice on dice and dice in the cup click; dice landing on the tray knock.
+    const set = type === 0 || type === 3 ? hitBank.click : hitBank.knock;
     const src = audio.createBufferSource();
     src.buffer = set[(Math.random() * set.length) | 0];
-    src.playbackRate.value = (die >= 0 ? dieTune[die] : 1) * (1 + (Math.random() - 0.5) * 0.05);
-    // Soft knocks are dark, hard ones bright.
-    const f = audio.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = 600 + 8000 * v * v; f.Q.value = 0.4;
+    src.playbackRate.value = (MAT_PITCH[DIE_MAT[curDiceStyle]] || 1) * (die >= 0 ? dieTune[die] : 1) * (1 + (Math.random() - 0.5) * 0.08);
+    // The linen damps the knock; soft hits are darker than hard ones.
+    const f = audio.createBiquadFilter(); f.type = "lowpass"; f.Q.value = 0.5;
+    f.frequency.value = (type === 1 ? 1400 + 3000 * v : 2500 + 12000 * v * v);
     const g = audio.createGain(); g.gain.value = Math.pow(v, 1.6) * SURF_GAIN[type];
     src.connect(f); f.connect(g);
     let out = g;
@@ -1719,6 +1683,7 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   function shoutSound() {
     if (!audio || !soundOn) return;
     const t0 = audio.currentTime + 0.03;
+    const out = audio.createGain(); out.gain.value = 0.75; out.connect(master);
     const bus = audio.createGain(); bus.gain.value = 0.55;
     const hall = audio.createConvolver(); hall.normalize = false; hall.buffer = hallIR;
     const wet = audio.createGain(); wet.gain.value = 0.9;
@@ -1727,8 +1692,8 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     const fb = audio.createGain(); fb.gain.value = 0.32;
     const elp = audio.createBiquadFilter(); elp.type = "lowpass"; elp.frequency.value = 1800;
     const eg = audio.createGain(); eg.gain.value = 0.35;
-    bus.connect(master); bus.connect(hall); hall.connect(wet); wet.connect(master);
-    bus.connect(echo); echo.connect(elp); elp.connect(fb); fb.connect(echo); elp.connect(eg); eg.connect(master);
+    bus.connect(out); bus.connect(hall); hall.connect(wet); wet.connect(out);
+    bus.connect(echo); echo.connect(elp); elp.connect(fb); fb.connect(echo); elp.connect(eg); eg.connect(out);
     const [tF, tR, tD] = WORD_AT.map((w) => t0 + w);
     // FUS: breath through the teeth, a deep "oo", a hiss.
     breathNoise(bus, tF, 0.11, 1300, 6500, 0.3);
@@ -1744,16 +1709,16 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     const boom = audio.createOscillator(); boom.type = "sine";
     boom.frequency.setValueAtTime(70, tb); boom.frequency.exponentialRampToValueAtTime(26, tb + 1.3);
     const bg = audio.createGain(); bg.gain.setValueAtTime(0.0001, tb); bg.gain.exponentialRampToValueAtTime(0.85, tb + 0.03); bg.gain.exponentialRampToValueAtTime(0.0005, tb + 1.4);
-    boom.connect(bg); bg.connect(master); boom.start(tb); boom.stop(tb + 1.5);
+    boom.connect(bg); bg.connect(out); boom.start(tb); boom.stop(tb + 1.5);
     const air = audio.createBufferSource(); air.buffer = noiseBuf;
     const abp = audio.createBiquadFilter(); abp.type = "bandpass"; abp.Q.value = 0.8;
     abp.frequency.setValueAtTime(2600, tb); abp.frequency.exponentialRampToValueAtTime(240, tb + 1.0);
     const ag = audio.createGain(); ag.gain.setValueAtTime(0.0001, tb); ag.gain.exponentialRampToValueAtTime(0.55, tb + 0.05); ag.gain.exponentialRampToValueAtTime(0.0005, tb + 1.1);
-    air.connect(abp); abp.connect(ag); ag.connect(master); ag.connect(hall); air.start(tb, 0.3); air.stop(tb + 1.2);
+    air.connect(abp); abp.connect(ag); ag.connect(out); ag.connect(hall); air.start(tb, 0.3); air.stop(tb + 1.2);
     const rum = audio.createBufferSource(); rum.buffer = noiseBuf;
     const rlp = audio.createBiquadFilter(); rlp.type = "lowpass"; rlp.frequency.value = 140;
     const rg = audio.createGain(); rg.gain.setValueAtTime(0.0001, tb); rg.gain.exponentialRampToValueAtTime(0.9, tb + 0.08); rg.gain.exponentialRampToValueAtTime(0.0005, tb + 1.8);
-    rum.connect(rlp); rlp.connect(rg); rg.connect(master); rum.start(tb, 0.9); rum.stop(tb + 1.9);
+    rum.connect(rlp); rlp.connect(rg); rg.connect(out); rum.start(tb, 0.9); rum.stop(tb + 1.9);
   }
 
   function shout() {
@@ -2567,16 +2532,14 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   // Hooks for automated checks of the preview.
   window.__yacht = {
     // Renders a sound offline, for checking the synthesis: "shout", or a hit type 0-3 with a dice style.
-    strikeBuf: (surf, mat) => { const keep = audio; audio = new OfflineAudioContext(1, 48000, 48000); bufCache.clear();
-      const b = hitSet(surf, mat, "wood")[0]; audio = keep; bufCache.clear(); return Array.from(b.getChannelData(0)); },
     renderSound: async (what, style, dry) => {
       const keep = [audio, master, sfx, noiseBuf, roomIR, hallIR, rollGain, rattleGain, rattleBand, curDiceStyle];
       const off = new OfflineAudioContext(2, 48000 * 3.5, 48000);
-      initAudio(off); bufCache.clear();
+      initAudio(off);
       if (style) curDiceStyle = style;
-      if (what === "shout") shoutSound(); else hit(what, 70, 1);
+      if (what === "shout") shoutSound(); else { await new Promise((r) => setTimeout(r, 300)); hit(what, 70, 1); }
       const buf = await off.startRendering();
-      [audio, master, sfx, noiseBuf, roomIR, hallIR, rollGain, rattleGain, rattleBand, curDiceStyle] = keep; bufCache.clear();
+      [audio, master, sfx, noiseBuf, roomIR, hallIR, rollGain, rattleGain, rattleBand, curDiceStyle] = keep;
       return Array.from(buf.getChannelData(0));
     },
     shoutFx: (t, hold) => { shoutT = t || 0; shoutHold = !!hold; punchT = -1; shakeT = 0; },

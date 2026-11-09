@@ -108,6 +108,7 @@ namespace yacht
 			d.restTime = 0.0;
 			d.settled = false;
 			d.nudges = 0;
+			d.loose = 0.0;
 		}
 	}
 
@@ -134,6 +135,7 @@ namespace yacht
 		d.restTime = 0.0;
 		d.settled = false;
 		d.nudges = 0;
+		d.loose = 0.0;
 	}
 
 	void DiceSim::SetFrozen(int a_index, bool a_frozen)
@@ -161,6 +163,7 @@ namespace yacht
 		d.settled = false;
 		d.restTime = 0.0;
 		d.nudges = 0;
+		d.loose = 0.0;
 		// Put it in the lowest free spot of the same stacking pattern LoadCup uses (several dice can be dropped in the
 		// same instant, and they must not start inside each other). If the cup is full to the rim, it waits on top.
 		const double h = _spec.dieSize * 0.5;
@@ -782,10 +785,19 @@ namespace yacht
 			if (InCup(i) || i == _drag) {
 				d.restTime = 0.0;
 				d.settled = false;
+				d.loose = 0.0;
 				continue;
 			}
+			if (!d.settled) {
+				d.loose += a_dt;
+				if (d.loose > _spec.giveUpTime) {
+					SetDown(i);
+					continue;
+				}
+			}
 
-			const bool slow = d.vel.Length() < _spec.settleSpeed && d.spin.Length() < _spec.settleSpin && _onFelt[i];
+			// Resting anywhere counts, including on top of another die: that one is then knocked over below.
+			const bool slow = d.vel.Length() < _spec.settleSpeed && d.spin.Length() < _spec.settleSpin;
 			if (!slow) {
 				if (d.vel.Length() > _spec.settleSpeed * 2.0 || d.spin.Length() > _spec.settleSpin * 2.0) {
 					d.restTime = 0.0;
@@ -801,8 +813,12 @@ namespace yacht
 				continue;
 			}
 
-			if (TopFace(i) == 0 && d.nudges < 8) {
-				// Leaning on a wall or another die: knock it over.
+			if (TopFace(i) == 0 || !_onFelt[i]) {
+				if (d.nudges >= _spec.maxNudges) {
+					SetDown(i);
+					continue;
+				}
+				// Leaning on a wall or another die, or lying on top of one: knock it over.
 				d.vel.z += 18.0;
 				d.vel.x += _rng.Range(-6.0, 6.0) - d.pos.x * 0.5;
 				d.vel.y += _rng.Range(-6.0, 6.0) - d.pos.y * 0.5;
@@ -815,6 +831,63 @@ namespace yacht
 			d.vel = {};
 			d.spin = {};
 		}
+	}
+
+	void DiceSim::SetDown(int a_index)
+	{
+		Die& d = _dice[a_index];
+		// The face nearest to up.
+		const Vec3   u = d.rot.InverseRotate({ 0.0, 0.0, 1.0 });
+		const double c[3] = { u.x, u.y, u.z };
+		int          axis = 0;
+		for (int k = 1; k < 3; ++k) {
+			if (m::Abs(c[k]) > m::Abs(c[axis])) {
+				axis = k;
+			}
+		}
+		const int face = FaceOnAxis(axis, c[axis] > 0.0);
+
+		// The closest spot inside the tray that's clear of the other dice, searching outward from where it is.
+		const double h = _spec.dieSize * 0.5, clear = _spec.dieSize * 1.6;
+		const double mx = _spec.trayHalfX - h - 0.1, my = _spec.trayHalfY - h - 0.1;
+		auto inside = [&](double x, double y) { return Vec3{ m::Clamp(x, -mx, mx), m::Clamp(y, -my, my), h }; };
+		auto isClear = [&](const Vec3& p) {
+			for (int j = 0; j < kDice; ++j) {
+				const Die& o = _dice[j];
+				if (j == a_index || o.state != DieState::kActive || InCup(j)) {
+					continue;
+				}
+				const double dx = o.pos.x - p.x, dy = o.pos.y - p.y;
+				if (dx * dx + dy * dy < clear * clear) {
+					return false;
+				}
+			}
+			return true;
+		};
+		Vec3 spot = inside(d.pos.x, d.pos.y);
+		bool found = isClear(spot);
+		for (int ring = 1; ring <= 30 && !found; ++ring) {
+			const double r = ring * _spec.dieSize * 0.5;
+			for (int k = 0; k < 16 && !found; ++k) {
+				// Lean the search towards the middle of the tray, away from the walls.
+				const double a = k * (m::kPi / 8.0);
+				const Vec3   p = inside(d.pos.x + r * m::Cos(a) - d.pos.x * 0.1, d.pos.y + r * m::Sin(a) - d.pos.y * 0.1);
+				if (isClear(p)) {
+					spot = p;
+					found = true;
+				}
+			}
+		}
+
+		const Quat yaw = Quat::FromAxisAngle({ 0, 0, 1 }, _rng.Range(-m::kPi, m::kPi));
+		d.pos = spot;
+		d.rot = yaw * FaceUp(face);
+		d.vel = {};
+		d.spin = {};
+		d.restTime = 0.0;
+		d.nudges = 0;
+		d.loose = 0.0;
+		d.settled = true;
 	}
 
 	void DiceSim::Emit(DiceEvent::Type a_type, int a_die, double a_speed)

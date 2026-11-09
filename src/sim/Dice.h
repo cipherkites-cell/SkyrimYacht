@@ -56,6 +56,8 @@ namespace yacht
 		double settleSpin{ 2.0 };
 		double settleTime{ 0.3 };        // ... for this long has settled
 		double cockedDot{ 0.94 };        // a settled die whose top face is tilted more than ~20 degrees gets a nudge
+		int    maxNudges{ 4 };           // after this many nudges a die that still won't lie flat is set down flat
+		double giveUpTime{ 6.0 };        // a die still not settled this long after leaving the cup is set down flat
 	};
 
 	enum class DieState : unsigned char
@@ -75,6 +77,7 @@ namespace yacht
 		bool     settled{ false };
 		bool     frozen{ false };  // a kept die: nothing moves it (other dice bounce off it)
 		int      nudges{ 0 };
+		double   loose{ 0.0 };        // time out of the cup without settling
 	};
 
 	struct DiceEvent
@@ -184,6 +187,9 @@ namespace yacht
 		void CollideCup(int a_index, const Vec3& a_cupVel, const Vec3& a_cupSpin);
 		void CollidePair(int a_a, int a_b);
 		void Unjam(int a_a, int a_b);
+		// Sets a die that can't settle (cocked on another die or a wall, or jittering) flat on its nearest face at
+		// the closest clear spot on the felt, so a throw always ends.
+		void SetDown(int a_index);
 		void Prepare(double a_dt);
 		void Solve();
 		void Correct();

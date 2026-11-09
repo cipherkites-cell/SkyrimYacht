@@ -364,6 +364,34 @@ namespace
 		Check(!Overlapping(sim), "dice placed inside each other separate");
 	}
 
+	void TestNeverStuck()
+	{
+		// A die resting on top of another (a free one, or a kept one that can't move) must still end up flat on the
+		// felt, so a throw always finishes.
+		for (int frozen = 0; frozen < 2; ++frozen) {
+			for (unsigned int seed = 1; seed <= 20; ++seed) {
+				DiceSim sim({}, seed);
+				sim.PlaceCup(SideTable(sim), {});
+				const double x = -8.0 + seed * 0.7;
+				sim.PlaceDie(0, { x, 0.0, 0.6 }, 2);
+				if (frozen) {
+					sim.SetFrozen(0, true);
+				}
+				sim.PlaceDie(1, { x + 0.05 * (seed % 3), 0.02 * (seed % 5), 1.85 }, 1 + seed % 6);
+				double t = 0.0;
+				while (t < 9.0 && !sim.AllSettled()) {
+					sim.Step(kFrame, sim.CupPos(), sim.CupRot());
+					t += kFrame;
+				}
+				char msg[96];
+				std::snprintf(msg, sizeof(msg), "die stacked on a %s die settles (seed %u, %.1f s)", frozen ? "kept" : "free", seed, t);
+				Check(sim.AllSettled(), msg);
+				Check(sim.TopFace(1) != 0 && sim.DieAt(1).pos.z < 0.75, "the stacked die ends flat on the felt");
+				Check(!Overlapping(sim), "dice set down don't overlap");
+			}
+		}
+	}
+
 	// Shakes then flicks the cup from a_from towards a_dir; returns how many dice fell off the table.
 	int FlickFrom(unsigned int a_seed, const Vec3& a_from, const Vec3& a_dir, double a_speed)
 	{
@@ -481,6 +509,7 @@ int main()
 	TestBarriers();
 	TestDropManyAtOnce();
 	TestUnjam();
+	TestNeverStuck();
 	TestAddToCup();
 	TestFaces();
 	TestDrop();

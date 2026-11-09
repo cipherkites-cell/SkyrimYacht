@@ -12,6 +12,11 @@ import base64
 wasm = base64.b64encode(open("build/yacht.wasm", "rb").read()).decode()
 import os
 page = open("preview/template.html").read().replace("__WASM_BASE64__", wasm)
+# Real dice hits (tools/make_dice_hits.py, from CC0 recordings).
+import json
+hits = {"ogg": base64.b64encode(open("assets/sounds/dice_hits.ogg", "rb").read()).decode(),
+        "index": json.load(open("assets/sounds/dice_hits.json"))}
+page = page.replace("/*__DICE_HITS__*/null", json.dumps(hits))
 if os.environ.get("LOCAL") == "1":
     # The game's own cups (tools/make_local_cups.py). Bethesda's assets: this page stays on your own machine.
     cups = open("local-assets/cups.js").read()

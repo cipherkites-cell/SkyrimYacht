@@ -24,10 +24,13 @@ every frame, so dice can't be flung off the table or wedge in level geometry.
   Iron (10), Steel (20), Corundum (30), Dwemer (40), Orichalcum (50), Silver (60), Quicksilver (70), Moonstone (80),
   Gold (90), Malachite (100), Ebony (110), Stalhrim (120), Dragonbone (130), Daedric (140). See `docs/dice-sets.png`.
   Your cup tier follows your last finished game's score.
-- **Sound:** every contact the sim reports is synthesised from the die's material (bone, iron and steel, precious
-  metal, stone, stalhrim) and what it struck (another die, the linen, the tray, a wooden or metal cup), as hard as
-  the hit and panned to where it happened, with no room echo. Rolling and the rattle inside the cup are
-  continuous layers that follow the dice.
+- **Sound:** the dice are real recordings: single hits cut by `tools/make_dice_hits.py` from Kenney's CC0 dice
+  recordings (`assets/sounds/kenney`, kenney.nl): sharp clicks of dice in a cup for dice on dice and in the cup,
+  knocks of dice landing on a table for the linen and the tray. Every contact the sim reports plays one at random,
+  pitched for the dice's material, as loud as the impact and darker on the linen.
+- **Never stuck:** a die resting on another die, or cocked against a wall, is knocked over a few times and then set
+  down flat on its nearest face at the closest clear spot; any die still loose six seconds after leaving the cup is
+  set down the same way, so a throw always ends (`TestNeverStuck`).
 - **Fus Ro Dah:** an easter egg modelled on Unrelenting Force: the three words appear as they're spoken, then the
   blast bends the air in a cone across the board, kicks the view and throws the dice back into the cup.
 
