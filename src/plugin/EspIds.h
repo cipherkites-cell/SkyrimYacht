@@ -13,9 +13,19 @@ namespace EspIds
 	inline constexpr RE::FormID kInfoPlay = 0x806;
 	inline constexpr RE::FormID kInfoPoor = 0x807;
 	inline constexpr RE::FormID kDiceShop = 0x808;
-	inline constexpr RE::FormID kBranchDice = 0x809;
-	inline constexpr RE::FormID kTopicDice = 0x80A;
-	inline constexpr RE::FormID kInfoDiceSale = 0x80B;
-	inline constexpr RE::FormID kInfoDiceNone = 0x80C;
+	inline constexpr RE::FormID kDiceIron = 0x80D;
+	inline constexpr RE::FormID kDiceSteel = 0x80E;
+	inline constexpr RE::FormID kDiceCorundum = 0x80F;
+	inline constexpr RE::FormID kDiceDwemer = 0x810;
+	inline constexpr RE::FormID kDiceOrichalcum = 0x811;
+	inline constexpr RE::FormID kDiceSilver = 0x812;
+	inline constexpr RE::FormID kDiceQuicksilver = 0x813;
+	inline constexpr RE::FormID kDiceMoonstone = 0x814;
+	inline constexpr RE::FormID kDiceGold = 0x815;
+	inline constexpr RE::FormID kDiceMalachite = 0x816;
+	inline constexpr RE::FormID kDiceEbony = 0x817;
+	inline constexpr RE::FormID kDiceStalhrim = 0x818;
+	inline constexpr RE::FormID kDiceDragonbone = 0x819;
+	inline constexpr RE::FormID kDiceDaedric = 0x81A;
 	inline constexpr int kMinBet = 25;
 }

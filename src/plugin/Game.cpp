@@ -233,6 +233,8 @@ namespace Game
 		RE::TESGlobal*   g_canAfford = nullptr;
 		RE::FormID       g_infoPlay = 0;
 		RE::FormID       g_infoDiceSale = 0;
+		RE::TESObjectMISC* g_diceItem[15]{};  // the sets as items in the innkeepers' shops (1..14; bone is everyone's)
+		RE::TESFaction*    g_innkeeper = nullptr;
 		std::string      g_shopName;
 		RE::TESGlobal*   g_diceShop = nullptr;
 		std::atomic<RE::FormID> g_pendingShop{ 0 };
@@ -2737,6 +2739,78 @@ namespace Game
 		}
 	}
 
+	namespace
+	{
+		// An innkeeper's shop: the sets you can buy now go in their merchant chest, the rest come out (so the Buy or
+		// Sell menu shows exactly what's on sale). Called as a conversation with them starts.
+		void StockDice(RE::Actor* a_keeper)
+		{
+			if (!a_keeper || !g_innkeeper || !a_keeper->IsInFaction(g_innkeeper)) {
+				return;
+			}
+			auto* vendor = a_keeper->GetVendorFaction();
+			auto* chest = vendor ? vendor->vendorData.merchantContainer : nullptr;
+			if (!chest) {
+				spdlog::info("Dice: {} keeps no shop chest", a_keeper->GetDisplayFullName());
+				return;
+			}
+			auto counts = chest->GetInventoryCounts([](RE::TESBoundObject& a_obj) {
+				for (int k = 1; k < 15; ++k) {
+					if (g_diceItem[k] == &a_obj) {
+						return true;
+					}
+				}
+				return false;
+			});
+			std::lock_guard lk(g_mtx);
+			int stocked = 0;
+			for (int k = 1; k < 15; ++k) {
+				auto* item = g_diceItem[k];
+				if (!item) {
+					continue;
+				}
+				const auto it = counts.find(item);
+				const int  have = it == counts.end() ? 0 : it->second;
+				const int  want = DiceOnSale(k) ? 1 : 0;
+				if (have < want) {
+					chest->AddObjectToContainer(item, nullptr, want - have, nullptr);
+				} else if (have > want) {
+					chest->RemoveItem(item, have - want, RE::ITEM_REMOVE_REASON::kRemove, nullptr, nullptr);
+				}
+				stocked += want;
+			}
+			spdlog::info("Dice: {}'s shop holds {} sets for sale", a_keeper->GetDisplayFullName(), stocked);
+		}
+
+		// After a trade: any set in your pack is yours for good (and in use at the next table)
+		void ClaimBoughtDice()
+		{
+			auto* pc = RE::PlayerCharacter::GetSingleton();
+			if (!pc) {
+				return;
+			}
+			auto counts = pc->GetInventoryCounts([](RE::TESBoundObject& a_obj) {
+				for (int k = 1; k < 15; ++k) {
+					if (g_diceItem[k] == &a_obj) {
+						return true;
+					}
+				}
+				return false;
+			});
+			std::lock_guard lk(g_mtx);
+			for (int k = 1; k < 15; ++k) {
+				const auto it = counts.find(g_diceItem[k]);
+				if (!g_diceItem[k] || it == counts.end() || it->second <= 0 || DiceOwned(k)) {
+					continue;
+				}
+				g_ownedDice |= 1u << k;
+				g_diceSel = kDiceSets[k];
+				RE::DebugNotification(fmt::format("{} dice: yours. You'll play with them at the next table.", kDiceInfo[k].name).c_str());
+				spdlog::info("Bought {} dice", kDiceInfo[k].name);
+			}
+		}
+	}
+
 	// ==================================================================== public
 	void OnDataLoaded()
 	{
@@ -2744,7 +2818,15 @@ namespace Game
 		g_faction = dh->LookupForm<RE::TESFaction>(EspIds::kTableFaction, EspIds::kPlugin);
 		g_canAfford = dh->LookupForm<RE::TESGlobal>(EspIds::kCanAfford, EspIds::kPlugin);
 		g_infoPlay = dh->LookupFormID(EspIds::kInfoPlay, EspIds::kPlugin);
-		g_infoDiceSale = dh->LookupFormID(EspIds::kInfoDiceSale, EspIds::kPlugin);
+		g_innkeeper = RE::TESForm::LookupByID<RE::TESFaction>(0x0005091B);  // JobInnkeeperFaction
+		{
+			int found = 0;
+			for (int k = 1; k < 15; ++k) {
+				g_diceItem[k] = dh->LookupForm<RE::TESObjectMISC>(EspIds::kDiceIron + (k - 1), EspIds::kPlugin);
+				found += g_diceItem[k] ? 1 : 0;
+			}
+			spdlog::info("Dice for sale: {} of 14 items, innkeeper faction {}", found, g_innkeeper != nullptr);
+		}
 		g_diceShop = dh->LookupForm<RE::TESGlobal>(EspIds::kDiceShop, EspIds::kPlugin);
 		g_gold = RE::TESForm::LookupByID<RE::TESObjectMISC>(0x0000000F);
 		spdlog::info("Forms: faction {}, global {}, info {:X}, gold {}", g_faction != nullptr, g_canAfford != nullptr, g_infoPlay, g_gold != nullptr);
@@ -2897,6 +2979,7 @@ namespace Game
 				auto* mtm = RE::MenuTopicManager::GetSingleton();
 				auto  ref = mtm ? mtm->speaker.get() : nullptr;
 				auto* a = ref ? ref->As<RE::Actor>() : nullptr;
+				StockDice(a);
 				auto* quest = RE::TESDataHandler::GetSingleton()->LookupForm<RE::TESQuest>(EspIds::kQuest, EspIds::kPlugin);
 				if (a) {
 					auto* st = a->AsActorState();
@@ -2917,6 +3000,15 @@ namespace Game
 				LogDialogue(ref ? ref->As<RE::Actor>() : nullptr);
 			}
 			s_talking = talking;
+		}
+		// a trade just closed: claim any dice bought
+		{
+			static bool s_barter = false;
+			const bool  barter = ui->IsMenuOpen(RE::BarterMenu::MENU_NAME);
+			if (s_barter && !barter) {
+				ClaimBoughtDice();
+			}
+			s_barter = barter;
 		}
 		if (ui->GameIsPaused() || Scene::IsOpen()) {
 			return;
