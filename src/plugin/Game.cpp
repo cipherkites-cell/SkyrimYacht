@@ -1537,6 +1537,17 @@ namespace Game
 
 	void OnGameLoaded()
 	{
+		// The dialogue's quest starts with the game; in a save made before the mod was added it may not be running yet.
+		auto* quest = RE::TESDataHandler::GetSingleton()->LookupForm<RE::TESQuest>(EspIds::kQuest, EspIds::kPlugin);
+		if (!quest) {
+			spdlog::error("YA_Quest is missing - no dialogue. Is {} enabled?", EspIds::kPlugin);
+		} else {
+			const bool running = quest->IsRunning();
+			spdlog::info("Dialogue quest: {}", running ? "running" : "NOT running - starting it");
+			if (!running) {
+				Call(quest, "Start");
+			}
+		}
 		g_tagged.clear();
 		if (Scene::IsOpen()) {
 			Scene::Close();
@@ -1556,6 +1567,25 @@ namespace Game
 			g_pendingSpeaker = 0;
 			std::lock_guard lk(g_mtx);
 			StartWith(RE::TESForm::LookupByID<RE::Actor>(id));
+		}
+		// what the dialogue sees, each time a conversation starts (to tell why the topic shows or doesn't)
+		{
+			static bool s_talking = false;
+			const bool  talking = ui->IsMenuOpen(RE::DialogueMenu::MENU_NAME);
+			if (talking && !s_talking) {
+				auto* mtm = RE::MenuTopicManager::GetSingleton();
+				auto  ref = mtm ? mtm->speaker.get() : nullptr;
+				auto* a = ref ? ref->As<RE::Actor>() : nullptr;
+				auto* quest = RE::TESDataHandler::GetSingleton()->LookupForm<RE::TESQuest>(EspIds::kQuest, EspIds::kPlugin);
+				if (a) {
+					auto* st = a->AsActorState();
+					spdlog::info("Talking to {} ({:08X}): in table faction {}, sitting {}, tagged {}, can afford {}, quest running {}",
+						a->GetDisplayFullName(), a->GetFormID(), g_faction && a->IsInFaction(g_faction),
+						st ? static_cast<int>(st->GetSitSleepState()) : -1, g_tagged.contains(a->GetFormID()), g_canAfford ? g_canAfford->value : -1.0f,
+						quest && quest->IsRunning());
+				}
+			}
+			s_talking = talking;
 		}
 		if (ui->GameIsPaused() || Scene::IsOpen()) {
 			return;
