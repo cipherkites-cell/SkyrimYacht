@@ -294,8 +294,8 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   }
 
   // Weathered Nord planks: grey-brown, long grain, dark seams, a few cracks and knots, lighter wear.
-  function woodTex(seed, planks) {
-    const N = makeNoise(seed), W = 512, H = 512, ph = H / planks;
+  function woodTex(seed, planks, W, H) {
+    const N = makeNoise(seed), ph = H / planks;
     const dark = [44, 34, 26], mid = [86, 70, 54], light = [128, 108, 84];
     const knots = Array.from({ length: 3 }, () => [N.rnd() * W, N.rnd() * H, 6 + N.rnd() * 10]);
     const cracks = Array.from({ length: 5 }, () => [N.rnd() * W, Math.floor(N.rnd() * planks) * ph + 6 + N.rnd() * (ph - 12), 40 + N.rnd() * 120]);
@@ -365,7 +365,9 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     }, [1, 1]);
   }
 
-  const wood = woodTex(11, 2), woodLong = woodTex(23, 3), rackWood = woodTex(37, 2), hide = hideTex(5), iron = ironTex(9);
+  // One plank per texture, stretched once over a whole board: every board reads as a single solid piece.
+  const wood = woodTex(11, 1, 1024, 512), woodLong = woodTex(23, 1, 2048, 192), rackWood = woodTex(37, 1, 1024, 256);
+  const hide = hideTex(5), iron = ironTex(9);
   const woodMat = new THREE.MeshStandardMaterial({ map: wood.map, bumpMap: wood.bump, bumpScale: 0.035, roughness: 0.82 });
   const woodLongMat = new THREE.MeshStandardMaterial({ map: woodLong.map, bumpMap: woodLong.bump, bumpScale: 0.035, roughness: 0.82 });
   const rackMat = new THREE.MeshStandardMaterial({ map: rackWood.map, bumpMap: rackWood.bump, bumpScale: 0.03, roughness: 0.8 });
@@ -380,14 +382,17 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
   world.add(felt);
   function box(w, d, h, x, y, z, mat) {
     const g = new THREE.BoxGeometry(w, d, h);
-    // Stretch the texture with the board instead of squashing it: UVs in world units along the board's length.
+    // The texture runs once along the board's length (grain along it) and once across each face, so the board is
+    // one continuous piece with no repeat or join.
     const uv = g.attributes.uv, pos = g.attributes.position, nrm = g.attributes.normal;
+    const longX = w >= d, L = longX ? w : d, C = longX ? d : w;
     for (let i = 0; i < uv.count; i++) {
-      const nx = Math.abs(nrm.getX(i)), ny = Math.abs(nrm.getY(i));
-      const px = pos.getX(i) + x, py = pos.getY(i) + y, pz = pos.getZ(i) + z;
-      const along = w >= d ? px : py;
-      const across = nx > 0.5 ? (w >= d ? pz : py) : ny > 0.5 ? pz : (w >= d ? py : px);
-      uv.setXY(i, along / 14, across / 6 + 0.5);
+      const lx = pos.getX(i), ly = pos.getY(i), lz = pos.getZ(i);
+      const nAlong = Math.abs(longX ? nrm.getX(i) : nrm.getY(i)), nUp = Math.abs(nrm.getZ(i));
+      const along = (longX ? lx : ly) / L + 0.5, cross = (longX ? ly : lx) / C + 0.5, up = lz / h + 0.5;
+      if (nAlong > 0.5) uv.setXY(i, cross, up);          // end grain
+      else if (nUp > 0.5) uv.setXY(i, along, cross);     // top and bottom
+      else uv.setXY(i, along, up);                       // long sides
     }
     const m = new THREE.Mesh(g, mat);
     m.position.set(x, y, z);
