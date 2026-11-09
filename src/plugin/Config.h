@@ -9,7 +9,7 @@ namespace Config
 	{
 		// The table: drawn in the world in front of the camera (0), or in the game's 3D item view (1)
 		int   mode = 0;
-		float distance = 140.0f;    // world mode: how far in front of the camera (game units)
+		float distance = 110.0f;    // world mode: how far in front of the camera (game units)
 		float brightness = 1.0f;    // world mode: lifts the table out of a dark room (1 = as the room lights it)
 		float tiltDeg = 55.0f;      // how far you look down on the tray
 		float fitWidth = 0.72f;     // the whole table (both cups) across this much of the screen width
