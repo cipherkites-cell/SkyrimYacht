@@ -211,6 +211,31 @@ namespace Overlay
 		}
 	}
 
+	void* CreateTexture(int a_w, int a_h, const void* a_rgba)
+	{
+		if (!g_dev || a_w <= 0 || a_h <= 0 || !a_rgba) {
+			return nullptr;
+		}
+		D3D11_TEXTURE2D_DESC td{};
+		td.Width = static_cast<UINT>(a_w);
+		td.Height = static_cast<UINT>(a_h);
+		td.MipLevels = 1;
+		td.ArraySize = 1;
+		td.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		td.SampleDesc.Count = 1;
+		td.Usage = D3D11_USAGE_DEFAULT;
+		td.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+		D3D11_SUBRESOURCE_DATA sd{ a_rgba, static_cast<UINT>(a_w * 4), 0 };
+		ID3D11Texture2D* tex = nullptr;
+		if (FAILED(g_dev->CreateTexture2D(&td, &sd, &tex)) || !tex) {
+			return nullptr;
+		}
+		ID3D11ShaderResourceView* srv = nullptr;
+		g_dev->CreateShaderResourceView(tex, nullptr, &srv);
+		tex->Release();
+		return srv;
+	}
+
 	void SetOpen(bool a_open)
 	{
 		if (g_open == a_open) {

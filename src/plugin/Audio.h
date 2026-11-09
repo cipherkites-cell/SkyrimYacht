@@ -21,5 +21,7 @@ namespace Audio
 	int   Busy();                               // voices playing now
 	void  SetRoll(float a_volume);              // the looped scuff of dice on the linen
 	void  StopAll();
+	void  SetMuted(bool a_muted);  // M on the table
+	bool  Muted();
 	double Now();                               // seconds, for spacing sounds out
 }

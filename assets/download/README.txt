@@ -1,4 +1,4 @@
-SkyrimYacht 0.2.1
+SkyrimYacht 0.3.0
 =================
 
 A game of Yacht (Yahtzee) you play against Skyrim's NPCs, with a cup you shake and dice that tumble.
@@ -19,4 +19,4 @@ Settings: Data\SKSE\Plugins\SkyrimYacht.ini (volume, table size and position, be
 Log: Documents\My Games\Skyrim Special Edition\SKSE\SkyrimYacht.log
 
 Source and license (GPL-3.0): https://github.com/evodube/SkyrimYacht
-Dice sounds: Kenney (kenney.nl), CC0.
+Dice sounds: Kenney (kenney.nl), CC0. Fonts (OFL): Barlow Condensed, IM Fell English, Fondamento.

@@ -499,6 +499,11 @@ namespace Scene
 			static void OnShow()
 			{
 				g_shown = true;
+				// the game's HUD (compass, crosshair, the speaker's name) steps aside while you play
+				if (auto* ui = RE::UI::GetSingleton(); ui && ui->IsShowingMenus()) {
+					ui->ShowMenus(false);
+					g_hidHud = true;
+				}
 				// the line that started the game would otherwise hang on screen while the game is paused
 				if (auto* subs = RE::SubtitleManager::GetSingleton()) {
 					subs->KillSubtitles();
@@ -538,6 +543,12 @@ namespace Scene
 					return;
 				}
 				g_shown = false;
+				if (g_hidHud) {
+					g_hidHud = false;
+					if (auto* ui = RE::UI::GetSingleton()) {
+						ui->ShowMenus(true);
+					}
+				}
 				if (g_blurred) {
 					g_blurred = false;
 					if (auto* blur = RE::UIBlurManager::GetSingleton()) {
@@ -575,6 +586,7 @@ namespace Scene
 
 			static inline bool g_failed = false;
 			static inline bool g_blurred = false;
+			static inline bool g_hidHud = false;
 		};
 	}
 
@@ -754,8 +766,22 @@ namespace Scene
 			model->local.scale = g_scale / ps;
 			model->local.translate = Mul(pInv, wPos - parent.translate) / ps;
 		}
+		if (g_world) {
+			// a mesh new to the world fades in with game time, which is stopped while the game is paused: show it now
+			RE::BSVisit::TraverseScenegraphObjects(model, [](RE::NiAVObject* a_obj) {
+				if (auto* fade = a_obj ? a_obj->AsFadeNode() : nullptr) {
+					fade->GetRuntimeData().currentFade = 1.0f;
+				}
+				return RE::BSVisit::BSVisitControl::kContinue;
+			});
+		}
 		RE::NiUpdateData ud;
 		model->Update(ud);
+		if (!g_placed && g_world) {
+			const auto& wb = model->worldBound;
+			spdlog::info("Table: world bound centre ({:.0f}, {:.0f}, {:.0f}) radius {:.1f}, in view {}", wb.center.x, wb.center.y, wb.center.z, wb.radius,
+				RE::Main::WorldRootCamera() ? RE::NiCamera::NodeInFrustum(model, RE::Main::WorldRootCamera()) : false);
+		}
 		if (!g_placed) {
 			spdlog::info("Table: placed at ({:.1f}, {:.1f}, {:.1f}), scale {:.3f}, tilt {:.0f} degrees", g_pos.x, g_pos.y, g_pos.z, g_scale, cfg.tiltDeg);
 		}

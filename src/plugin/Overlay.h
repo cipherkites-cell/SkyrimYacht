@@ -26,6 +26,9 @@ namespace Overlay
 	std::vector<int>   TakeKeys();  // DirectInput scan codes pressed
 	bool               ButtonHeld(int a_button);
 
+	// An RGBA texture for ImGui (on the render thread, from DrawUi); null if it couldn't be made
+	void* CreateTexture(int a_w, int a_h, const void* a_rgba);
+
 	bool InstallInputSink();
 	void OnPresent(IDXGISwapChain* a_swapChain);
 	int  SehFilter(EXCEPTION_POINTERS* a_info, const char* a_where);

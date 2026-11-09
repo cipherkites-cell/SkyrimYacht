@@ -25,6 +25,7 @@ namespace Audio
 		IXAudio2SourceVoice*     g_roll = nullptr;
 		float                    g_rollVol = 0.0f;
 		bool                     g_tried = false, g_ok = false;
+		std::atomic<bool>        g_muted = false;
 		std::mutex               g_mtx;
 		std::unordered_map<std::string, std::vector<std::int16_t>> g_bank;
 
@@ -193,7 +194,7 @@ namespace Audio
 		if (!Init()) {
 			return;
 		}
-		const float vol = a_voice.volume * kMaster * Config::Get().volume;
+		const float vol = g_muted ? 0.0f : a_voice.volume * kMaster * Config::Get().volume;
 		if (vol <= 0.0001f) {
 			return;
 		}
@@ -242,7 +243,7 @@ namespace Audio
 		}
 		// eased toward the target, as the preview's setTargetAtTime
 		g_rollVol += (a_volume - g_rollVol) * 0.25f;
-		g_roll->SetVolume(g_rollVol * kMaster * Config::Get().volume);
+		g_roll->SetVolume(g_muted ? 0.0f : g_rollVol * kMaster * Config::Get().volume);
 	}
 
 	void StopAll()
@@ -262,4 +263,7 @@ namespace Audio
 			g_roll->SetVolume(0.0f);
 		}
 	}
+
+	void SetMuted(bool a_muted) { g_muted = a_muted; }
+	bool Muted() { return g_muted; }
 }

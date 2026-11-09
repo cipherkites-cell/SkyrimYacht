@@ -185,6 +185,13 @@ namespace Game
 		std::string     g_toast;
 		double          g_toastTime = 0;
 		double          g_clock = 0;
+		double          g_shoutAt = -1;      // the Shout started (the dice go on "Dah")
+		double          g_shoutReady = 0;    // the Thu'um has recharged
+		constexpr double kShoutCooldown = 4.0;
+		constexpr double kWordAt[3] = { 0.0, 0.56, 0.98 };  // FUS, RO, DAH
+		bool            g_help = false;
+		double          g_fillAt[2][yacht::kCategories]{};  // when each box was written in (the ink runs in)
+		double          g_turnAt = 0;        // when the turn changed (the compass label settles)
 
 		// remembered in the save
 		std::unordered_map<RE::FormID, Record> g_records;
@@ -487,6 +494,7 @@ namespace Game
 		void StartTurn(int a_owner)
 		{
 			g_turn = a_owner;
+			g_turnAt = g_clock;
 			Scene::UseDice(a_owner == 0 ? PlayerDice() : "bone");
 			g_soundSet = a_owner == 0 ? PlayerDice() : "bone";
 			auto& c = g_cups[a_owner];
@@ -801,6 +809,7 @@ namespace Game
 					Dice(dice);
 					const int cat = g_ai.ChooseCategory(dice, g_cards[1]);
 					const int pts = g_cards[1].Fill(cat, dice);
+					g_fillAt[1][cat] = g_clock;
 					Toast(fmt::format("{} scores {}: {}", g_oppName, yacht::CategoryName(cat), pts));
 					Ui("quill");
 					g_npc.step = NpcStep::Done;
@@ -828,6 +837,7 @@ namespace Game
 			int dice[5];
 			Dice(dice);
 			const int pts = g_cards[0].Fill(a_cat, dice);
+			g_fillAt[0][a_cat] = g_clock;
 			if (pts < 0) {
 				return;
 			}
@@ -837,34 +847,60 @@ namespace Game
 			g_scoredTime = 0;
 		}
 
+		bool ShoutTargets()
+		{
+			for (int i = 0; i < 5; ++i) {
+				if (Active(i) && !InCup(i)) {
+					return true;
+				}
+			}
+			return false;
+		}
+		bool CanShout() { return g_turn == 0 && g_phase == Phase::Choose && g_carry.die < 0 && g_rollsUsed < 3 && g_shoutAt < 0 && g_clock >= g_shoutReady; }
+
 		void Shout()
 		{
-			if (g_turn != 0 || g_phase != Phase::Choose || g_carry.die >= 0) {
+			if (g_turn != 0 || g_phase != Phase::Choose || g_carry.die >= 0 || g_shoutAt >= 0) {
+				return;
+			}
+			if (g_clock < g_shoutReady) {
+				Ui("ui_deny");
 				return;
 			}
 			if (g_rollsUsed >= 3) {
 				Toast("No rolls left");
 				return;
 			}
-			bool any = false;
-			int  n = 0;
+			if (!ShoutTargets()) {
+				Toast("The board is already clear");
+				return;
+			}
+			g_shoutAt = g_clock;
+			g_shoutReady = g_clock + kShoutCooldown + kWordAt[2];
+			Ui("shout");
+		}
+
+		// On "Dah", the blast: the dice are thrown back into the cup, the nearest first so it reads as a wave.
+		void ShoutBlast()
+		{
+			int order[5], n = 0;
 			for (int i = 0; i < 5; ++i) {
 				if (Active(i) && !InCup(i)) {
-					// it drops into the cup with a knock, and a smaller one as it settles against the others
-					const double delay = 0.04 + n++ * 0.06;
-					g_later.push_back({ Audio::Now() + delay + 0.78, 3, i, 70 + Rand() * 20 });
-					g_later.push_back({ Audio::Now() + delay + 0.9 + Rand() * 0.06, 0, i, 30 + Rand() * 10 });
-					TweenFrom(i, 0.8, 6);
-					g_anim[i].spins = true;
-					g_anim[i].spin = Vec3{ Rand() - 0.5, Rand() - 0.5, Rand() - 0.5 }.Normalized();
-					g_sim.AddToCup(i);
-					any = true;
+					order[n++] = i;
 				}
 			}
-			if (any) {
-				Ui("shout");
+			std::sort(order, order + n, [](int a, int b) { return g_sim.DieAt(a).pos.y < g_sim.DieAt(b).pos.y; });
+			for (int k = 0; k < n; ++k) {
+				const int    i = order[k];
+				const double delay = 0.04 + k * 0.06;
+				// it drops into the cup with a knock, and a smaller one as it settles against the others
+				g_later.push_back({ Audio::Now() + delay + 0.78, 3, i, 70 + Rand() * 20 });
+				g_later.push_back({ Audio::Now() + delay + 0.9 + Rand() * 0.06, 0, i, 30 + Rand() * 10 });
+				TweenFrom(i, 0.8, 6);
+				g_anim[i].spins = true;
+				g_anim[i].spin = Vec3{ Rand() - 0.5, Rand() - 0.5, Rand() - 0.5 }.Normalized();
+				g_sim.AddToCup(i);
 			}
-			Toast(any ? "FUS RO DAH!" : "The board is already clear");
 		}
 
 		// ---------------------------------------------------------------- the cup's motion (loose springs, as the preview)
@@ -994,6 +1030,12 @@ namespace Game
 					}
 				} else if (key == 0x2C) {  // Z
 					Shout();
+				} else if (key == 0x23) {  // H
+					g_help = !g_help;
+					Ui("ui_select");
+				} else if (key == 0x32) {  // M
+					Audio::SetMuted(!Audio::Muted());
+					Ui("ui_select");
 				}
 			}
 			for (const auto& p : Overlay::TakePresses()) {
@@ -1193,6 +1235,12 @@ namespace Game
 		{
 			g_clock += dt;
 			ProcessUiActs();
+			if (g_shoutAt >= 0 && g_clock - g_shoutAt >= kWordAt[2]) {
+				g_shoutAt = -1;
+				if (g_phase == Phase::Choose && g_turn == 0) {
+					ShoutBlast();
+				}
+			}
 			if (g_phase == Phase::Idle || g_phase == Phase::Wager) {
 				// the table sits ready behind the wager: cups at rest, dice in the cup
 				for (int k = 0; k < 2; ++k) {
@@ -1503,207 +1551,694 @@ namespace Game
 		}
 
 		// ---------------------------------------------------------------- the interface
-		ImFont* g_fBody = nullptr;
-		ImFont* g_fBig = nullptr;
-		ImFont* g_fTitle = nullptr;
-		float   g_ui = 1.0f;
-
-		const ImVec4 kText{ 0.94f, 0.93f, 0.91f, 1.0f };
-		const ImVec4 kDim{ 0.64f, 0.62f, 0.58f, 1.0f };
-		const ImVec4 kInk{ 0.11f, 0.07f, 0.04f, 1.0f };
-		const ImVec4 kInkSoft{ 0.30f, 0.21f, 0.13f, 1.0f };
-		const ImVec4 kRubric{ 0.55f, 0.14f, 0.07f, 1.0f };
-
-		ImGuiID g_hoverId = 0;
-		bool Button(const char* a_label, float a_w = 0.0f)
+		// Skyrim's own interface language, as the preview: off-white condensed capitals on smoke-black gradients, thin rules
+		// that fade at the ends, a compass across the top, key prompts in the corner. The scorecards are notes on parchment,
+		// written in ink. Laid out at 1080p sizes and scaled with the screen (g_ui).
+		struct Fonts
 		{
-			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
-			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1, 1, 1, 0.08f));
-			ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1, 1, 1, 0.16f));
-			const bool r = ImGui::Button(a_label, ImVec2(a_w, 0));
-			if (ImGui::IsItemHovered()) {
-				if (g_hoverId != ImGui::GetItemID()) {
-					g_hoverId = ImGui::GetItemID();
+			ImFont *sans = nullptr, *sansSemi = nullptr, *turn = nullptr, *toast = nullptr, *toastLong = nullptr, *words = nullptr,
+				   *title = nullptr, *titleMid = nullptr, *menu = nullptr, *score = nullptr, *skill = nullptr, *small = nullptr;
+			ImFont *book = nullptr, *bookIt = nullptr, *bookSC = nullptr, *bookSCsm = nullptr, *hand = nullptr, *handBig = nullptr;
+		} F;
+		float g_ui = 1.0f;
+		void* g_parchment[2]{};
+		bool  g_artTried = false;
+
+		constexpr ImU32 kWhite = IM_COL32(241, 238, 232, 255);
+		constexpr ImU32 kGrey = IM_COL32(162, 157, 148, 255);
+		constexpr ImU32 kDimC = IM_COL32(102, 98, 91, 255);
+		constexpr ImU32 kFrost = IM_COL32(207, 226, 255, 255);
+		constexpr ImU32 kInkC = IM_COL32(42, 28, 17, 255);
+		constexpr ImU32 kInkSoftC = IM_COL32(94, 70, 49, 255);
+		constexpr ImU32 kRubricC = IM_COL32(142, 47, 27, 255);
+		const ImVec4    kRubric{ 0.557f, 0.184f, 0.106f, 1.0f };
+
+		float S(float a_px) { return a_px * g_ui; }
+		ImU32 Alpha(ImU32 a_col, float a_a)
+		{
+			const int a = static_cast<int>(((a_col >> IM_COL32_A_SHIFT) & 0xFF) * std::clamp(a_a, 0.0f, 1.0f));
+			return (a_col & ~IM_COL32_A_MASK) | (static_cast<ImU32>(a) << IM_COL32_A_SHIFT);
+		}
+		std::string Upper(std::string a_s)
+		{
+			for (auto& c : a_s) {
+				c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+			}
+			return a_s;
+		}
+		double Now() { return ImGui::GetTime(); }
+
+		// Text with letter-spacing (tracking, in em), as the CSS: drawn a character at a time.
+		float Measure(ImFont* a_f, const std::string& a_s, float a_track)
+		{
+			if (!a_f) {
+				return 0.0f;
+			}
+			const float size = a_f->FontSize;
+			float       w = 0.0f;
+			const char* p = a_s.c_str();
+			const char* end = p + a_s.size();
+			while (p < end) {
+				const unsigned char c = static_cast<unsigned char>(*p);
+				const int           len = c < 0x80 ? 1 : c < 0xE0 ? 2 : c < 0xF0 ? 3 : 4;
+				w += a_f->CalcTextSizeA(size, FLT_MAX, 0.0f, p, (std::min)(p + len, end)).x + a_track * size;
+				p += len;
+			}
+			return w;
+		}
+		float Text(ImDrawList* a_dl, ImFont* a_f, ImVec2 a_pos, ImU32 a_col, const std::string& a_s, float a_track = 0.0f, float a_shadow = 0.0f)
+		{
+			if (!a_f) {
+				return 0.0f;
+			}
+			const float size = a_f->FontSize;
+			float       x = a_pos.x;
+			const char* p = a_s.c_str();
+			const char* end = p + a_s.size();
+			while (p < end) {
+				const unsigned char c = static_cast<unsigned char>(*p);
+				const int           len = c < 0x80 ? 1 : c < 0xE0 ? 2 : c < 0xF0 ? 3 : 4;
+				const char*         q = (std::min)(p + len, end);
+				if (a_shadow > 0.0f) {
+					a_dl->AddText(a_f, size, ImVec2(x + 1, a_pos.y + S(1.5f)), Alpha(IM_COL32(0, 0, 0, 255), a_shadow), p, q);
+				}
+				a_dl->AddText(a_f, size, ImVec2(x, a_pos.y), a_col, p, q);
+				x += a_f->CalcTextSizeA(size, FLT_MAX, 0.0f, p, q).x + a_track * size;
+				p = q;
+			}
+			return x - a_pos.x;
+		}
+		// centred on x; tracking is added after each letter, so half of the last one is taken back
+		void TextC(ImDrawList* a_dl, ImFont* a_f, float a_cx, float a_y, ImU32 a_col, const std::string& a_s, float a_track = 0.0f, float a_shadow = 0.0f)
+		{
+			const float w = Measure(a_f, a_s, a_track) - (a_f ? a_track * a_f->FontSize : 0.0f);
+			Text(a_dl, a_f, ImVec2(a_cx - w * 0.5f, a_y), a_col, a_s, a_track, a_shadow);
+		}
+		// a soft glow: the text drawn a few times around itself, faintly
+		void Glow(ImDrawList* a_dl, ImFont* a_f, ImVec2 a_pos, ImU32 a_col, const std::string& a_s, float a_track, float a_r)
+		{
+			for (int k = 0; k < 8; ++k) {
+				const float a = k * 0.785f;
+				Text(a_dl, a_f, ImVec2(a_pos.x + std::cos(a) * a_r, a_pos.y + std::sin(a) * a_r), a_col, a_s, a_track);
+			}
+		}
+
+		// a thin rule that fades at both ends
+		void FadeRule(ImDrawList* a_dl, float a_x0, float a_x1, float a_y, float a_alpha = 0.62f)
+		{
+			const ImU32 c = Alpha(kWhite, a_alpha), t = Alpha(kWhite, 0.0f);
+			const float a = a_x0 + (a_x1 - a_x0) * 0.18f, b = a_x0 + (a_x1 - a_x0) * 0.82f;
+			a_dl->AddRectFilledMultiColor(ImVec2(a_x0, a_y), ImVec2(a, a_y + 1), t, c, c, t);
+			a_dl->AddRectFilled(ImVec2(a, a_y), ImVec2(b, a_y + 1), c);
+			a_dl->AddRectFilledMultiColor(ImVec2(b, a_y), ImVec2(a_x1, a_y + 1), c, t, t, c);
+		}
+		void Diamond(ImDrawList* a_dl, ImVec2 a_c, float a_r, ImU32 a_fill, ImU32 a_line)
+		{
+			const ImVec2 p[4] = { { a_c.x, a_c.y - a_r }, { a_c.x + a_r, a_c.y }, { a_c.x, a_c.y + a_r }, { a_c.x - a_r, a_c.y } };
+			if (a_fill) {
+				a_dl->AddQuadFilled(p[0], p[1], p[2], p[3], a_fill);
+			}
+			if (a_line) {
+				a_dl->AddQuad(p[0], p[1], p[2], p[3], a_line, 1.0f);
+			}
+		}
+		// a rule with a diamond in the middle (the result screens)
+		void DiamondRule(ImDrawList* a_dl, float a_cx, float a_y, float a_w)
+		{
+			FadeRule(a_dl, a_cx - a_w * 0.5f, a_cx + a_w * 0.5f, a_y);
+			Diamond(a_dl, ImVec2(a_cx, a_y + 0.5f), S(5), IM_COL32(0, 0, 0, 255), kWhite);
+		}
+		// soft shadow under a panel
+		void Shadow(ImDrawList* a_dl, ImVec2 a_a, ImVec2 a_b, float a_r, float a_alpha)
+		{
+			for (int k = 6; k >= 1; --k) {
+				const float g = a_r * k / 6.0f;
+				a_dl->AddRectFilled(ImVec2(a_a.x - g * 0.4f, a_a.y + g * 0.3f), ImVec2(a_b.x + g * 0.4f, a_b.y + g), Alpha(IM_COL32(0, 0, 0, 255), a_alpha / 6.0f), g);
+			}
+		}
+
+		ImGuiWindowFlags kBare = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings |
+		                         ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBringToFrontOnFocus;
+		// An invisible window over a rectangle, so its buttons take the mouse (and the table doesn't)
+		bool BeginArea(const char* a_id, ImVec2 a_pos, ImVec2 a_size)
+		{
+			ImGui::SetNextWindowPos(a_pos);
+			ImGui::SetNextWindowSize(a_size);
+			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+			ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+			const bool open = ImGui::Begin(a_id, nullptr, kBare);
+			ImGui::PopStyleVar(2);
+			return open;
+		}
+		// an invisible hit area at a screen rectangle (inside BeginArea); plays the menu ticks
+		ImGuiID g_hoverId = 0;
+		bool Clicked(const char* a_id, ImVec2 a_min, ImVec2 a_max, bool* a_hovered = nullptr, bool a_enabled = true)
+		{
+			ImGui::SetCursorScreenPos(a_min);
+			const bool  r = ImGui::InvisibleButton(a_id, ImVec2((std::max)(1.0f, a_max.x - a_min.x), (std::max)(1.0f, a_max.y - a_min.y)));
+			const bool  h = ImGui::IsItemHovered();
+			const auto  id = ImGui::GetItemID();
+			if (h && a_enabled) {
+				if (g_hoverId != id) {
+					g_hoverId = id;
 					Ui("ui_hover");
 				}
-			} else if (g_hoverId == ImGui::GetItemID()) {
+			} else if (g_hoverId == id) {
 				g_hoverId = 0;
 			}
-			if (r) {
-				Ui("ui_select");
+			if (a_hovered) {
+				*a_hovered = h && a_enabled;
 			}
-			ImGui::PopStyleColor(3);
+			if (r && a_enabled) {
+				Ui("ui_select");
+			} else if (r) {
+				Ui("ui_deny");
+			}
+			return r && a_enabled;
+		}
+
+		// Skyrim's menu button: grey capitals that brighten, with a short line either side, on hover
+		bool MenuButton(const char* a_id, const std::string& a_label, float a_cx, float a_y, bool a_danger = false, bool a_enabled = true)
+		{
+			auto*       dl = ImGui::GetWindowDrawList();
+			const auto  text = Upper(a_label);
+			const float w = Measure(F.menu, text, 0.24f) + S(52);
+			const float h = F.menu->FontSize + S(12);
+			bool        hov = false;
+			const bool  r = Clicked(a_id, ImVec2(a_cx - w * 0.5f, a_y), ImVec2(a_cx + w * 0.5f, a_y + h), &hov, a_enabled);
+			const ImU32 col = !a_enabled ? kDimC : hov ? (a_danger ? IM_COL32(244, 185, 169, 255) : IM_COL32(255, 255, 255, 255)) : kGrey;
+			if (hov) {
+				Glow(dl, F.menu, ImVec2(a_cx - (w - S(52)) * 0.5f, a_y + S(6)), Alpha(a_danger ? IM_COL32(208, 106, 82, 255) : kWhite, 0.06f), text, 0.24f, S(3));
+				const ImU32 lc = a_danger ? IM_COL32(208, 106, 82, 255) : kWhite;
+				dl->AddRectFilled(ImVec2(a_cx - w * 0.5f, a_y + h * 0.5f), ImVec2(a_cx - w * 0.5f + S(12), a_y + h * 0.5f + 1), lc);
+				dl->AddRectFilled(ImVec2(a_cx + w * 0.5f - S(12), a_y + h * 0.5f), ImVec2(a_cx + w * 0.5f, a_y + h * 0.5f + 1), lc);
+			}
+			TextC(dl, F.menu, a_cx + S(2), a_y + S(6), col, text, 0.24f, 0.6f);
 			return r;
 		}
-
-		void Centered(const char* a_text, ImFont* a_font, const ImVec4& a_col)
+		// a row of menu buttons, centred; returns the one pressed or -1
+		int MenuButtons(const char* a_id, std::initializer_list<std::pair<std::string, bool>> a_items, float a_cx, float a_y)
 		{
-			ImGui::PushFont(a_font);
-			const float w = ImGui::CalcTextSize(a_text).x;
-			ImGui::SetCursorPosX((ImGui::GetWindowWidth() - w) * 0.5f);
-			ImGui::TextColored(a_col, "%s", a_text);
-			ImGui::PopFont();
-		}
-
-		void Rule()
-		{
-			auto*        dl = ImGui::GetWindowDrawList();
-			const ImVec2 p = ImGui::GetCursorScreenPos();
-			const float  w = ImGui::GetContentRegionAvail().x;
-			dl->AddRectFilledMultiColor(ImVec2(p.x, p.y), ImVec2(p.x + w * 0.5f, p.y + 1), IM_COL32(240, 238, 232, 0), IM_COL32(240, 238, 232, 160),
-				IM_COL32(240, 238, 232, 160), IM_COL32(240, 238, 232, 0));
-			dl->AddRectFilledMultiColor(ImVec2(p.x + w * 0.5f, p.y), ImVec2(p.x + w, p.y + 1), IM_COL32(240, 238, 232, 160), IM_COL32(240, 238, 232, 0),
-				IM_COL32(240, 238, 232, 0), IM_COL32(240, 238, 232, 160));
-			ImGui::Dummy(ImVec2(w, 8 * g_ui));
-		}
-
-		void Card(int a_card, bool a_left)
-		{
-			const auto&  io = ImGui::GetIO();
-			const float  w = 360 * g_ui;
-			ImGui::SetNextWindowPos(ImVec2(a_left ? 20 * g_ui : io.DisplaySize.x - w - 20 * g_ui, 20 * g_ui));
-			ImGui::SetNextWindowSize(ImVec2(w, 0));
-			ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.86f, 0.78f, 0.62f, a_card == g_turn ? 0.97f : 0.8f));
-			ImGui::PushStyleColor(ImGuiCol_Text, kInk);
-			ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.35f, 0.22f, 0.10f, 0.9f));
-			ImGui::Begin(a_card == 0 ? "##yours" : "##theirs", nullptr,
-				ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing);
-			ImGui::PushFont(g_fBig);
-			ImGui::TextUnformatted(a_card == 0 ? "Yours" : g_oppName.c_str());
-			ImGui::SameLine(w - ImGui::CalcTextSize("000").x - 16 * g_ui);
-			ImGui::Text("%d", g_cards[a_card].Total());
-			ImGui::PopFont();
-			const auto& r = g_records[g_oppId];
-			ImGui::TextColored(kInkSoft, "Record %u-%u%s", a_card == 0 ? r.w : r.l, a_card == 0 ? r.l : r.w, r.d ? fmt::format(", {} drawn", r.d).c_str() : "");
-			int        dice[5];
-			Dice(dice);
-			const bool pick = a_card == 0 && g_turn == 0 && g_phase == Phase::Choose && g_carry.die < 0;
-			auto row = [&](int cat) {
-				const auto& card = g_cards[a_card];
-				const bool  filled = card.Filled(cat);
-				const int   prev = pick && !filled ? card.Preview(cat, dice) : -1;
-				const float valX = w * 0.5f - 52 * g_ui;
-				ImGui::PushID(cat);
-				if (prev >= 0) {
-					// a box you can write this roll into: click the row
-					ImGui::PushStyleColor(ImGuiCol_Text, kInk);
-					if (ImGui::Selectable(yacht::CategoryName(cat), false, 0, ImVec2(valX + 30 * g_ui, 0))) {
-						Post(UiAct::Score, cat);
-					}
-					ImGui::PopStyleColor();
-				} else {
-					ImGui::TextColored(filled ? kInkSoft : kInk, "%s", yacht::CategoryName(cat));
-				}
-				ImGui::SameLine(valX);
-				if (filled) {
-					ImGui::Text("%d", card.boxes[cat]);
-				} else if (prev >= 0) {
-					ImGui::TextColored(kRubric, "%d", prev);
-				} else {
-					ImGui::TextUnformatted(" ");
+			std::vector<float> ws;
+			float              total = 0;
+			for (const auto& [label, danger] : a_items) {
+				ws.push_back(Measure(F.menu, Upper(label), 0.24f) + S(52));
+				total += ws.back();
+			}
+			total += S(46) * static_cast<float>(ws.size() - 1);
+			float x = a_cx - total * 0.5f;
+			int   k = 0, hit = -1;
+			for (const auto& [label, danger] : a_items) {
+				ImGui::PushID(k);
+				if (MenuButton(a_id, label, x + ws[k] * 0.5f, a_y, danger)) {
+					hit = k;
 				}
 				ImGui::PopID();
+				x += ws[k] + S(46);
+				++k;
+			}
+			return hit;
+		}
+
+		// ---- the pieces of the screen
+		void Vignette(ImDrawList* a_dl, float W, float H, float a_veil)
+		{
+			const ImU32 b = IM_COL32(0, 0, 0, 255), t = IM_COL32(0, 0, 0, 0);
+			a_dl->AddRectFilledMultiColor(ImVec2(0, 0), ImVec2(W, H * 0.13f), Alpha(b, 0.45f), Alpha(b, 0.45f), t, t);
+			a_dl->AddRectFilledMultiColor(ImVec2(0, H * 0.84f), ImVec2(W, H), t, t, Alpha(b, 0.55f), Alpha(b, 0.55f));
+			a_dl->AddRectFilledMultiColor(ImVec2(0, 0), ImVec2(W * 0.12f, H), Alpha(b, 0.35f), t, t, Alpha(b, 0.35f));
+			a_dl->AddRectFilledMultiColor(ImVec2(W * 0.88f, 0), ImVec2(W, H), t, Alpha(b, 0.35f), Alpha(b, 0.35f), t);
+			if (a_veil > 0.0f) {  // behind a full-screen menu: the world darkens, most at the edges
+				a_dl->AddRectFilled(ImVec2(0, 0), ImVec2(W, H), Alpha(b, 0.45f * a_veil));
+				a_dl->AddRectFilledMultiColor(ImVec2(0, 0), ImVec2(W * 0.3f, H), Alpha(b, 0.4f * a_veil), t, t, Alpha(b, 0.4f * a_veil));
+				a_dl->AddRectFilledMultiColor(ImVec2(W * 0.7f, 0), ImVec2(W, H), t, Alpha(b, 0.4f * a_veil), Alpha(b, 0.4f * a_veil), t);
+			}
+		}
+
+		// The compass: whose turn, the three rolls as quest markers, and the Thu'um recharging underneath.
+		void Compass(ImDrawList* dl, float W)
+		{
+			const float cx = W * 0.5f, top = S(18), tw = S(560), th = S(30);
+			const ImVec2 a(cx - tw * 0.5f, top + S(2)), b(cx + tw * 0.5f, top + S(2) + th);
+			dl->AddRectFilledMultiColor(a, b, IM_COL32(0, 0, 0, 158), IM_COL32(0, 0, 0, 158), IM_COL32(0, 0, 0, 97), IM_COL32(0, 0, 0, 97));
+			dl->AddLine(a, ImVec2(b.x, a.y), Alpha(kWhite, 0.72f));
+			dl->AddLine(ImVec2(a.x, b.y), b, Alpha(kWhite, 0.72f));
+			const float ticks[6] = { 0.08f, 0.20f, 0.32f, 0.68f, 0.80f, 0.92f };
+			for (int k = 0; k < 6; ++k) {
+				const float x = a.x + tw * ticks[k];
+				dl->AddLine(ImVec2(x, a.y), ImVec2(x, a.y + S(k % 2 ? 7.0f : 11.0f)), Alpha(kWhite, 0.45f));
+			}
+			// the end caps (the compass's own arrows)
+			auto cap = [&](float x0, float dir) {
+				const float s = S(34) / 40.0f, y0 = top + S(-0.0f) + (th + S(4) - S(34)) * 0.5f;
+				auto P = [&](float x, float y) { return ImVec2(x0 + (dir > 0 ? x : 40 - x) * s, y0 + y * s); };
+				const ImVec2 o[5] = { P(40, 6), P(22, 6), P(4, 20), P(22, 34), P(40, 34) };
+				dl->AddPolyline(o, 5, Alpha(kWhite, 0.9f), 0, 1.3f * g_ui);
+				const ImVec2 i[3] = { P(30, 12), P(22, 20), P(30, 28) };
+				dl->AddPolyline(i, 3, Alpha(kWhite, 0.9f), 0, 1.3f * g_ui);
+				dl->AddCircleFilled(P(12, 20), 2 * s, Alpha(kWhite, 0.9f));
 			};
-			ImGui::Columns(2, nullptr, false);
-			for (int c = yacht::kOnes; c <= yacht::kSixes; ++c) {
-				row(c);
+			cap(a.x - S(34) + 1, 1);
+			cap(b.x - 1, -1);
+			// whose turn: the letters settle in as the turn changes
+			const bool        over = g_phase == Phase::Over;
+			const std::string t = Upper(over ? "Game over" : g_turn == 0 ? "Your turn" : g_oppName);
+			const float       k = static_cast<float>(std::clamp((g_clock - g_turnAt) / 0.8, 0.0, 1.0));
+			const float       ease = 1.0f - std::pow(1.0f - k, 3.0f);
+			const float       track = 0.7f - (0.7f - 0.32f) * ease;
+			TextC(dl, F.turn, cx, a.y + (th - F.turn->FontSize) * 0.5f, Alpha(g_turn == 0 || over ? kWhite : IM_COL32(217, 196, 187, 255), ease), t, track, 0.9f);
+			// the rolls
+			for (int r = 0; r < 3; ++r) {
+				const ImVec2 c(b.x - S(22) - S(5.6f) - (2 - r) * S(17), a.y + th * 0.5f);
+				const bool   used = g_turn == 0 && r < g_rollsUsed;
+				if (used) {
+					dl->AddCircleFilled(c, S(7), Alpha(kWhite, 0.18f));
+				}
+				Diamond(dl, c, S(5.6f), used ? kWhite : 0, Alpha(kWhite, 0.85f));
 			}
-			ImGui::TextColored(kInkSoft, "Bonus %d", g_cards[a_card].UpperBonus());
-			ImGui::NextColumn();
-			for (int c = yacht::kThreeKind; c <= yacht::kChance; ++c) {
-				row(c);
+			// the Thu'um
+			const float mw = S(240), my = b.y + S(7);
+			dl->AddRectFilled(ImVec2(cx - mw * 0.5f, my), ImVec2(cx + mw * 0.5f, my + S(3)), IM_COL32(0, 0, 0, 140));
+			dl->AddRect(ImVec2(cx - mw * 0.5f - 1, my - 1), ImVec2(cx + mw * 0.5f + 1, my + S(3) + 1), Alpha(kWhite, 0.22f));
+			const double span = kShoutCooldown + kWordAt[2];
+			const float  fill = static_cast<float>(std::clamp(1.0 - (g_shoutReady - g_clock) / span, 0.0, 1.0));
+			if (fill > 0.0f) {
+				dl->AddRectFilled(ImVec2(cx - mw * 0.5f - S(2), my - S(2)), ImVec2(cx - mw * 0.5f + mw * fill + S(2), my + S(5)), IM_COL32(207, 226, 255, 40));
+				dl->AddRectFilledMultiColor(ImVec2(cx - mw * 0.5f, my), ImVec2(cx - mw * 0.5f + mw * fill, my + S(3)), IM_COL32(143, 180, 232, 255),
+					kFrost, kFrost, IM_COL32(143, 180, 232, 255));
 			}
-			ImGui::Columns(1);
+			// the stake, small, under it
+			TextC(dl, F.small, cx, my + S(10), kGrey, Upper(fmt::format("Wager {} septims", g_bet)), 0.3f, 0.8f);
+		}
+
+		// The words of power, each appearing as it's spoken.
+		void Words(ImDrawList* dl, float W, float H)
+		{
+			if (g_shoutReady <= 0.0) {
+				return;
+			}
+			const double t0 = g_shoutReady - kShoutCooldown - kWordAt[2];  // when the Shout began
+			const double t = g_clock - t0;
+			if (t < 0 || t > kWordAt[2] + 1.7) {
+				return;
+			}
+			const char*  words[3] = { "FUS", "RO", "DAH" };
+			const float  gap = F.words->FontSize * 0.55f, track = 0.24f;
+			float        total = 0;
+			float        ws[3];
+			for (int k = 0; k < 3; ++k) {
+				ws[k] = Measure(F.words, words[k], track);
+				total += ws[k];
+			}
+			total += gap * 2;
+			float       x = W * 0.5f - total * 0.5f;
+			const float y = H * 0.27f;
+			const float out = static_cast<float>(std::clamp((t - (kWordAt[2] + 0.7)) / 0.9, 0.0, 1.0));
+			for (int k = 0; k < 3; ++k) {
+				const double since = t - kWordAt[k];
+				if (since >= 0) {
+					const float in = static_cast<float>(std::clamp(since / 0.45, 0.0, 1.0));
+					const float e = 1.0f - std::pow(1.0f - in, 3.0f);
+					const float a = e * (1.0f - out);
+					ImFont*      f = F.words;
+					const ImVec2 pos(x, y - (1.0f - e) * S(14));  // drops into place as it appears
+					Glow(dl, f, pos, Alpha(IM_COL32(110, 160, 240, 255), 0.07f * a), words[k], track, S(10) + S(22) * (1.0f - e));
+					Glow(dl, f, pos, Alpha(IM_COL32(160, 200, 255, 255), 0.12f * a), words[k], track, S(4));
+					Text(dl, f, ImVec2(pos.x, pos.y + S(3)), Alpha(IM_COL32(0, 0, 0, 255), 0.6f * a), words[k], track);
+					Text(dl, f, pos, Alpha(IM_COL32(246, 249, 255, 255), a), words[k], track);
+				}
+				x += ws[k] + gap;
+			}
+		}
+
+		// What to do now, bottom centre, with the mouse (or, while waiting, a turning ring).
+		void Hint(ImDrawList* dl, float W, float H)
+		{
+			std::string hint;
+			bool        waiting = false;
+			if (g_turn == 1 && g_phase != Phase::Over) {
+				hint = g_oppName + " is playing";
+				waiting = true;
+			} else if (g_phase == Phase::Ready) {
+				hint = "Hold the left button and move to shake the cup. Let go to throw.";
+			} else if (g_phase == Phase::Shaking) {
+				hint = "Shake it, then let go: it tips the way you last moved.";
+			} else if (g_phase == Phase::Pouring || g_phase == Phase::Rolling) {
+				hint = "Rolling";
+				waiting = true;
+			} else if (g_phase == Phase::Redo) {
+				hint = "Off the table. Throw again.";
+			} else if (g_phase == Phase::Choose) {
+				hint = g_rollsUsed < 3 ? "Click a die to keep it. Drag dice into the cup to roll again, or pick a box on your card."
+				                       : "No rolls left. Pick a box on your card.";
+			}
+			if (hint.empty()) {
+				return;
+			}
+			const float tw = Measure(F.sans, hint, 0.07f), iw = S(18), gap = S(12);
+			const float x0 = W * 0.5f - (tw + iw + gap) * 0.5f, y = H - S(26) - S(25);
+			if (waiting) {
+				const float  a = static_cast<float>(Now() * 5.2);
+				const ImVec2 c(x0 + iw * 0.5f, y + S(12.5f));
+				dl->PathArcTo(c, S(6.5f), a, a + 1.4f);
+				dl->PathStroke(kWhite, 0, 1.5f * g_ui);
+				dl->PathArcTo(c, S(6.5f), a + 3.14f, a + 4.54f);
+				dl->PathStroke(kWhite, 0, 1.5f * g_ui);
+			} else {
+				// the mouse: left button lit
+				const ImVec2 a(x0, y), b(x0 + iw, y + S(25));
+				dl->AddRectFilled(ImVec2(a.x, a.y), ImVec2(a.x + iw * 0.5f, a.y + S(10.5f)), kWhite, S(9), ImDrawFlags_RoundCornersTopLeft);
+				dl->AddRect(a, b, kWhite, S(9), 0, 1.5f * g_ui);
+				dl->AddLine(ImVec2(a.x + iw * 0.5f, a.y), ImVec2(a.x + iw * 0.5f, a.y + S(10.5f)), kWhite, 1.0f);
+			}
+			Text(dl, F.sans, ImVec2(x0 + iw + gap, y + (S(25) - F.sans->FontSize) * 0.5f), kWhite, hint, 0.07f, 0.9f);
+		}
+
+		// Notifications, like "Location Discovered": big spaced capitals between two fading rules.
+		void ToastBanner(ImDrawList* dl, float W, float H)
+		{
+			if (g_toast.empty()) {
+				return;
+			}
+			const double t = g_clock - g_toastTime;
+			if (t < 0 || t > 2.2) {
+				return;
+			}
+			const float a = static_cast<float>(t < 0.35 ? t / 0.35 : t > 1.85 ? (2.2 - t) / 0.35 : 1.0);
+			const bool  isLong = g_toast.size() > 16;
+			ImFont*     f = isLong ? F.toastLong : F.toast;
+			const float track = isLong ? 0.16f : 0.3f;
+			const auto  text = Upper(g_toast);
+			const float w = Measure(f, text, track) + S(120);
+			const float rise = static_cast<float>(std::min(t / 0.8, 1.0)) * S(6);
+			const float y = H * 0.34f - f->FontSize * 0.5f - rise;
+			FadeRule(dl, W * 0.5f - w * 0.5f, W * 0.5f + w * 0.5f, y - S(12), 0.62f * a);
+			FadeRule(dl, W * 0.5f - w * 0.5f, W * 0.5f + w * 0.5f, y + f->FontSize + S(12), 0.62f * a);
+			TextC(dl, f, W * 0.5f, y, Alpha(kWhite, a), text, track, 0.9f * a);
+		}
+
+		// A scorecard: a note on parchment, written in ink. The one whose turn it is is lit; the other sits back.
+		void Ledger(int a_card, bool a_left)
+		{
+			const auto& io = ImGui::GetIO();
+			const float w = S(384), padX = S(30), padY = S(22);
+			const float rowH = S(23);
+			const float h = padY * 2 + S(36) + S(24) + S(26) + rowH * 7 + S(28);
+			const ImVec2 pos(a_left ? S(22) : io.DisplaySize.x - w - S(22), S(18));
+			const bool   active = a_card == g_turn || g_phase == Phase::Over;
+			char         id[16];
+			std::snprintf(id, sizeof(id), "##ledger%d", a_card);
+			BeginArea(id, pos, ImVec2(w, h));
+			auto* dl = ImGui::GetWindowDrawList();
+			Shadow(dl, ImVec2(pos.x + S(6), pos.y + S(8)), ImVec2(pos.x + w - S(6), pos.y + h - S(4)), S(active ? 22 : 16), active ? 0.75f : 0.6f);
+			const ImU32 tint = active ? IM_COL32(255, 255, 255, 255) : IM_COL32(150, 140, 128, 255);
+			if (g_parchment[a_card]) {
+				dl->AddImage(reinterpret_cast<ImTextureID>(g_parchment[a_card]), pos, ImVec2(pos.x + w, pos.y + h), ImVec2(0, 0), ImVec2(1, 1), tint);
+			} else {
+				dl->AddRectFilled(pos, ImVec2(pos.x + w, pos.y + h), active ? IM_COL32(214, 191, 149, 255) : IM_COL32(140, 124, 100, 255));
+			}
+			const float ink = active ? 1.0f : 0.72f;
+			const ImU32 inkC = Alpha(kInkC, ink), softC = Alpha(kInkSoftC, ink), rubC = Alpha(kRubricC, ink);
+			float       y = pos.y + padY;
+			const float x0 = pos.x + padX, x1 = pos.x + w - padX;
+			// head: who, and the total
+			Text(dl, F.bookSC, ImVec2(x0, y + S(6)), inkC, a_card == 0 ? "Yours" : g_oppName, 0.04f);
+			const std::string tot = std::to_string(g_cards[a_card].Total());
+			Text(dl, F.handBig, ImVec2(x1 - Measure(F.handBig, tot, 0), y - S(4)), inkC, tot);
+			y += S(36);
+			const auto& r = g_records[g_oppId];
+			const int   won = a_card == 0 ? r.w : r.l, lost = a_card == 0 ? r.l : r.w;
+			Text(dl, F.bookIt, ImVec2(x0, y), softC, fmt::format("Record {}-{}{}", won, lost, r.d ? fmt::format(", {} drawn", r.d) : ""));
+			y += S(26);
+			// two columns: the upper section with its bonus, the lower with the yacht bonuses
+			const float colGap = S(22), cw0 = (w - padX * 2 - colGap) / 2.18f, cw1 = cw0 * 1.18f;
+			int         dice[5];
+			Dice(dice);
+			const bool pick = a_card == 0 && g_turn == 0 && g_phase == Phase::Choose && g_carry.die < 0 && g_shoutAt < 0;
+			auto       column = [&](float cx0, float cwid, int from, int to, const char* label) {
+                float yy = y;
+                Text(dl, F.bookSCsm, ImVec2(cx0, yy), rubC, label, 0.08f);
+                yy += S(24);
+                for (int cat = from; cat <= to; ++cat) {
+                    const auto& card = g_cards[a_card];
+                    const bool  filled = card.Filled(cat);
+                    const int   prev = pick && !filled ? card.Preview(cat, dice) : -1;
+                    const ImVec2 ra(cx0, yy), rb(cx0 + cwid, yy + rowH);
+                    bool         hov = false;
+                    if (prev >= 0) {
+                        ImGui::PushID(cat);
+                        if (Clicked("row", ra, rb, &hov)) {
+                            Post(UiAct::Score, cat);
+                        }
+                        ImGui::PopID();
+                    }
+                    if (hov) {
+                        dl->AddRectFilledMultiColor(ra, rb, IM_COL32(142, 47, 27, 50), IM_COL32(142, 47, 27, 10), IM_COL32(142, 47, 27, 10), IM_COL32(142, 47, 27, 50));
+                        Diamond(dl, ImVec2(ra.x + S(2.5f), ra.y + rowH * 0.5f), S(3), rubC, 0);
+                    }
+                    // the dotted line under each entry
+                    for (float dx = ra.x + S(6); dx < rb.x; dx += S(3)) {
+                        dl->AddRectFilled(ImVec2(dx, rb.y - S(2)), ImVec2(dx + 1, rb.y - S(1)), Alpha(kInkC, 0.35f * ink));
+                    }
+                    Text(dl, F.book, ImVec2(ra.x + S(10), ra.y + (rowH - F.book->FontSize) * 0.5f), filled ? softC : inkC, yacht::CategoryName(cat));
+                    std::string val;
+                    ImU32       vc = inkC;
+                    if (filled) {
+                        val = std::to_string(card.boxes[cat]);
+                    } else if (prev >= 0) {
+                        val = std::to_string(prev);
+                        vc = Alpha(kRubricC, (hov ? 1.0f : prev == 0 ? 0.45f : 0.85f) * ink);
+                    }
+                    if (!val.empty()) {
+                        const float vw = Measure(F.hand, val, 0);
+                        const ImVec2 vp(rb.x - S(2) - vw, ra.y + (rowH - F.hand->FontSize) * 0.5f);
+                        // freshly written: the ink runs in from the left
+                        const double since = g_clock - g_fillAt[a_card][cat];
+                        const float  reveal = filled && since >= 0 && since < 0.9 ? static_cast<float>(since / 0.9) : 1.0f;
+                        dl->PushClipRect(vp, ImVec2(vp.x + vw * reveal + 1, vp.y + F.hand->FontSize + S(4)), true);
+                        Text(dl, F.hand, vp, vc, val);
+                        dl->PopClipRect();
+                    }
+                    yy += rowH;
+                }
+                return yy;
+			};
+			const float yu = column(x0, cw0, yacht::kOnes, yacht::kSixes, "Upper");
+			const float yl = column(x0 + cw0 + colGap, cw1, yacht::kThreeKind, yacht::kChance, "Lower");
+			// the sums underneath
+			const auto& card = g_cards[a_card];
+			const float sy = (std::max)(yu, yl) + S(4);
+			Text(dl, F.bookIt, ImVec2(x0 + S(10), sy), softC, "Bonus 35 at 63");
+			const std::string up = fmt::format("{} / 63", card.UpperSum());
+			Text(dl, F.bookIt, ImVec2(x0 + cw0 - S(2) - Measure(F.bookIt, up, 0), sy), softC, up);
+			const float lx = x0 + cw0 + colGap;
+			Text(dl, F.bookIt, ImVec2(lx + S(10), sy), softC, "Yacht bonuses");
+			const std::string yb = std::to_string(card.yachtBonuses * yacht::kYachtBonus);
+			Text(dl, F.bookIt, ImVec2(lx + cw1 - S(2) - Measure(F.bookIt, yb, 0), sy), softC, yb);
 			ImGui::End();
-			ImGui::PopStyleColor(3);
+		}
+
+		// The key prompts, bottom right, as on Skyrim's menus.
+		void KeyBar(float W, float H)
+		{
+			struct Key
+			{
+				const char* key;
+				std::string label;
+				ImU32       col, hot;
+				bool        enabled;
+				int         act;  // 0 shout, 1 help, 2 sound, 3 forfeit
+			};
+			const bool canShout = CanShout() && ShoutTargets();
+			const Key  keys[4] = {
+                { "Z", "Fus Ro Dah", IM_COL32(185, 205, 234, 255), IM_COL32(255, 255, 255, 255), canShout, 0 },
+                { "H", "How to play", kGrey, kWhite, true, 1 },
+                { "M", Audio::Muted() ? "Muted" : "Sound", kGrey, kWhite, true, 2 },
+                { "Tab", "Forfeit", kGrey, IM_COL32(240, 182, 166, 255), g_phase != Phase::Over, 3 },
+			};
+			float widths[4], total = 0;
+			for (int k = 0; k < 4; ++k) {
+				widths[k] = (std::max)(S(26), Measure(F.sansSemi, keys[k].key, 0.04f) + S(10)) + S(9) + Measure(F.sans, Upper(keys[k].label), 0.14f);
+				total += widths[k];
+			}
+			total += S(26) * 3;
+			const float right = W - S(30), bottom = H - S(22), h = S(24);
+			const ImVec2 area(right - total - S(120), bottom - h - S(26));
+			BeginArea("##keys", area, ImVec2(W - area.x, H - area.y));
+			auto* dl = ImGui::GetWindowDrawList();
+			dl->AddRectFilledMultiColor(area, ImVec2(area.x + (W - area.x) * 0.3f, H), IM_COL32(0, 0, 0, 0), IM_COL32(0, 0, 0, 158), IM_COL32(0, 0, 0, 158),
+				IM_COL32(0, 0, 0, 0));
+			dl->AddRectFilled(ImVec2(area.x + (W - area.x) * 0.3f, area.y), ImVec2(W, H), IM_COL32(0, 0, 0, 158));
+			float x = right - total;
+			for (int k = 0; k < 4; ++k) {
+				const auto& key = keys[k];
+				bool        hov = false;
+				ImGui::PushID(k);
+				const bool pressed = Clicked("key", ImVec2(x, bottom - h - S(2)), ImVec2(x + widths[k], bottom + S(2)), &hov, key.enabled);
+				ImGui::PopID();
+				const ImU32 col = !key.enabled ? (k == 0 ? IM_COL32(76, 88, 106, 255) : kDimC) : hov ? key.hot : key.col;
+				const float kw = (std::max)(S(26), Measure(F.sansSemi, key.key, 0.04f) + S(10));
+				const ImVec2 ka(x, bottom - h), kb(x + kw, bottom);
+				dl->AddRectFilled(ka, kb, IM_COL32(0, 0, 0, 90), S(4));
+				dl->AddRect(ka, kb, col, S(4), 0, 1.5f * g_ui);
+				TextC(dl, F.sansSemi, x + kw * 0.5f + S(0.5f), ka.y + (h - F.sansSemi->FontSize) * 0.5f, col, key.key, 0.04f);
+				if (hov) {
+					Glow(dl, F.sans, ImVec2(kb.x + S(9), ka.y + (h - F.sans->FontSize) * 0.5f), Alpha(k == 0 ? IM_COL32(160, 200, 255, 255) : kWhite, 0.07f),
+						Upper(key.label), 0.14f, S(3));
+				}
+				Text(dl, F.sans, ImVec2(kb.x + S(9), ka.y + (h - F.sans->FontSize) * 0.5f), col, Upper(key.label), 0.14f, 0.7f);
+				if (k == 0 && g_clock < g_shoutReady) {  // recharging
+					const double span = kShoutCooldown + kWordAt[2];
+					const float  f = static_cast<float>(std::clamp(1.0 - (g_shoutReady - g_clock) / span, 0.0, 1.0));
+					const float  lw = widths[k] - kw - S(9);
+					dl->AddRectFilled(ImVec2(kb.x + S(9), bottom + S(4)), ImVec2(kb.x + S(9) + lw * f, bottom + S(6)), kFrost);
+				}
+				if (pressed) {
+					if (key.act == 0) {
+						Post(UiAct::Shout);
+					} else if (key.act == 1) {
+						g_help = !g_help;
+					} else if (key.act == 2) {
+						Audio::SetMuted(!Audio::Muted());
+					} else {
+						Post(UiAct::Forfeit);
+					}
+				}
+				x += widths[k] + S(26);
+			}
+			ImGui::End();
+		}
+
+		// A message box: smoke black between two rules, with brackets at the sides.
+		void MsgBox(ImDrawList* dl, ImVec2 a, ImVec2 b)
+		{
+			Shadow(dl, a, b, S(30), 0.7f);
+			dl->AddRectFilledMultiColor(a, b, IM_COL32(0, 0, 0, 219), IM_COL32(0, 0, 0, 219), IM_COL32(0, 0, 0, 199), IM_COL32(0, 0, 0, 199));
+			dl->AddLine(a, ImVec2(b.x, a.y), Alpha(kWhite, 0.62f));
+			dl->AddLine(ImVec2(a.x, b.y), b, Alpha(kWhite, 0.62f));
+			const ImU32 br = Alpha(kWhite, 0.45f);
+			const float i = S(6), bw = S(10);
+			dl->AddLine(ImVec2(a.x + i + bw, a.y + i), ImVec2(a.x + i, a.y + i), br);
+			dl->AddLine(ImVec2(a.x + i, a.y + i), ImVec2(a.x + i, b.y - i), br);
+			dl->AddLine(ImVec2(a.x + i, b.y - i), ImVec2(a.x + i + bw, b.y - i), br);
+			dl->AddLine(ImVec2(b.x - i - bw, a.y + i), ImVec2(b.x - i, a.y + i), br);
+			dl->AddLine(ImVec2(b.x - i, a.y + i), ImVec2(b.x - i, b.y - i), br);
+			dl->AddLine(ImVec2(b.x - i, b.y - i), ImVec2(b.x - i - bw, b.y - i), br);
+		}
+
+		// Word-wrapped grey text inside a box, returns the height used
+		float Para(ImDrawList* dl, ImFont* f, float x, float y, float wrap, ImU32 col, const std::string& s)
+		{
+			const ImVec2 sz = f->CalcTextSizeA(f->FontSize, FLT_MAX, wrap, s.c_str());
+			dl->AddText(f, f->FontSize, ImVec2(x, y), col, s.c_str(), nullptr, wrap);
+			return sz.y;
+		}
+
+		void HelpBox(float W)
+		{
+			const float w = S(480), x = W * 0.5f - w * 0.5f, y = S(112);
+			const float h = S(250);
+			BeginArea("##help", ImVec2(x, y), ImVec2(w, h));
+			auto* dl = ImGui::GetWindowDrawList();
+			MsgBox(dl, ImVec2(x, y), ImVec2(x + w, y + h));
+			TextC(dl, F.menu, W * 0.5f, y + S(22), kWhite, "YACHT", 0.26f);
+			float yy = y + S(64);
+			const float px = x + S(32), pw = w - S(64);
+			yy += Para(dl, F.sans, px, yy, pw, kGrey, "Hold the left button and move to lift the cup and shake it. Let go to flick the dice out the way you last moved. A die that leaves the board means throw again.") + S(9);
+			yy += Para(dl, F.sans, px, yy, pw, kGrey, "Click a die to set it on the rack. Drag one back into the cup to roll it again. The cup waits until the board is clear.") + S(9);
+			yy += Para(dl, F.sans, px, yy, pw, kGrey, "Score high to earn finer cups. Every ten wins, innkeepers sell you a finer set of dice.");
+			ImGui::End();
+		}
+
+		// The rank and the cup and dice, bottom left, like the inventory's skill line.
+		void Dock(ImDrawList* dl, float W, float H)
+		{
+			(void)W;
+			const float w = S(420), h = S(150);
+			const ImVec2 a(0, H - h), b(w, H);
+			dl->AddRectFilledMultiColor(a, ImVec2(w * 0.62f, H), IM_COL32(0, 0, 0, 0), IM_COL32(0, 0, 0, 0), IM_COL32(0, 0, 0, 214), IM_COL32(0, 0, 0, 214));
+			dl->AddRectFilledMultiColor(ImVec2(w * 0.62f, a.y), b, IM_COL32(0, 0, 0, 0), IM_COL32(0, 0, 0, 0), IM_COL32(0, 0, 0, 0), IM_COL32(0, 0, 0, 184));
+			const auto& cup = PlayerCup();
+			int         rank = 0;
+			for (int k = 0; k < 5; ++k) {
+				if (CupUnlocked(k)) {
+					rank = k;
+				}
+			}
+			const float x0 = S(30), x1 = w - S(44);
+			float       y = a.y + S(30);
+			Text(dl, F.skill, ImVec2(x0, y), kWhite, Upper(kCups[rank].rank), 0.22f, 0.8f);
+			const std::string next = rank < 4 ? fmt::format("{} at {}", kCups[rank + 1].rank, kCups[rank + 1].need) : "Master of the table";
+			Text(dl, F.small, ImVec2(x1 - Measure(F.small, next, 0.05f), y + F.skill->FontSize - F.small->FontSize - S(2)), kGrey, next, 0.05f);
+			y += F.skill->FontSize + S(9);
+			// the skill bar: best score toward the next cup
+			const float lo = static_cast<float>(kCups[rank].need), hi = rank < 4 ? static_cast<float>(kCups[rank + 1].need) : lo + 1;
+			const float f = rank < 4 ? std::clamp((g_bestScore - lo) / (hi - lo), 0.0f, 1.0f) : 1.0f;
+			const ImVec2 ba(x0 + S(9), y), bb(x1 - S(9), y + S(7));
+			dl->AddRectFilled(ba, bb, IM_COL32(0, 0, 0, 153));
+			dl->AddLine(ba, ImVec2(bb.x, ba.y), Alpha(kWhite, 0.62f));
+			dl->AddLine(ImVec2(ba.x, bb.y), bb, Alpha(kWhite, 0.62f));
+			if (f > 0) {
+				dl->AddRectFilledMultiColor(ba, ImVec2(ba.x + (bb.x - ba.x) * f, bb.y), IM_COL32(109, 107, 103, 255), IM_COL32(253, 251, 247, 255),
+					IM_COL32(253, 251, 247, 255), IM_COL32(109, 107, 103, 255));
+			}
+			Diamond(dl, ImVec2(ba.x - S(5), ba.y + S(3.5f)), S(5), IM_COL32(0, 0, 0, 255), kWhite);
+			Diamond(dl, ImVec2(bb.x + S(5), ba.y + S(3.5f)), S(5), IM_COL32(0, 0, 0, 255), kWhite);
+			y += S(22);
+			auto line = [&](const char* label, const std::string& value) {
+				Text(dl, F.small, ImVec2(x0, y + S(3)), kGrey, label, 0.32f);
+				Text(dl, F.sans, ImVec2(x0 + S(90), y), kWhite, Upper(value), 0.08f, 0.7f);
+				dl->AddRectFilledMultiColor(ImVec2(x0, y + S(24)), ImVec2(x1, y + S(25)), Alpha(kWhite, 0.62f), Alpha(kWhite, 0.0f), Alpha(kWhite, 0.0f),
+					Alpha(kWhite, 0.62f));
+				y += S(30);
+			};
+			line("CUP", cup.name);
+			const int di = (std::max)(0, DiceIndex(PlayerDice()));
+			line("DICE", kDiceInfo[di].name);
 		}
 
 		void DrawPlay()
 		{
 			const auto& io = ImGui::GetIO();
-			Card(1, true);
-			Card(0, false);
-			// top centre: whose turn, the rolls
-			{
-				ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, 18 * g_ui), 0, ImVec2(0.5f, 0));
-				ImGui::SetNextWindowBgAlpha(0.55f);
-				ImGui::Begin("##turn", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoInputs);
-				const std::string t = g_phase == Phase::Over ? "Game over" : g_turn == 0 ? "Your turn" : g_oppName + "'s turn";
-				ImGui::PushFont(g_fBig);
-				ImGui::TextColored(kText, "%s", t.c_str());
-				ImGui::PopFont();
-				ImGui::TextColored(kDim, "Roll %d of 3   -   Wager %d septims", (std::min)(3, g_rollsUsed + (g_phase == Phase::Ready ? 1 : 0)), g_bet);
-				ImGui::End();
+			const float W = io.DisplaySize.x, H = io.DisplaySize.y;
+			auto*       bg = ImGui::GetBackgroundDrawList();
+			Vignette(bg, W, H, 0.0f);
+			Compass(bg, W);
+			Dock(bg, W, H);
+			Ledger(1, true);
+			Ledger(0, false);
+			if (g_phase != Phase::Over) {
+				Hint(bg, W, H);
+				KeyBar(W, H);
 			}
-			// bottom centre: what to do now
-			{
-				std::string hint;
-				if (g_turn == 1) {
-					hint = g_oppName + " is playing...";
-				} else if (g_phase == Phase::Ready) {
-					hint = "Hold the left button and move to shake the cup. Let go to throw.";
-				} else if (g_phase == Phase::Shaking) {
-					hint = "Let go to throw";
-				} else if (g_phase == Phase::Pouring || g_phase == Phase::Rolling) {
-					hint = "Rolling...";
-				} else if (g_phase == Phase::Choose) {
-					hint = g_rollsUsed < 3 ? "Click dice to keep them, drag the rest into the cup and shake again - or pick a box on your card"
-					                       : "Pick a box on your card";
-				}
-				if (!hint.empty()) {
-					ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y - 24 * g_ui), 0, ImVec2(0.5f, 1));
-					ImGui::SetNextWindowBgAlpha(0.5f);
-					ImGui::Begin("##hint", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoInputs);
-					ImGui::TextColored(kText, "%s", hint.c_str());
-					ImGui::End();
-				}
-			}
-			// bottom right: the buttons, as Skyrim's key prompts
-			{
-				ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x - 20 * g_ui, io.DisplaySize.y - 70 * g_ui), 0, ImVec2(1, 1));
-				ImGui::SetNextWindowBgAlpha(0.0f);
-				ImGui::Begin("##keys", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove);
-				ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.75f, 0.84f, 0.95f, 1));
-				if (Button("[Z]  Fus Ro Dah")) {
-					Post(UiAct::Shout);
-				}
-				ImGui::PopStyleColor();
-				ImGui::SameLine();
-				if (Button("[Tab]  Forfeit")) {
-					Post(UiAct::Forfeit);
-				}
-				ImGui::End();
-			}
-			// a notice in the middle
-			if (!g_toast.empty() && g_clock - g_toastTime < 2.2) {
-				ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.33f), 0, ImVec2(0.5f, 0.5f));
-				ImGui::SetNextWindowBgAlpha(0.0f);
-				ImGui::Begin("##toast", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoInputs);
-				ImGui::PushFont(g_fTitle);
-				ImGui::TextColored(kText, "%s", g_toast.c_str());
-				ImGui::PopFont();
-				ImGui::End();
+			auto* fg = ImGui::GetForegroundDrawList();
+			Words(fg, W, H);
+			ToastBanner(bg, W, H);
+			if (g_help && g_phase != Phase::Over) {
+				HelpBox(W);
 			}
 			if (g_confirmForfeit && g_phase != Phase::Over) {
-				ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f), 0, ImVec2(0.5f, 0.5f));
-				ImGui::SetNextWindowSize(ImVec2(460 * g_ui, 0));
-				ImGui::SetNextWindowBgAlpha(0.9f);
-				ImGui::Begin("##forfeit", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove);
-				Centered("FORFEIT THIS GAME?", g_fBig, kText);
-				Centered(fmt::format("You lose your {} septims", g_betHeld).c_str(), g_fBody, kDim);
-				Rule();
-				ImGui::SetCursorPosX(ImGui::GetWindowWidth() * 0.5f - 170 * g_ui);
-				if (Button("Forfeit", 160 * g_ui)) {
+				const float w = S(520), h = S(170), x = W * 0.5f - w * 0.5f, y = H * 0.5f - h * 0.5f;
+				Vignette(bg, W, H, 0.8f);
+				BeginArea("##forfeit", ImVec2(x, y), ImVec2(w, h));
+				auto* dl = ImGui::GetWindowDrawList();
+				MsgBox(dl, ImVec2(x, y), ImVec2(x + w, y + h));
+				TextC(dl, F.menu, W * 0.5f, y + S(24), kWhite, "FORFEIT THIS GAME?", 0.26f);
+				TextC(dl, F.small, W * 0.5f, y + S(62), kGrey, Upper(fmt::format("It counts as a loss. {} keeps your {} septims", g_oppName, g_betHeld)), 0.2f);
+				switch (MenuButtons("fb", { { "Forfeit", true }, { "Keep playing", false } }, W * 0.5f, y + S(100))) {
+				case 0:
 					Post(UiAct::ForfeitYes);
-				}
-				ImGui::SameLine();
-				if (Button("Keep playing", 160 * g_ui)) {
+					break;
+				case 1:
 					Post(UiAct::ForfeitNo);
+					break;
+				default:
+					break;
 				}
 				ImGui::End();
 			}
 			if (Config::Get().debugOverlay) {
-				auto* dl = ImGui::GetForegroundDrawList();
+				auto*      dl = ImGui::GetForegroundDrawList();
 				const Vec3 corners[4] = { { -kX, -kYh, 0 }, { kX, -kYh, 0 }, { kX, kYh, 0 }, { -kX, kYh, 0 } };
 				ImVec2     pts[4];
 				bool       ok = true;
@@ -1727,75 +2262,108 @@ namespace Game
 			}
 		}
 
+		// A chooser line: label, < value >, the arrows step through what's allowed
+		template <class Ok>
+		void Chooser(ImDrawList* dl, const char* a_id, float cx, float y, float w, const char* a_label, const std::string& a_value, int a_cur, int a_count,
+			Ok a_ok, UiAct a_act)
+		{
+			ImGui::PushID(a_id);
+			const float x0 = cx - w * 0.5f, x1 = cx + w * 0.5f;
+			Text(dl, F.small, ImVec2(x0, y + S(5)), kGrey, a_label, 0.32f);
+			int prev = -1, next = -1;
+			for (int k = a_cur - 1; k >= 0 && prev < 0; --k) {
+				if (a_ok(k)) {
+					prev = k;
+				}
+			}
+			for (int k = a_cur + 1; k < a_count && next < 0; ++k) {
+				if (a_ok(k)) {
+					next = k;
+				}
+			}
+			const float ax0 = x0 + S(110), ax1 = x1 - S(24);
+			bool        h0 = false, h1 = false;
+			if (Clicked("prev", ImVec2(ax0 - S(4), y - S(2)), ImVec2(ax0 + S(24), y + S(28)), &h0, prev >= 0)) {
+				Post(a_act, prev);
+			}
+			if (Clicked("next", ImVec2(ax1 - S(4), y - S(2)), ImVec2(ax1 + S(24), y + S(28)), &h1, next >= 0)) {
+				Post(a_act, next);
+			}
+			auto arrow = [&](float x, float dir, bool hov, bool on) {
+				const ImU32 c = !on ? kDimC : hov ? IM_COL32(255, 255, 255, 255) : kGrey;
+				const float m = x + S(10);
+				dl->AddTriangleFilled(ImVec2(m + dir * S(6), y + S(13)), ImVec2(m - dir * S(4), y + S(6)), ImVec2(m - dir * S(4), y + S(20)), c);
+			};
+			arrow(ax0, -1, h0, prev >= 0);
+			arrow(ax1, 1, h1, next >= 0);
+			TextC(dl, F.turn, (ax0 + ax1 + S(20)) * 0.5f, y, kWhite, Upper(a_value), 0.12f, 0.8f);
+			ImGui::PopID();
+		}
+
+		// The wager, before the first throw: a full-screen prompt over the darkened room.
 		void DrawWager()
 		{
 			const auto& io = ImGui::GetIO();
-			ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.42f), 0, ImVec2(0.5f, 0.5f));
-			ImGui::SetNextWindowSize(ImVec2(560 * g_ui, 0));
-			ImGui::SetNextWindowBgAlpha(0.88f);
-			ImGui::Begin("##wager", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove);
-			Centered("A GAME OF YACHT", g_fTitle, kText);
-			Centered(fmt::format("with {}", g_oppName).c_str(), g_fBody, kDim);
-			Rule();
+			const float W = io.DisplaySize.x, H = io.DisplaySize.y, cx = W * 0.5f;
+			auto*       bg = ImGui::GetBackgroundDrawList();
+			Vignette(bg, W, H, 1.0f);
+			const float w = S(720), h = S(560), x = cx - w * 0.5f, y = H * 0.44f - h * 0.5f;
+			BeginArea("##wager", ImVec2(x, y), ImVec2(w, h));
+			auto*       dl = ImGui::GetWindowDrawList();
 			const auto& cfg = Config::Get();
 			const int   gold = GoldHeld();
 			const int   top = std::clamp(gold - gold % 5, cfg.minBet, cfg.maxBet);
-			static int  s_bet = 25;
-			s_bet = std::clamp(g_bet, cfg.minBet, top);
-			Centered(fmt::format("Your purse: {} septims", gold).c_str(), g_fBody, kDim);
-			ImGui::Spacing();
-			ImGui::PushFont(g_fBig);
-			ImGui::SetNextItemWidth(-1);
-			if (ImGui::SliderInt("##bet", &s_bet, cfg.minBet, top, "Wager  %d septims")) {
-				s_bet = std::clamp(s_bet - s_bet % 5, cfg.minBet, top);
-				g_bet = s_bet;
+			const int   bet = std::clamp(g_bet, cfg.minBet, top);
+			float       yy = y;
+			TextC(dl, F.small, cx, yy, kGrey, Upper(fmt::format("A game of Yacht with {}", g_oppName)), 0.6f, 0.8f);
+			yy += S(30);
+			// the stake, large, with arrows either side
+			const std::string stake = fmt::format("{}", bet);
+			const float       sw = Measure(F.titleMid, stake, 0.12f);
+			Glow(dl, F.titleMid, ImVec2(cx - sw * 0.5f, yy), Alpha(kWhite, 0.05f), stake, 0.12f, S(6));
+			TextC(dl, F.titleMid, cx, yy, IM_COL32(255, 255, 255, 255), stake, 0.12f, 0.9f);
+			bool h0 = false, h1 = false;
+			const float ay = yy + F.titleMid->FontSize * 0.5f;
+			if (Clicked("less", ImVec2(cx - sw * 0.5f - S(80), ay - S(24)), ImVec2(cx - sw * 0.5f - S(30), ay + S(24)), &h0, bet > cfg.minBet)) {
+				g_bet = (std::max)(cfg.minBet, bet - 5);
 			}
-			ImGui::PopFont();
-			Centered(fmt::format("Win and you take {} septims", s_bet * 2).c_str(), g_fBody, kDim);
-			Rule();
-			// what you play with: your cup (earned by your best score) and your dice (bought from innkeepers)
-			auto chooser = [&](const char* a_id, const char* a_label, const std::string& a_value, int a_cur, int a_count, auto a_ok,
-							   UiAct a_act) {
-				ImGui::PushID(a_id);
-				ImGui::PushFont(g_fBody);
-				ImGui::TextColored(kDim, "%s", a_label);
-				ImGui::SameLine(150 * g_ui);
-				if (Button("<", 40 * g_ui)) {
-					for (int k = a_cur - 1; k >= 0; --k) {
-						if (a_ok(k)) {
-							Post(a_act, k);
-							break;
-						}
-					}
-				}
-				ImGui::SameLine();
-				const float w = ImGui::GetContentRegionAvail().x - 48 * g_ui;
-				const float tw = ImGui::CalcTextSize(a_value.c_str()).x;
-				const float x0 = ImGui::GetCursorPosX();
-				ImGui::SetCursorPosX(x0 + (w - tw) * 0.5f);
-				ImGui::TextColored(kText, "%s", a_value.c_str());
-				ImGui::SameLine(x0 + w);
-				if (Button(">", 40 * g_ui)) {
-					for (int k = a_cur + 1; k < a_count; ++k) {
-						if (a_ok(k)) {
-							Post(a_act, k);
-							break;
-						}
-					}
-				}
-				ImGui::PopFont();
-				ImGui::PopID();
+			if (Clicked("more", ImVec2(cx + sw * 0.5f + S(30), ay - S(24)), ImVec2(cx + sw * 0.5f + S(80), ay + S(24)), &h1, bet < top)) {
+				g_bet = (std::min)(top, bet + 5);
+			}
+			auto tri = [&](float tx, float dir, bool hov, bool on) {
+				const ImU32 c = !on ? kDimC : hov ? IM_COL32(255, 255, 255, 255) : kGrey;
+				dl->AddTriangleFilled(ImVec2(tx + dir * S(10), ay), ImVec2(tx - dir * S(8), ay - S(14)), ImVec2(tx - dir * S(8), ay + S(14)), c);
 			};
+			tri(cx - sw * 0.5f - S(55), -1, h0, bet > cfg.minBet);
+			tri(cx + sw * 0.5f + S(55), 1, h1, bet < top);
+			yy += F.titleMid->FontSize + S(6);
+			TextC(dl, F.small, cx, yy, kGrey, Upper(fmt::format("Septims wagered. Win and you take {}", bet * 2)), 0.34f, 0.8f);
+			yy += S(22);
+			TextC(dl, F.small, cx, yy, kDimC, Upper(fmt::format("Your purse: {} septims", gold)), 0.34f, 0.8f);
+			yy += S(34);
+			DiamondRule(dl, cx, yy, S(560));
+			yy += S(28);
+			// what you play with
 			int cupIdx = 0;
 			for (int k = 0; k < 5; ++k) {
 				if (PlayerCup().id == std::string(kCups[k].id)) {
 					cupIdx = k;
 				}
 			}
-			chooser("cup", "Cup", fmt::format("{} ({})", kCups[cupIdx].name, kCups[cupIdx].rank), cupIdx, 5, [](int k) { return CupUnlocked(k); },
-				UiAct::ChooseCup);
+			Chooser(dl, "cup", cx, yy, S(520), "CUP", fmt::format("{}  ({})", kCups[cupIdx].name, kCups[cupIdx].rank), cupIdx, 5,
+				[](int k) { return CupUnlocked(k); }, UiAct::ChooseCup);
+			yy += S(40);
 			const int diceIdx = (std::max)(0, DiceIndex(PlayerDice()));
-			chooser("dice", "Dice", kDiceInfo[diceIdx].name, diceIdx, 15, [](int k) { return DiceOwned(k); }, UiAct::ChooseDice);
+			Chooser(dl, "dice", cx, yy, S(520), "DICE", kDiceInfo[diceIdx].name, diceIdx, 15, [](int k) { return DiceOwned(k); }, UiAct::ChooseDice);
+			yy += S(40);
+			// the item card: what these dice are
+			FadeRule(dl, cx - S(260), cx + S(260), yy);
+			yy += S(10);
+			const ImVec2 bsz = F.sans->CalcTextSizeA(F.sans->FontSize, FLT_MAX, S(480), kDiceInfo[diceIdx].blurb);
+			dl->AddText(F.sans, F.sans->FontSize, ImVec2(cx - bsz.x * 0.5f, yy), kGrey, kDiceInfo[diceIdx].blurb, nullptr, S(480));
+			yy += bsz.y + S(10);
+			FadeRule(dl, cx - S(260), cx + S(260), yy);
+			yy += S(12);
 			int topCup = 0;
 			for (int k = 0; k < 5; ++k) {
 				if (CupUnlocked(k)) {
@@ -1803,106 +2371,191 @@ namespace Game
 				}
 			}
 			if (topCup < 4) {
-				Centered(fmt::format("Score {} in a game to earn the {}", kCups[topCup + 1].need, kCups[topCup + 1].name).c_str(), g_fBody, kDim);
+				TextC(dl, F.small, cx, yy, kDimC, Upper(fmt::format("Score {} in a game to earn the {}", kCups[topCup + 1].need, kCups[topCup + 1].name)), 0.2f);
 			}
-			Rule();
-			ImGui::SetCursorPosX(ImGui::GetWindowWidth() * 0.5f - 170 * g_ui);
-			ImGui::PushFont(g_fBig);
-			if (Button("Place bet", 160 * g_ui)) {
-				Post(UiAct::PlaceBet, s_bet);
-			}
-			ImGui::SameLine();
-			if (Button("Leave", 160 * g_ui)) {
+			yy += S(34);
+			switch (MenuButtons("wb", { { "Place bet", false }, { "Leave", false } }, cx, yy)) {
+			case 0:
+				Post(UiAct::PlaceBet, bet);
+				break;
+			case 1:
 				Post(UiAct::Leave);
+				break;
+			default:
+				break;
 			}
-			ImGui::PopFont();
+			yy += S(54);
 			if (!g_toast.empty() && g_clock - g_toastTime < 2.2) {
-				Centered(g_toast.c_str(), g_fBody, kRubric);
+				TextC(dl, F.sans, cx, yy, IM_COL32(240, 182, 166, 255), Upper(g_toast), 0.14f, 0.9f);
 			}
 			ImGui::End();
 		}
 
+		// The innkeeper's dice: a list like the inventory's, an item card, and the price.
+		int g_shopSel = -1;
 		void DrawShop()
 		{
 			const auto& io = ImGui::GetIO();
-			ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f), 0, ImVec2(0.5f, 0.5f));
-			ImGui::SetNextWindowSize(ImVec2(760 * g_ui, 0));
-			ImGui::SetNextWindowBgAlpha(0.9f);
-			ImGui::Begin("##shop", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove);
-			Centered("DICE", g_fTitle, kText);
-			Centered(fmt::format("{}'s stock  -  your purse: {} septims", g_shopName, GoldHeld()).c_str(), g_fBody, kDim);
-			Rule();
-			const std::string using_ = PlayerDice();
-			ImGui::PushFont(g_fBody);
-			for (int k = 0; k < 15; ++k) {
-				const auto& d = kDiceInfo[k];
-				const bool  owned = DiceOwned(k), sale = DiceOnSale(k);
-				ImGui::PushID(k);
-				ImGui::TextColored(owned || sale ? kText : kDim, "%s", d.name);
-				ImGui::SameLine(200 * g_ui);
-				if (owned) {
-					if (using_ == kDiceSets[k]) {
-						ImGui::TextColored(kDim, "In use");
-					} else if (Button("Use", 140 * g_ui)) {
-						Post(UiAct::ChooseDice, k);
+			const float W = io.DisplaySize.x, H = io.DisplaySize.y, cx = W * 0.5f;
+			auto*       bg = ImGui::GetBackgroundDrawList();
+			Vignette(bg, W, H, 1.0f);
+			const float w = S(860), h = S(700), x = cx - w * 0.5f, y = H * 0.48f - h * 0.5f;
+			BeginArea("##shop", ImVec2(x, y), ImVec2(w, h));
+			auto* dl = ImGui::GetWindowDrawList();
+			float yy = y;
+			TextC(dl, F.small, cx, yy, kGrey, Upper(fmt::format("{}'s stock", g_shopName)), 0.6f, 0.8f);
+			yy += S(26);
+			TextC(dl, F.title, cx, yy, IM_COL32(255, 255, 255, 255), "DICE", 0.16f, 0.9f);
+			yy += F.title->FontSize + S(4);
+			TextC(dl, F.small, cx, yy, kGrey, Upper(fmt::format("Your purse: {} septims  -  {} wins", GoldHeld(), g_totalWins)), 0.34f, 0.8f);
+			yy += S(30);
+			DiamondRule(dl, cx, yy, S(760));
+			yy += S(18);
+			// the list (left) and the card (right)
+			const float lx0 = x + S(40), lx1 = cx + S(10), rowH = S(29);
+			const std::string inUse = PlayerDice();
+			if (g_shopSel < 0) {
+				g_shopSel = (std::max)(0, DiceIndex(inUse));
+				for (int k = 1; k < 15; ++k) {
+					if (DiceOnSale(k)) {
+						g_shopSel = k;
+						break;
 					}
-				} else if (sale) {
-					if (Button(fmt::format("Buy  {} septims", d.gold).c_str(), 260 * g_ui)) {
-						Post(UiAct::BuyDice, k);
-					}
-				} else {
-					ImGui::TextColored(kDim, "%s", fmt::format("After {} wins ({} so far)", d.wins, g_totalWins).c_str());
 				}
-				if (owned || sale) {
-					ImGui::SameLine(470 * g_ui);
-					ImGui::PushTextWrapPos(ImGui::GetWindowWidth() - 16 * g_ui);
-					ImGui::TextColored(kDim, "%s", d.blurb);
-					ImGui::PopTextWrapPos();
+			}
+			for (int k = 0; k < 15; ++k) {
+				const auto&  d = kDiceInfo[k];
+				const bool   owned = DiceOwned(k), sale = DiceOnSale(k);
+				const ImVec2 ra(lx0, yy + k * rowH), rb(lx1, yy + (k + 1) * rowH);
+				bool         hov = false;
+				ImGui::PushID(k);
+				if (Clicked("d", ra, rb, &hov)) {
+					g_shopSel = k;
 				}
 				ImGui::PopID();
+				const bool  sel = g_shopSel == k;
+				const ImU32 col = sel || hov ? kWhite : owned || sale ? kGrey : kDimC;
+				if (sel) {
+					dl->AddRectFilledMultiColor(ra, rb, Alpha(kWhite, 0.1f), Alpha(kWhite, 0.0f), Alpha(kWhite, 0.0f), Alpha(kWhite, 0.1f));
+					dl->AddTriangleFilled(ImVec2(ra.x + S(2), ra.y + rowH * 0.5f - S(4)), ImVec2(ra.x + S(8), ra.y + rowH * 0.5f), ImVec2(ra.x + S(2), ra.y + rowH * 0.5f + S(4)),
+						kWhite);
+				}
+				Text(dl, F.sans, ImVec2(ra.x + S(16), ra.y + (rowH - F.sans->FontSize) * 0.5f), col, Upper(d.name), 0.08f, 0.7f);
+				const std::string tag = inUse == kDiceSets[k] ? "In use" : owned ? "Owned" : sale ? fmt::format("{} septims", d.gold) : fmt::format("{} wins", d.wins);
+				const ImU32 tc = inUse == kDiceSets[k] ? kWhite : sale ? IM_COL32(230, 200, 140, 255) : kDimC;
+				Text(dl, F.small, ImVec2(rb.x - S(8) - Measure(F.small, Upper(tag), 0.14f), ra.y + (rowH - F.small->FontSize) * 0.5f), tc, Upper(tag), 0.14f);
 			}
-			ImGui::PopFont();
-			Rule();
+			// the card
+			const int   k = std::clamp(g_shopSel, 0, 14);
+			const auto& d = kDiceInfo[k];
+			const float rx0 = cx + S(50), rx1 = x + w - S(30), rcx = (rx0 + rx1) * 0.5f;
+			float       ry = yy + S(30);
+			TextC(dl, F.turn, rcx, ry, kWhite, Upper(d.name), 0.16f, 0.8f);
+			ry += F.turn->FontSize + S(10);
+			FadeRule(dl, rx0, rx1, ry);
+			ry += S(10);
+			const std::string stats = k == 0 ? "STARTING DICE" : fmt::format("PRICE  {}     WINS  {}", d.gold, d.wins);
+			TextC(dl, F.small, rcx, ry, kGrey, stats, 0.22f);
+			ry += S(26);
+			const ImVec2 bsz = F.sans->CalcTextSizeA(F.sans->FontSize, FLT_MAX, rx1 - rx0 - S(20), d.blurb);
+			dl->AddText(F.sans, F.sans->FontSize, ImVec2(rcx - bsz.x * 0.5f, ry), kGrey, d.blurb, nullptr, rx1 - rx0 - S(20));
+			ry += bsz.y + S(12);
+			FadeRule(dl, rx0, rx1, ry);
+			ry += S(24);
+			const bool owned = DiceOwned(k), sale = DiceOnSale(k);
+			if (owned && inUse != kDiceSets[k]) {
+				if (MenuButton("use", "Use these", rcx, ry)) {
+					Post(UiAct::ChooseDice, k);
+				}
+			} else if (sale) {
+				const bool afford = GoldHeld() >= d.gold;
+				if (MenuButton("buy", fmt::format("Buy  {}", d.gold), rcx, ry, false, afford)) {
+					Post(UiAct::BuyDice, k);
+				}
+				if (!afford) {
+					TextC(dl, F.small, rcx, ry + S(48), IM_COL32(240, 182, 166, 255), "NOT ENOUGH GOLD", 0.22f);
+				}
+			} else if (!owned) {
+				TextC(dl, F.small, rcx, ry + S(8), kDimC, Upper(fmt::format("For sale after {} wins", d.wins)), 0.22f);
+			} else {
+				TextC(dl, F.small, rcx, ry + S(8), kGrey, "THE DICE YOU PLAY WITH", 0.22f);
+			}
 			if (!g_toast.empty() && g_clock - g_toastTime < 2.2) {
-				Centered(g_toast.c_str(), g_fBody, kRubric);
+				TextC(dl, F.sans, rcx, ry + S(80), kWhite, Upper(g_toast), 0.14f, 0.9f);
 			}
-			ImGui::SetCursorPosX(ImGui::GetWindowWidth() * 0.5f - 80 * g_ui);
-			ImGui::PushFont(g_fBig);
-			if (Button("Done", 160 * g_ui)) {
+			// done
+			const float by = yy + 15 * rowH + S(26);
+			if (MenuButton("done", "Done", cx, by)) {
 				Post(UiAct::CloseShop);
 			}
-			ImGui::PopFont();
 			ImGui::End();
 		}
 
+		// The result, as Skyrim's big notices: a kicker, the verdict huge, a rule with a diamond, the score.
 		void DrawOver()
 		{
 			const auto& io = ImGui::GetIO();
-			ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.45f), 0, ImVec2(0.5f, 0.5f));
-			ImGui::SetNextWindowSize(ImVec2(720 * g_ui, 0));
-			ImGui::SetNextWindowBgAlpha(0.85f);
-			ImGui::Begin("##over", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove);
-			Centered("GAME OVER", g_fBody, kDim);
-			const char* title = g_outcome == "win" ? "YOU WIN!" : g_outcome == "draw" ? "A DRAW" : "YOU LOSE!";
-			Centered(title, g_fTitle, g_outcome == "win" ? kText : ImVec4(0.94f, 0.76f, 0.71f, 1));
-			Rule();
-			Centered(g_outcome == "forfeit" ? "You forfeited" : fmt::format("{}  -  {}", g_cards[0].Total(), g_cards[1].Total()).c_str(), g_fBig, kText);
-			Centered(g_payoutText.c_str(), g_fBody, kDim);
+			const float W = io.DisplaySize.x, H = io.DisplaySize.y, cx = W * 0.5f;
+			auto*       bg = ImGui::GetBackgroundDrawList();
+			Vignette(bg, W, H, 1.0f);
+			const float w = S(820), h = S(440), x = cx - w * 0.5f, y = H * 0.42f - h * 0.5f;
+			BeginArea("##over", ImVec2(x, y), ImVec2(w, h));
+			auto*       dl = ImGui::GetWindowDrawList();
+			const bool  win = g_outcome == "win";
+			const bool  lose = g_outcome == "lose" || g_outcome == "forfeit";
+			const char* title = win ? "YOU WIN" : g_outcome == "draw" ? "A DRAW" : g_outcome == "forfeit" ? "FORFEIT" : "YOU LOSE";
+			float       yy = y;
+			TextC(dl, F.small, cx, yy, kGrey, "GAME OVER", 0.6f, 0.8f);
+			yy += S(26);
+			const ImU32 tc = lose ? IM_COL32(240, 195, 182, 255) : IM_COL32(255, 255, 255, 255);
+			const float tw = Measure(F.title, title, 0.16f) - 0.16f * F.title->FontSize;
+			Glow(dl, F.title, ImVec2(cx - tw * 0.5f, yy), Alpha(lose ? IM_COL32(208, 106, 82, 255) : kWhite, 0.05f), title, 0.16f, S(8));
+			TextC(dl, F.title, cx, yy, tc, title, 0.16f, 0.9f);
+			yy += F.title->FontSize + S(14);
+			DiamondRule(dl, cx, yy, S(560));
+			yy += S(20);
+			if (g_outcome != "forfeit") {
+				TextC(dl, F.score, cx, yy, kWhite, fmt::format("{}   -   {}", g_cards[0].Total(), g_cards[1].Total()), 0.18f, 0.8f);
+				yy += F.score->FontSize + S(10);
+			}
+			TextC(dl, F.small, cx, yy, kGrey, Upper(g_payoutText), 0.34f, 0.8f);
+			yy += S(24);
 			const auto& r = g_records[g_oppId];
-			Centered(fmt::format("Your record against {}: {}-{}{}", g_oppName, r.w, r.l, r.d ? fmt::format(", {} drawn", r.d) : "").c_str(), g_fBody, kDim);
-			Centered(fmt::format("Your cup: the {} ({})", PlayerCup().name, PlayerCup().rank).c_str(), g_fBody, kDim);
-			Rule();
-			ImGui::SetCursorPosX(ImGui::GetWindowWidth() * 0.5f - 170 * g_ui);
-			ImGui::PushFont(g_fBig);
-			if (Button("Rematch", 160 * g_ui)) {
+			TextC(dl, F.small, cx, yy, kGrey,
+				Upper(fmt::format("Your record against {}: {}-{}{}", g_oppName, r.w, r.l, r.d ? fmt::format(", {} drawn", r.d) : "")), 0.34f, 0.8f);
+			yy += S(24);
+			TextC(dl, F.small, cx, yy, kDimC, Upper(fmt::format("Your cup: the {} ({})", PlayerCup().name, PlayerCup().rank)), 0.34f, 0.8f);
+			yy += S(44);
+			switch (MenuButtons("ob", { { "Rematch", false }, { "Leave", false } }, cx, yy)) {
+			case 0:
 				Post(UiAct::Rematch);
-			}
-			ImGui::SameLine();
-			if (Button("Leave", 160 * g_ui)) {
+				break;
+			case 1:
 				Post(UiAct::Leave);
+				break;
+			default:
+				break;
 			}
-			ImGui::PopFont();
+			if (!g_toast.empty() && g_clock - g_toastTime < 2.2) {
+				TextC(dl, F.sans, cx, yy + S(60), kWhite, Upper(g_toast), 0.14f, 0.9f);
+			}
 			ImGui::End();
+		}
+
+		// Skyrim's pointer: a small off-white arrow with a dark edge.
+		void Cursor()
+		{
+			auto&        io = ImGui::GetIO();
+			auto*        dl = ImGui::GetForegroundDrawList();
+			const ImVec2 m = io.MousePos;
+			const float  s = S(1.0f);
+			const ImVec2 p[7] = { { m.x, m.y }, { m.x, m.y + 22 * s }, { m.x + 5.5f * s, m.y + 17 * s }, { m.x + 9.5f * s, m.y + 25 * s },
+				{ m.x + 12.5f * s, m.y + 23.5f * s }, { m.x + 8.5f * s, m.y + 15.5f * s }, { m.x + 15.5f * s, m.y + 15.5f * s } };
+			// the head and the tail, each convex
+			const ImU32 fill = IM_COL32(241, 238, 232, 245);
+			dl->AddTriangleFilled(p[0], p[1], p[6], fill);
+			dl->AddQuadFilled(p[2], p[3], p[4], p[5], fill);
+			dl->AddPolyline(p, 7, IM_COL32(20, 16, 12, 255), ImDrawFlags_Closed, 1.4f * s);
 		}
 	}
 
@@ -2089,6 +2742,7 @@ namespace Game
 				auto* keeper = RE::TESForm::LookupByID<RE::Actor>(id);
 				g_shopName = keeper && keeper->GetDisplayFullName() ? keeper->GetDisplayFullName() : "The innkeeper";
 				g_phase = Phase::Shop;
+				g_shopSel = -1;
 				Scene::Open(false);
 				spdlog::info("Dice shop with {}", g_shopName);
 			}
@@ -2162,6 +2816,7 @@ namespace Game
 			}
 		}
 		if (!Scene::Ready()) {
+			g_clock += dt;    // the interface's notices and fades keep time
 			ProcessUiActs();  // the wager can be placed (or the table left) while it loads
 			return;
 		}
@@ -2178,43 +2833,59 @@ namespace Game
 	void SetupUi(float a_screenH)
 	{
 		g_ui = (std::max)(0.6f, a_screenH / 1080.0f) * Config::Get().uiScale;
-		auto&       io = ImGui::GetIO();
-		char        windir[MAX_PATH]{};
+		auto& io = ImGui::GetIO();
+		char  windir[MAX_PATH]{};
 		::GetWindowsDirectoryA(windir, MAX_PATH);
-		const std::string fonts = std::string(windir) + "\\Fonts\\";
+		const std::string ours = "Data\\SKSE\\Plugins\\SkyrimYacht\\Fonts\\";
+		const std::string sys = std::string(windir) + "\\Fonts\\";
 		std::error_code   ec;
-		auto              load = [&](const char* a_file, float a_size) -> ImFont* {
-            const std::string p = fonts + a_file;
-            if (!std::filesystem::exists(p, ec)) {
-                return nullptr;
-            }
-            ImFontConfig fc;
-            fc.OversampleH = 2;
-            return io.Fonts->AddFontFromFileTTF(p.c_str(), a_size * g_ui, &fc);
+		static const ImWchar kCaps[] = { 0x0020, 0x007E, 0 };  // the huge display faces only need plain ASCII
+		auto load = [&](const char* a_file, const char* a_fallback, float a_size, const ImWchar* a_ranges = nullptr) -> ImFont* {
+			std::string p = ours + a_file;
+			if (!std::filesystem::exists(p, ec)) {
+				p = sys + a_fallback;
+				if (!std::filesystem::exists(p, ec)) {
+					return nullptr;
+				}
+			}
+			ImFontConfig fc;
+			fc.OversampleH = 2;
+			fc.OversampleV = 1;
+			return io.Fonts->AddFontFromFileTTF(p.c_str(), a_size * g_ui, &fc, a_ranges);
 		};
-		g_fBody = load("georgia.ttf", 19.0f);
-		g_fBig = load("georgia.ttf", 26.0f);
-		g_fTitle = load("georgiab.ttf", 52.0f);
-		if (!g_fBody) {
-			g_fBody = g_fBig = g_fTitle = io.Fonts->AddFontDefault();
+		F.sans = load("BarlowCondensed-Medium.ttf", "arialn.ttf", 20.0f);
+		F.sansSemi = load("BarlowCondensed-SemiBold.ttf", "arialnb.ttf", 13.0f);
+		F.small = load("BarlowCondensed-Medium.ttf", "arialn.ttf", 15.0f);
+		F.turn = load("BarlowCondensed-Medium.ttf", "arialn.ttf", 21.0f);
+		F.menu = load("BarlowCondensed-Medium.ttf", "arialn.ttf", 24.0f);
+		F.toastLong = load("BarlowCondensed-Medium.ttf", "arialn.ttf", 26.0f, kCaps);
+		F.skill = load("BarlowCondensed-Medium.ttf", "arialn.ttf", 30.0f, kCaps);
+		F.score = load("BarlowCondensed-Medium.ttf", "arialn.ttf", 32.0f, kCaps);
+		F.toast = load("BarlowCondensed-Medium.ttf", "arialn.ttf", 44.0f, kCaps);
+		F.titleMid = load("BarlowCondensed-Medium.ttf", "arialn.ttf", 76.0f, kCaps);
+		F.words = load("BarlowCondensed-Medium.ttf", "arialn.ttf", 92.0f, kCaps);
+		F.title = load("BarlowCondensed-Medium.ttf", "arialn.ttf", 100.0f, kCaps);
+		F.book = load("IMFellEnglish-Regular.ttf", "georgia.ttf", 18.0f);
+		F.bookIt = load("IMFellEnglish-Italic.ttf", "georgiai.ttf", 16.0f);
+		F.bookSC = load("IMFellEnglishSC-Regular.ttf", "georgia.ttf", 27.0f);
+		F.bookSCsm = load("IMFellEnglishSC-Regular.ttf", "georgia.ttf", 17.0f);
+		F.hand = load("Fondamento-Regular.ttf", "georgiai.ttf", 21.0f);
+		F.handBig = load("Fondamento-Regular.ttf", "georgiai.ttf", 40.0f);
+		ImFont* any = F.sans ? F.sans : io.Fonts->AddFontDefault();
+		for (ImFont** f : { &F.sans, &F.sansSemi, &F.small, &F.turn, &F.menu, &F.toastLong, &F.skill, &F.score, &F.toast, &F.titleMid, &F.words,
+				 &F.title, &F.book, &F.bookIt, &F.bookSC, &F.bookSCsm, &F.hand, &F.handBig }) {
+			if (!*f) {
+				*f = any;
+			}
 		}
-		io.FontDefault = g_fBody;
+		io.FontDefault = F.sans;
+		spdlog::info("Interface: scale {:.2f}, fonts {}", g_ui, std::filesystem::exists(ours + "BarlowCondensed-Medium.ttf", ec) ? "ours" : "Windows'");
 		auto& st = ImGui::GetStyle();
 		st.WindowRounding = 0.0f;
-		st.WindowBorderSize = 1.0f;
-		st.FrameRounding = 2.0f;
-		st.WindowPadding = ImVec2(18 * g_ui, 14 * g_ui);
-		st.ItemSpacing = ImVec2(10 * g_ui, 6 * g_ui);
-		st.Colors[ImGuiCol_WindowBg] = ImVec4(0.02f, 0.02f, 0.02f, 0.86f);
-		st.Colors[ImGuiCol_Border] = ImVec4(0.94f, 0.93f, 0.91f, 0.45f);
-		st.Colors[ImGuiCol_Text] = kText;
-		st.Colors[ImGuiCol_FrameBg] = ImVec4(0, 0, 0, 0.5f);
-		st.Colors[ImGuiCol_FrameBgHovered] = ImVec4(1, 1, 1, 0.08f);
-		st.Colors[ImGuiCol_SliderGrab] = ImVec4(0.94f, 0.93f, 0.91f, 0.9f);
-		st.Colors[ImGuiCol_SliderGrabActive] = ImVec4(1, 1, 1, 1);
-		st.Colors[ImGuiCol_Header] = ImVec4(0.55f, 0.14f, 0.07f, 0.15f);
-		st.Colors[ImGuiCol_HeaderHovered] = ImVec4(0.55f, 0.14f, 0.07f, 0.25f);
-		st.Colors[ImGuiCol_HeaderActive] = ImVec4(0.55f, 0.14f, 0.07f, 0.35f);
+		st.WindowBorderSize = 0.0f;
+		st.WindowPadding = ImVec2(0, 0);
+		st.Colors[ImGuiCol_WindowBg] = ImVec4(0, 0, 0, 0);
+		st.Colors[ImGuiCol_Text] = ImVec4(0.945f, 0.933f, 0.91f, 1.0f);
 	}
 
 	void DrawUi()
@@ -2223,12 +2894,37 @@ namespace Game
 		if (!Scene::IsOpen()) {
 			return;
 		}
-		if (!Scene::Ready()) {
-			const auto& io = ImGui::GetIO();
-			ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.85f), 0, ImVec2(0.5f, 0.5f));
-			ImGui::Begin("##loading", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoInputs);
-			ImGui::TextColored(kDim, "Setting up the table...");
-			ImGui::End();
+		if (!g_artTried) {
+			g_artTried = true;
+			for (int k = 0; k < 2; ++k) {
+				std::ifstream f(k == 0 ? "Data\\SKSE\\Plugins\\SkyrimYacht\\UI\\parchment_b.rgba" : "Data\\SKSE\\Plugins\\SkyrimYacht\\UI\\parchment_a.rgba",
+					std::ios::binary);
+				std::uint32_t wh[2]{};
+				if (f && f.read(reinterpret_cast<char*>(wh), 8) && wh[0] > 0 && wh[0] <= 4096 && wh[1] > 0 && wh[1] <= 4096) {
+					std::vector<char> px(static_cast<std::size_t>(wh[0]) * wh[1] * 4);
+					if (f.read(px.data(), static_cast<std::streamsize>(px.size()))) {
+						g_parchment[k] = Overlay::CreateTexture(static_cast<int>(wh[0]), static_cast<int>(wh[1]), px.data());
+					}
+				}
+			}
+			spdlog::info("Interface: parchment {}", g_parchment[0] && g_parchment[1] ? "loaded" : "missing (plain sheets)");
+		}
+		auto& io = ImGui::GetIO();
+		io.MouseDrawCursor = false;
+		const float W = io.DisplaySize.x, H = io.DisplaySize.y;
+		if (!Scene::Ready() && g_phase != Phase::Shop && g_phase != Phase::Wager) {
+			// like the game's own loading prompt, bottom right
+			auto*       dl = ImGui::GetForegroundDrawList();
+			const auto  t = std::string("SETTING UP THE TABLE");
+			const float tw = Measure(F.sans, t, 0.4f);
+			Text(dl, F.sans, ImVec2(W - S(60) - S(30) - tw, H - S(50) - F.sans->FontSize), kGrey, t, 0.4f, 0.9f);
+			const float a = static_cast<float>(Now() * 2.0);
+			const ImVec2 c(W - S(60) - S(7), H - S(50) - F.sans->FontSize * 0.5f);
+			ImVec2       q[4];
+			for (int k = 0; k < 4; ++k) {
+				q[k] = ImVec2(c.x + std::cos(a + k * 1.5708f) * S(10), c.y + std::sin(a + k * 1.5708f) * S(10));
+			}
+			dl->AddQuad(q[0], q[1], q[2], q[3], kWhite, 1.5f * g_ui);
 		}
 		switch (g_phase) {
 		case Phase::Wager:
@@ -2247,6 +2943,7 @@ namespace Game
 			DrawPlay();
 			break;
 		}
+		Cursor();
 	}
 
 	// ---------------------------------------------------------------- co-save: records per opponent, last score, wins
