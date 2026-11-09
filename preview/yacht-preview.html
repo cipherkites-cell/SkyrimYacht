@@ -1233,18 +1233,18 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
       hitBank = { click: DICE_HITS.index.click.map(cutOut), knock: DICE_HITS.index.knock.map(cutOut) };
     }).catch(() => {});
   }
-  // Harder materials sound a little higher.
-  const MAT_PITCH = { bone: 1, metal: 1.12, precious: 1.06, stone: 0.95, ice: 1.15 };
-  // A flavour on top of the recorded hit, kept well under it. Bone: a warm, hollow "tok" (a lift in the mids, the
-  // top rolled off). Metal: a brighter edge and a faint, very short ring of the die itself; silver and gold ring a
-  // touch lower and longer; stalhrim a glassy tick. Metal goblets ring softly when dice hit them.
+  // Heavier dice land lower: metal well below bone, gold and silver lowest.
+  const MAT_PITCH = { bone: 1, metal: 0.84, precious: 0.8, stone: 0.92, ice: 1.0 };
+  // A flavour on the recorded hit, as tone shaping only (nothing added). Bone: a warm, hollow "tok". Metal: heavy
+  // and thumpy, the low end lifted and the top taken down, no ring. Stone duller still; stalhrim a little clearer.
   const MAT_COLOR = {
     bone: { peak: [1500, 3.5, 0.9], shelf: [6500, -4] },
     stone: { peak: [1100, 2, 0.8], shelf: [5000, -3] },
-    metal: { shelf: [4500, 3], ring: [[4600, 0.016], [7300, 0.012], [10100, 0.008]], ringLevel: 0.1 },
-    precious: { shelf: [4000, 2.5], ring: [[3500, 0.028], [5900, 0.02], [8600, 0.014]], ringLevel: 0.11 },
-    ice: { shelf: [6000, 2], ring: [[5200, 0.012], [8900, 0.009]], ringLevel: 0.08 },
+    metal: { low: [260, 6], peak: [650, 3, 0.9], shelf: [3800, -5] },
+    precious: { low: [220, 7], peak: [560, 3, 0.9], shelf: [3500, -6] },
+    ice: { peak: [2400, 2, 1], shelf: [7000, -1] },
   };
+  // Metal goblets ring softly when dice hit them.
   const GOBLET_RING = [[1250, 0.12], [2780, 0.09], [4900, 0.06]];
   const ringCache = new Map();
   function ringBufs(key, modes) {
@@ -1286,6 +1286,10 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
     const g = audio.createGain(); g.gain.value = Math.pow(v, 1.6) * SURF_GAIN[type];
     const mat = DIE_MAT[curDiceStyle] || "bone", col = MAT_COLOR[mat];
     let tail = src;
+    if (col.low) {
+      const lo = audio.createBiquadFilter(); lo.type = "lowshelf";
+      [lo.frequency.value, lo.gain.value] = col.low; tail.connect(lo); tail = lo;
+    }
     if (col.peak) {
       const pk = audio.createBiquadFilter(); pk.type = "peaking";
       [pk.frequency.value, pk.gain.value, pk.Q.value] = col.peak; tail.connect(pk); tail = pk;
@@ -1295,9 +1299,8 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
       [sh.frequency.value, sh.gain.value] = col.shelf; tail.connect(sh); tail = sh;
     }
     tail.connect(f); f.connect(g);
-    // The die's own ring, and a metal goblet's, under the hit. Only on firmer hits, so settling stays quiet.
+    // A metal goblet's soft ring under the hit, only on firmer hits.
     const rings = [];
-    if (col.ring && v > 0.15) rings.push([ringBufs(mat, col.ring), col.ringLevel * (type === 1 ? 0.5 : 1)]);
     if (type === 3 && CUP_MAT[activeCupId()] === "metal" && v > 0.12) rings.push([ringBufs("goblet", GOBLET_RING), 0.07]);
     for (const [set, level] of rings) {
       const r = audio.createBufferSource(); r.buffer = set[(Math.random() * set.length) | 0];
@@ -1801,6 +1804,9 @@ const CATS = ["Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a K
         anim[i] = { from: dice[i].position.clone(), fromQ: dice[i].quaternion.clone(), t: -delay, dur: 0.8, arc: 6 + n,
           spin: new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize() };
         Y.y_add_to_cup(i);
+        // It drops into the cup with a knock, and a smaller one as it settles against the others.
+        setTimeout(() => { hit(3, 70 + Math.random() * 20, i); }, (delay + 0.78) * 1000);
+        setTimeout(() => { hit(0, 30 + Math.random() * 10, i); }, (delay + 0.9 + Math.random() * 0.06) * 1000);
       });
       setTimeout(() => { shouting = false; updateUI(); }, 1100);
       updateUI();
