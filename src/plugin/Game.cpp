@@ -1447,6 +1447,47 @@ namespace Game
 		}
 
 		// ---------------------------------------------------------------- who will play: seated NPCs near a table
+		// Is this a table, by what its mesh or name is called? Vanilla and most mods say "table"; bars, counters, desks
+		// and barrel tables count too (and "stable", "vegetable", a tablecloth don't).
+		bool TableWord(std::string a_s)
+		{
+			std::transform(a_s.begin(), a_s.end(), a_s.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+			auto has = [&](const char* w) { return a_s.find(w) != std::string::npos; };
+			for (const char* no : { "tablecloth", "stable", "vegetable", "portable", "timetable", "notable", "constable", "barricade",
+					 "barbarian", "barrier", "barrow", "barn", "barbed", "bars", "embark", "crowbar", "toolbar" }) {
+				// blank the word out and look at the rest (a "stable" mesh folder can still hold a table)
+				for (std::size_t p = a_s.find(no); p != std::string::npos; p = a_s.find(no)) {
+					a_s.replace(p, std::strlen(no), " ");
+				}
+			}
+			if (has("table") || has("counter") || has("desk") || has("bartop") || has("barcounter") || has("barrel") ||
+				has("tavernbar") || has("innbar") || has("pubbar") || has("workbench") || has("tabletop") || has("booth")) {
+				return true;
+			}
+			// "bar" on its own: Bar01, bar_long, \bar\, "Bar Table"
+			for (std::size_t p = a_s.find("bar"); p != std::string::npos; p = a_s.find("bar", p + 1)) {
+				const char before = p > 0 ? a_s[p - 1] : ' ', after = p + 3 < a_s.size() ? a_s[p + 3] : ' ';
+				if (std::isdigit(static_cast<unsigned char>(after)) ||
+					(!std::isalpha(static_cast<unsigned char>(before)) && !std::isalpha(static_cast<unsigned char>(after)))) {
+					return true;
+				}
+			}
+			return false;
+		}
+
+		// Or by its shape: a static with a wide, flat top about table height (a modded interior's own table, named
+		// anything). Chairs, beds and chests are furniture or containers, not statics, so they don't come in here.
+		bool TableShape(RE::TESBoundObject* a_obj, float a_scale)
+		{
+			if (!a_obj || !a_obj->Is(RE::FormType::Static, RE::FormType::MovableStatic)) {
+				return false;
+			}
+			const auto& b = a_obj->boundData;
+			const float h = (b.boundMax.z - b.boundMin.z) * a_scale, w = (b.boundMax.x - b.boundMin.x) * a_scale,
+						d = (b.boundMax.y - b.boundMin.y) * a_scale;
+			return h >= 40.0f && h <= 110.0f && (std::min)(w, d) >= 40.0f && (std::max)(w, d) <= 600.0f && b.boundMin.z >= -10;
+		}
+
 		bool NearTable(RE::Actor* a_actor, float a_reach)
 		{
 			bool found = false;
@@ -1456,18 +1497,17 @@ namespace Game
 			}
 			tes->ForEachReferenceInRange(a_actor, a_reach, [&](RE::TESObjectREFR* a_ref) {
 				auto* base = a_ref ? a_ref->GetBaseObject() : nullptr;
-				if (!base || base->Is(RE::FormType::NPC)) {
+				if (!base || base->Is(RE::FormType::NPC) || a_ref->IsDisabled()) {
 					return RE::BSContainer::ForEachResult::kContinue;
 				}
-				auto* model = skyrim_cast<RE::TESModel*>(base);
+				auto*       model = skyrim_cast<RE::TESModel*>(base);
 				const char* path = model ? model->GetModel() : nullptr;
-				if (path && *path) {
-					std::string low = path;
-					std::transform(low.begin(), low.end(), low.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-					if (low.find("table") != std::string::npos && low.find("tablecloth") == std::string::npos) {
-						found = true;
-						return RE::BSContainer::ForEachResult::kStop;
-					}
+				const char* edid = base->GetFormEditorID();
+				const char* name = base->GetName();
+				if ((path && *path && TableWord(path)) || (edid && *edid && TableWord(edid)) || (name && *name && TableWord(name)) ||
+					TableShape(base, a_ref->GetScale())) {
+					found = true;
+					return RE::BSContainer::ForEachResult::kStop;
 				}
 				return RE::BSContainer::ForEachResult::kContinue;
 			});
