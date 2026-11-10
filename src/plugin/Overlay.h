@@ -25,6 +25,8 @@ namespace Overlay
 	std::vector<Press> TakePresses();
 	std::vector<int>   TakeKeys();  // DirectInput scan codes pressed
 	bool               ButtonHeld(int a_button);
+	bool               UsingPad();  // the last input came from a controller (the key prompts show its buttons)
+	inline constexpr int kPadSoundKey = 0x1000;  // the controller's Back: the sound panel
 
 	// An RGBA texture for ImGui (on the render thread, from DrawUi); null if it couldn't be made
 	void* CreateTexture(int a_w, int a_h, const void* a_rgba);

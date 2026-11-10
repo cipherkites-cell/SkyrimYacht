@@ -36,6 +36,9 @@ namespace Overlay
 		std::atomic<bool>  g_inputDisabled{ false };
 		std::atomic<bool>  g_uiHover{ false };
 		std::atomic<bool>  g_held[3]{};
+		// a controller: the left stick moves the pointer (the right one finely), A is the left button
+		std::atomic<float> g_stickL[2]{}, g_stickR[2]{};
+		std::atomic<bool>  g_padHeld{ false }, g_usingPad{ false };
 		std::atomic<float> g_mx{ 0.0f }, g_my{ 0.0f };
 		std::atomic<float> g_screenW{ 1920.0f }, g_screenH{ 1080.0f };
 		std::atomic<bool>  g_center{ true };
@@ -69,6 +72,17 @@ namespace Overlay
 					g_mx = std::clamp(g_mx.load() + mm->mouseInputX * s, 0.0f, g_screenW.load() - 1.0f);
 					g_my = std::clamp(g_my.load() + mm->mouseInputY * s, 0.0f, g_screenH.load() - 1.0f);
 					Push({ InputMsg::Kind::MouseMove, g_mx.load(), g_my.load() });
+					g_usingPad = false;
+					continue;
+				}
+				if (e->GetEventType() == RE::INPUT_EVENT_TYPE::kThumbstick) {
+					auto* ts = static_cast<RE::ThumbstickEvent*>(e);
+					auto& st = ts->IsLeft() ? g_stickL : g_stickR;
+					st[0] = ts->xValue;
+					st[1] = ts->yValue;
+					if (std::abs(ts->xValue) + std::abs(ts->yValue) > 0.2f) {
+						g_usingPad = true;
+					}
 					continue;
 				}
 				auto* btn = e->AsButtonEvent();
@@ -96,6 +110,32 @@ namespace Overlay
 				} else if (e->GetDevice() == RE::INPUT_DEVICE::kKeyboard && down) {
 					std::lock_guard lk(g_inputMtx);
 					g_keys.push_back(static_cast<int>(code));
+				} else if (e->GetDevice() == RE::INPUT_DEVICE::kGamepad) {
+					using Pad = RE::BSWin32GamepadDevice::Key;
+					g_usingPad = true;
+					if (code == Pad::kA || code == Pad::kRightTrigger) {  // the left mouse button
+						g_held[0] = down;
+						g_padHeld = down;
+						Push({ InputMsg::Kind::MouseButton, g_mx.load(), g_my.load(), 0, down });
+						std::lock_guard lk(g_inputMtx);
+						g_presses.push_back({ g_mx.load(), g_my.load(), 0, down, down && g_uiHover.load() });
+					} else if (down) {
+						// the keyboard's keys: B / Start Esc, Y the Shout (Z), X help (H), Back the sound panel
+						int key = 0;
+						if (code == Pad::kB || code == Pad::kStart) {
+							key = 0x01;
+						} else if (code == Pad::kY) {
+							key = 0x2C;
+						} else if (code == Pad::kX) {
+							key = 0x23;
+						} else if (code == Pad::kBack) {
+							key = kPadSoundKey;
+						}
+						if (key) {
+							std::lock_guard lk(g_inputMtx);
+							g_keys.push_back(key);
+						}
+					}
 				}
 				if (Config::Get().logInput) {
 					spdlog::info("[input] device {} code {:X} {}", static_cast<int>(e->GetDevice()), code, down ? "down" : "up");
@@ -192,7 +232,7 @@ namespace Overlay
 			// a release the game never saw (alt-tab, the Steam overlay): let go
 			static constexpr int kVk[3] = { VK_LBUTTON, VK_RBUTTON, VK_MBUTTON };
 			for (int b = 0; b < 3; ++b) {
-				if (io.MouseDown[b] && (::GetAsyncKeyState(kVk[b]) & 0x8000) == 0) {
+				if (io.MouseDown[b] && !(b == 0 && g_padHeld) && (::GetAsyncKeyState(kVk[b]) & 0x8000) == 0) {
 					io.AddMouseButtonEvent(b, false);
 					g_held[b] = false;
 				}
@@ -280,6 +320,8 @@ namespace Overlay
 		out.swap(g_keys);
 		return out;
 	}
+
+	bool UsingPad() { return g_usingPad; }
 
 	bool ButtonHeld(int a_button) { return a_button >= 0 && a_button < 3 && g_held[a_button].load(); }
 
@@ -379,6 +421,24 @@ namespace Overlay
 			g_mx = io.DisplaySize.x * 0.5f;
 			g_my = io.DisplaySize.y * 0.6f;
 			io.AddMousePosEvent(g_mx.load(), g_my.load());
+		}
+		// the sticks move the pointer: faster the further they're pushed
+		{
+			const float k = 1500.0f * (io.DisplaySize.y / 1080.0f) * Config::Get().mouseSpeed * io.DeltaTime;
+			float       dx = 0.0f, dy = 0.0f;
+			for (auto* st : { &g_stickL, &g_stickR }) {
+				const float x = (*st)[0], y = (*st)[1], m = std::sqrt(x * x + y * y);
+				if (m > 0.15f) {
+					const float g = (m - 0.15f) / 0.85f * (st == &g_stickL ? 1.0f : 0.3f);
+					dx += x / m * g * g * k * 1.4f;
+					dy -= y / m * g * g * k * 1.4f;
+				}
+			}
+			if (dx != 0.0f || dy != 0.0f) {
+				g_mx = std::clamp(g_mx.load() + dx, 0.0f, io.DisplaySize.x - 1.0f);
+				g_my = std::clamp(g_my.load() + dy, 0.0f, io.DisplaySize.y - 1.0f);
+				Push({ InputMsg::Kind::MouseMove, g_mx.load(), g_my.load() });
+			}
 		}
 		DrainInput();
 		io.MouseDrawCursor = true;

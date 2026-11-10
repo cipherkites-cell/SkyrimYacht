@@ -1054,6 +1054,12 @@ namespace Game
 				} else if (key == 0x32) {  // M
 					Audio::SetMuted(!Audio::Muted());
 					Ui("ui_select");
+				} else if (key == Overlay::kPadSoundKey) {  // the controller's Back: the sound panel
+					if (g_soundMenu) {
+						Config::Save();
+					}
+					g_soundMenu = !g_soundMenu;
+					Ui("ui_select");
 				}
 			}
 			for (const auto& p : Overlay::TakePresses()) {
@@ -1265,12 +1271,24 @@ namespace Game
 				for (int k = 0; k < 2; ++k) {
 					Scene::SetCup(k, g_cups[k].p, g_cups[k].q);
 				}
+				for (int key : Overlay::TakeKeys()) {  // Esc (or B) leaves; Back opens the sound panel
+					if ((key == 0x01 || key == 0x0F) && g_phase == Phase::Wager) {
+						Post(UiAct::Leave);
+					} else if (key == Overlay::kPadSoundKey) {
+						g_soundMenu = !g_soundMenu;
+					}
+				}
 				return;
 			}
 			if (!g_confirmForfeit) {
 				HandleInput();
 			} else {
 				Overlay::TakePresses();
+				for (int key : Overlay::TakeKeys()) {  // Esc (or B) again: keep playing
+					if (key == 0x01 || key == 0x0F) {
+						Post(UiAct::ForfeitNo);
+					}
+				}
 			}
 			NpcTick(dt);
 			auto& c = g_cups[g_turn];
@@ -2088,11 +2106,12 @@ namespace Game
 				int         act;  // 0 shout, 1 help, 2 sound, 3 forfeit
 			};
 			const bool canShout = CanShout() && ShoutTargets();
+			const bool pad = Overlay::UsingPad();  // a controller: its buttons
 			const Key  keys[4] = {
-                { "Z", "Fus Ro Dah", IM_COL32(185, 205, 234, 255), IM_COL32(255, 255, 255, 255), canShout, 0 },
-                { "H", "How to play", kGrey, kWhite, true, 1 },
-                { "M", Audio::Muted() ? "Muted" : "Sound", kGrey, kWhite, true, 2 },
-                { "Tab", "Forfeit", kGrey, IM_COL32(240, 182, 166, 255), g_phase != Phase::Over, 3 },
+                { pad ? "Y" : "Z", "Fus Ro Dah", IM_COL32(185, 205, 234, 255), IM_COL32(255, 255, 255, 255), canShout, 0 },
+                { pad ? "X" : "H", "How to play", kGrey, kWhite, true, 1 },
+                { pad ? "Back" : "M", Audio::Muted() ? "Muted" : "Sound", kGrey, kWhite, true, 2 },
+                { pad ? "B" : "Tab", "Forfeit", kGrey, IM_COL32(240, 182, 166, 255), g_phase != Phase::Over, 3 },
 			};
 			float widths[4], total = 0;
 			for (int k = 0; k < 4; ++k) {
