@@ -74,7 +74,10 @@ namespace Scene
 		RE::NiPointer<RE::NiNode> g_root;           // ours, under the tray
 		RE::NiPointer<RE::NiAVObject> g_dice[2][5];  // [0] the player's set, [1] bone (the opponent's)
 		RE::NiPointer<RE::NiAVObject> g_cupNode[2];
-		bool                          g_cupWaiting[2]{};  // a new cup, hidden until it's first put in its place
+		bool                          g_cupWaiting[2]{};
+		RE::NiPointer<RE::NiAVObject> g_cupMesh[2];     // the cup's own mesh inside its holder
+		RE::NiTransform               g_cupMeshAt[2];   // and where it should sit in it (upright, scaled, floor at 0)
+		bool                          g_cupMeshWarned[2]{};  // a new cup, hidden until it's first put in its place
 		std::string              g_diceSet = "bone", g_loadedSet;
 		std::string              g_cupId[2] = { "tankard", "tankard" }, g_loadedCup[2];
 		int                      g_diceSide = 0;    // which set is showing
@@ -128,6 +131,36 @@ namespace Scene
 		RE::NiFrustum g_frustum{};
 		float         g_screenW = 1920.0f, g_screenH = 1080.0f;
 		bool          g_placed = false;
+
+		// The cups' meshes always sit upright in their holders: whatever else turned one (the game's own physics body on
+		// the mesh, a controller in it), it's put back, so a cup can't be seen lying on its side. True if one was off.
+		bool KeepCupsUpright()
+		{
+			bool any = false;
+			for (int w = 0; w < 2; ++w) {
+				auto& m = g_cupMesh[w];
+				if (!m) {
+					continue;
+				}
+				const auto& want = g_cupMeshAt[w];
+				float       off = std::abs(m->local.scale - want.scale);
+				for (int i = 0; i < 3; ++i) {
+					off += std::abs(m->local.translate[i] - want.translate[i]);
+					for (int j = 0; j < 3; ++j) {
+						off += std::abs(m->local.rotate.entry[i][j] - want.rotate.entry[i][j]);
+					}
+				}
+				if (off > 0.01f) {
+					if (!g_cupMeshWarned[w]) {
+						g_cupMeshWarned[w] = true;
+						spdlog::warn("Cup {}: something moved its mesh (by {:.2f}); put back upright", w, off);
+					}
+					m->local = want;
+					any = true;
+				}
+			}
+			return any;
+		}
 
 		RE::NiMatrix3 FromQuat(const yacht::Quat& q)
 		{
@@ -446,6 +479,7 @@ namespace Scene
 				return;
 			}
 			Detach(g_cupNode[a_which]);
+			g_cupMesh[a_which].reset();
 			FindCupPaths();
 			const auto& c = Cup(g_cupId[a_which]);
 			const auto  it = g_cupPaths.find(c.id);
@@ -489,6 +523,9 @@ namespace Scene
 					mesh->local.rotate.entry[1][c] = -mesh->local.rotate.entry[1][c];
 				}
 			}
+			g_cupMesh[a_which] = RE::NiPointer<RE::NiAVObject>(mesh.get());
+			g_cupMeshAt[a_which] = mesh->local;
+			g_cupMeshWarned[a_which] = false;
 			holder->AttachChild(mesh.get(), true);
 			// hidden until the game puts it where the old one stood (else it shows a frame at the table's middle)
 			holder->CullNode(true);
@@ -892,6 +929,8 @@ namespace Scene
 		}
 		c->local.translate = { static_cast<float>(a_pos.x), static_cast<float>(a_pos.y), static_cast<float>(a_pos.z) };
 		c->local.rotate = FromQuat(a_rot);
+		KeepCupsUpright();
+		}
 		if (g_cupWaiting[std::clamp(a_which, 0, 1)]) {
 			g_cupWaiting[std::clamp(a_which, 0, 1)] = false;
 			c->CullNode(false);
@@ -1024,7 +1063,11 @@ namespace Scene
 			const float e = 1.0f - std::pow(1.0f - t, 3.0f);
 			g_ovRoot->local.translate = { 0.0f, 0.0f, -(1.0f - e) * 7.0f };
 			RE::NiUpdateData ud;
+			KeepCupsUpright();
 			g_ovRoot->Update(ud);
+			if (KeepCupsUpright()) {  // something in the update turned a cup: again, upright
+				g_ovRoot->Update(ud);
+			}
 			Camera(e);
 			if (!g_placed) {
 				spdlog::info("Table: overlay camera at ({:.1f}, {:.1f}, {:.1f}) for {}x{}", g_camPos[0], g_camPos[1], g_camPos[2], g_screenW, g_screenH);
@@ -1167,6 +1210,9 @@ namespace Scene
 			g_loadedCup[1].clear();
 			for (auto& c : g_cupNode) {
 				c.reset();
+			}
+			for (auto& m : g_cupMesh) {
+				m.reset();
 			}
 			for (auto& d : g_dice[0]) {
 				d.reset();
