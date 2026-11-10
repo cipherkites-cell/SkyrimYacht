@@ -2819,7 +2819,8 @@ namespace Game
 				chests.size(), added, everything);
 		}
 
-		// Other mods hand out keywords by name (KID): "Dragonbone" picked up a dragon-bone icon. Only ours and clutter stay.
+		// Other mods hand out keywords by name (KID): "Dragonbone" picked up a dragon-bone icon. What they give every set
+		// alike stays (the inventory's "Clutter" type comes that way); what only some sets got by their name comes off.
 		void KeepDiceKeywords()
 		{
 			static bool s_done = false;
@@ -2827,25 +2828,34 @@ namespace Game
 				return;
 			}
 			s_done = true;
-			auto* ours = RE::TESDataHandler::GetSingleton()->LookupForm<RE::BGSKeyword>(EspIds::kVendorItemDice, EspIds::kPlugin);
-			auto* clutter = RE::TESForm::LookupByID<RE::BGSKeyword>(0x000914E9);
+			std::map<RE::BGSKeyword*, int> seen;
+			int                            sets = 0;
+			for (int k = 1; k < 15; ++k) {
+				if (auto* item = g_diceItem[k]) {
+					++sets;
+					for (std::uint32_t i = 0; i < item->numKeywords; ++i) {
+						if (item->keywords[i]) {
+							++seen[item->keywords[i]];
+						}
+					}
+				}
+			}
 			for (int k = 1; k < 15; ++k) {
 				auto* item = g_diceItem[k];
 				if (!item) {
 					continue;
 				}
-				std::vector<RE::BGSKeyword*> extra;
+				std::vector<RE::BGSKeyword*> odd;
 				for (std::uint32_t i = 0; i < item->numKeywords; ++i) {
-					auto* kw = item->keywords[i];
-					if (kw && kw != ours && kw != clutter) {
-						extra.push_back(kw);
+					if (auto* kw = item->keywords[i]; kw && seen[kw] < sets) {
+						odd.push_back(kw);
 					}
 				}
-				for (auto* kw : extra) {
-					spdlog::info("Dice: {} had keyword {} from another mod: removed", kDiceInfo[k].name, kw->GetFormEditorID());
+				for (auto* kw : odd) {
+					spdlog::info("Dice: {} had keyword {} from another mod, by its name: removed", kDiceInfo[k].name, kw->GetFormEditorID());
 				}
-				if (!extra.empty()) {
-					item->RemoveKeywords(extra);
+				if (!odd.empty()) {
+					item->RemoveKeywords(odd);
 				}
 			}
 		}
