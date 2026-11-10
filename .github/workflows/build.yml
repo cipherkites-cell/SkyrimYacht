@@ -33,7 +33,7 @@ jobs:
     runs-on: windows-2022   # has Visual Studio 2022 (windows-latest moved on)
     env:
       # Current vcpkg checkout for its helper scripts/download URLs; the package versions
-      # come from builtin-baseline in vcpkg.json (vcpkg 2024.01.12), to match CommonLibSSE-NG 3.7.0.
+      # come from builtin-baseline in vcpkg.json, the same as the CommonLib fork's.
       VCPKG_COMMIT: 9e593bb18ea69cc5095e012465dcd675a822ed0d   # vcpkg 2026.07.29
       VCPKG_ROOT: ${{ github.workspace }}/vcpkg
       VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg-bincache

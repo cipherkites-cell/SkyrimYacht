@@ -1,11 +1,13 @@
 {
   "name": "skyrimyacht",
   "version-string": "0.1.0",
-  "builtin-baseline": "53bef8994c541b6561884a8395ea35715ece75db",
+  "builtin-baseline": "ee12231b20c95013c6638d845d04c91559a1d1ff",
   "dependencies": [
     "fmt",
     "spdlog",
     "rapidcsv",
+    "directxtk",
+    "directxmath",
     { "name": "imgui", "features": ["dx11-binding"] }
   ]
 }

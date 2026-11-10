@@ -1,10 +1,11 @@
 cmake_minimum_required(VERSION 3.24)
-project(SkyrimYacht VERSION 0.9.1 LANGUAGES CXX)
+project(SkyrimYacht VERSION 0.9.2 LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# ---- CommonLibSSE-NG (git submodule, v3.7.0, as Hearthsworn): one DLL for SE 1.5.97 and every AE release
+# ---- CommonLibSSE-NG (git submodule: alandtse/CommonLibVR, branch ng): one DLL for SE 1.5.97, every AE release and
+# 1.7.99+ (the new Address Library format)
 set(ENABLE_SKYRIM_SE ON CACHE BOOL "" FORCE)
 set(ENABLE_SKYRIM_AE ON CACHE BOOL "" FORCE)
 set(ENABLE_SKYRIM_VR OFF CACHE BOOL "" FORCE)
