@@ -113,7 +113,7 @@ namespace
 	{
 		__try {
 			auto* renderer = RE::BSGraphics::Renderer::GetSingleton();
-			auto* sc = renderer ? renderer->data.renderWindows[0].swapChain : nullptr;
+			auto* sc = renderer ? reinterpret_cast<IDXGISwapChain*>(renderer->GetRuntimeData().renderWindows[0].swapChain) : nullptr;
 			return sc && PatchPresentSlot(sc);
 		} __except (Overlay::SehFilter(GetExceptionInformation(), "InstallPresentHook")) {
 			return false;

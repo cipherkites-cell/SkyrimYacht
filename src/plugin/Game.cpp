@@ -18,18 +18,6 @@
 
 #undef GetObject  // wingdi.h turns it into GetObjectA, breaking BSScript::Variable::GetObject
 
-// The topic info event (not in CommonLibSSE-NG 3.7): speaker at 0x00, topic info form ID at 0x10, 0 = begin / 1 = end.
-namespace RE
-{
-	struct TESTopicInfoEvent
-	{
-		NiPointer<TESObjectREFR> speakerRef;       // 00
-		void*                    callback;         // 08
-		FormID                   topicInfoFormID;  // 10
-		std::uint32_t            type;             // 14
-	};
-}
-
 namespace Game
 {
 	namespace
@@ -1446,8 +1434,8 @@ namespace Game
 			if (!tes) {
 				return false;
 			}
-			tes->ForEachReferenceInRange(a_actor, a_reach, [&](RE::TESObjectREFR& a_ref) {
-				auto* base = a_ref.GetBaseObject();
+			tes->ForEachReferenceInRange(a_actor, a_reach, [&](RE::TESObjectREFR* a_ref) {
+				auto* base = a_ref ? a_ref->GetBaseObject() : nullptr;
 				if (!base || base->Is(RE::FormType::NPC)) {
 					return RE::BSContainer::ForEachResult::kContinue;
 				}
@@ -1532,7 +1520,7 @@ namespace Game
 		public:
 			RE::BSEventNotifyControl ProcessEvent(const RE::TESTopicInfoEvent* e, RE::BSTEventSource<RE::TESTopicInfoEvent>*) override
 			{
-				if (e && e->type == 1 && g_infoPlay && e->topicInfoFormID == g_infoPlay && e->speakerRef) {
+				if (e && e->type.get() == RE::TESTopicInfoEvent::TopicInfoEventType::kTopicEnd && g_infoPlay && e->topicInfoFormID == g_infoPlay && e->speakerRef) {
 					g_pendingSpeaker = e->speakerRef->GetFormID();
 				}
 				return RE::BSEventNotifyControl::kContinue;
@@ -2770,7 +2758,7 @@ namespace Game
 			}
 			for (auto* cont : chests) {
 				for (int k = 1; k < 15; ++k) {
-					if (g_diceItem[k] && cont->CountObjectsInContainer(g_diceItem[k]) == 0) {
+					if (g_diceItem[k] && cont->GetObjectCount(g_diceItem[k]) == 0) {
 						cont->AddObjectToContainer(g_diceItem[k], 1, nullptr);
 					}
 				}

@@ -300,7 +300,7 @@ namespace Scene
 			}
 			const float v = std::clamp((b - 1.0f) * 0.12f, 0.0f, 0.5f);
 			RE::BSVisit::TraverseScenegraphGeometries(a_obj, [&](RE::BSGeometry* g) {
-				auto* prop = g->GetGeometryRuntimeData().properties[RE::BSGeometry::States::kEffect].get();
+				auto* prop = g->GetGeometryRuntimeData().shaderProperty.get();
 				if (auto* lit = prop ? netimmerse_cast<RE::BSLightingShaderProperty*>(prop) : nullptr; lit && lit->emissiveColor) {
 					lit->emissiveColor->red = v;
 					lit->emissiveColor->green = v * 0.92f;
@@ -335,7 +335,7 @@ namespace Scene
 				return nullptr;
 			}
 			// each die and cup needs its own copy: the database hands out one shared node per file
-			RE::NiPointer<RE::NiAVObject> copy(base->Clone());
+			RE::NiPointer<RE::NiAVObject> copy(static_cast<RE::NiAVObject*>(base->Clone()));
 			// the game's meshes carry physics bodies; ours are moved by hand
 			RE::BSVisit::TraverseScenegraphObjects(copy.get(), [](RE::NiAVObject* a_obj) {
 				if (a_obj) {
@@ -1008,7 +1008,7 @@ namespace Scene
 		void UpdateOverlay(float a_sinceShown)
 		{
 			if (auto* r = RE::BSGraphics::Renderer::GetSingleton()) {
-				const auto& win = r->data.renderWindows[0];
+				const auto& win = r->GetRuntimeData().renderWindows[0];
 				g_screenW = static_cast<float>(win.windowWidth > 0 ? win.windowWidth : 1920);
 				g_screenH = static_cast<float>(win.windowHeight > 0 ? win.windowHeight : 1080);
 			}
@@ -1050,7 +1050,7 @@ namespace Scene
 					}
 					auto&       gd = a_geo->GetGeometryRuntimeData();
 					auto*       rd = gd.rendererData;
-					auto*       prop = gd.properties[RE::BSGeometry::States::kEffect].get();
+					auto*       prop = gd.shaderProperty.get();
 					auto*       lit = prop ? netimmerse_cast<RE::BSLightingShaderProperty*>(prop) : nullptr;
 					auto*       mat = lit ? static_cast<RE::BSLightingShaderMaterialBase*>(lit->material) : nullptr;
 					if (!rd || !rd->vertexBuffer || !rd->indexBuffer || !mat) {
@@ -1103,7 +1103,7 @@ namespace Scene
 					it.specScale = specular ? mat->specularColorScale : 0.0f;
 					it.gloss = mat->specularPower;
 					it.alpha = mat->materialAlpha;
-					if (auto* ap = gd.properties[RE::BSGeometry::States::kProperty].get()) {
+					if (auto* ap = gd.alphaProperty.get()) {
 						if (auto* alpha = netimmerse_cast<RE::NiAlphaProperty*>(ap)) {
 							it.blend = alpha->GetAlphaBlending();
 							it.test = alpha->GetAlphaTesting();
@@ -1189,7 +1189,7 @@ namespace Scene
 			g_frustum = scn->viewFrustum;
 		}
 		if (auto* r = RE::BSGraphics::Renderer::GetSingleton()) {
-			const auto& win = r->data.renderWindows[0];
+			const auto& win = r->GetRuntimeData().renderWindows[0];
 			g_screenW = static_cast<float>(win.windowWidth > 0 ? win.windowWidth : 1920);
 			g_screenH = static_cast<float>(win.windowHeight > 0 ? win.windowHeight : 1080);
 		}
@@ -1268,7 +1268,7 @@ namespace Scene
 		if (!g_placed && g_world) {
 			const auto& wb = model->worldBound;
 			spdlog::info("Table: world bound centre ({:.0f}, {:.0f}, {:.0f}) radius {:.1f}, in view {}", wb.center.x, wb.center.y, wb.center.z, wb.radius,
-				RE::Main::WorldRootCamera() ? RE::NiCamera::NodeInFrustum(model, RE::Main::WorldRootCamera()) : false);
+				RE::Main::WorldRootCamera() ? RE::Main::WorldRootCamera()->NodeInFrustum(model) : false);
 		}
 		if (!g_placed) {
 			spdlog::info("Table: placed at ({:.1f}, {:.1f}, {:.1f}), scale {:.3f}, tilt {:.0f} degrees", g_pos.x, g_pos.y, g_pos.z, g_scale, cfg.tiltDeg);
