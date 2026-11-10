@@ -2902,7 +2902,7 @@ namespace Game
 				}
 				g_ownedDice |= 1u << k;
 				g_diceSel = kDiceSets[k];
-				RE::DebugNotification(fmt::format("{} dice: yours. You'll play with them at the next table.", kDiceInfo[k].name).c_str());
+				RE::SendHUDMessage::ShowHUDMessage(fmt::format("{} dice: yours. You'll play with them at the next table.", kDiceInfo[k].name).c_str());
 				spdlog::info("Bought {} dice", kDiceInfo[k].name);
 			}
 		}
