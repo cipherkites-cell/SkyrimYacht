@@ -60,9 +60,7 @@ namespace Game
 			{ "dwemer2", "Ornate Dwemer Cup", 5.15, "dwemer" },
 			{ "silver", "Silver Goblet", 4.62, "silver" },
 			{ "silver2", "Silver Chalice", 4.01, "silver" },
-			{ "golden", "Golden Goblet", 6.01, "golden" },
 			{ "bloodtankard", "Bloody Tankard", 4.21, "tankard" },
-			{ "bloodchalice", "Blood Chalice", 1.67, "silver" },
 		};
 		constexpr int kNumCups = static_cast<int>(std::size(kCups));
 		// Your title at the table, from your best finished game
@@ -1330,6 +1328,12 @@ namespace Game
 				}
 			}
 
+			// the other cup, if the turn changed while it was still tipped from its pour: back upright on its spot
+			{
+				auto& o = g_cups[1 - g_turn];
+				SpringCup(o, o.rest, dt, 6, 0.8);
+				o.q = Quat::Nlerp(o.q, Quat{}, 1 - std::exp(-dt * 5));
+			}
 			const int nEv = g_sim.Step(dt, c.p, c.q);
 			g_soundCup = g_turn == 0 ? PlayerCup().sound : "tankard";
 			for (int e = 0; e < nEv; ++e) {

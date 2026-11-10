@@ -58,9 +58,7 @@ namespace Scene
 			{ "dwemer2", "dwecup02.nif", 1.29f, 4.36f, 1.22f },
 			{ "silver", "silvergoblet01.nif", 7.8f, 5.2f, 1.1f },
 			{ "silver2", "silvergoblet02.nif", 9.8f, 4.54f, 1.1f },
-			{ "golden", "tggoldengoblet01.nif", 8.3f, 4.19f, 1.1f },
 			{ "bloodtankard", "dlc01tankardblood.nif", 2.9f, 4.32f, 1.04f, "DLC01\\Clutter\\DLC01TankardBlood.nif" },
-			{ "bloodchalice", "dlc01chaliceblood.nif", 15.5f, 8.5f, 1.0f, "DLC01\\Clutter\\DLC01ChaliceBlood.nif", true },
 		};
 		constexpr float kCupRadius = 1.9f;
 		constexpr float kTableHalfWidth = 19.6f;  // tray, and the cups resting beside it
