@@ -930,7 +930,6 @@ namespace Scene
 		c->local.translate = { static_cast<float>(a_pos.x), static_cast<float>(a_pos.y), static_cast<float>(a_pos.z) };
 		c->local.rotate = FromQuat(a_rot);
 		KeepCupsUpright();
-		}
 		if (g_cupWaiting[std::clamp(a_which, 0, 1)]) {
 			g_cupWaiting[std::clamp(a_which, 0, 1)] = false;
 			c->CullNode(false);
