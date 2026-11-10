@@ -96,7 +96,7 @@ namespace Menu
 			Changed(UI::SliderFloat("Music", &v.musicVolume, 0.0f, 1.0f, "%.2f"));
 			Hint("The tavern music while you play (0 for none).");
 			Changed(UI::SliderFloat("Interface size", &v.uiScale, 0.6f, 1.6f, "%.2f"));
-			Hint("Takes effect the next time the game starts.");
+			Hint("The table's scorecards, buttons and text. Changes at once.");
 			Changed(UI::Checkbox("Pause the world while playing", &v.pauseGame));
 			Hint("In the room only (the other ways always pause).");
 			SaveRow();

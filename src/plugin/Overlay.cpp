@@ -383,6 +383,23 @@ namespace Overlay
 		DrainInput();
 		io.MouseDrawCursor = true;
 
+		// the interface size changed in the settings: rebuild the fonts at the new size (once it's held still a moment)
+		{
+			static float s_applied = Config::Get().uiScale, s_seen = s_applied;
+			static auto  s_seenAt = std::chrono::steady_clock::now();
+			const float  want = Config::Get().uiScale;
+			if (want != s_seen) {
+				s_seen = want;
+				s_seenAt = now;
+			}
+			if (want != s_applied && now - s_seenAt > std::chrono::milliseconds(250)) {
+				s_applied = want;
+				io.Fonts->Clear();
+				Game::SetupUi(g_screenH.load());
+				ImGui_ImplDX11_InvalidateDeviceObjects();
+				spdlog::info("Interface size {:.2f}: fonts rebuilt", want);
+			}
+		}
 		ImGui_ImplDX11_NewFrame();
 		ImGui::NewFrame();
 		Game::DrawUi();
