@@ -2482,8 +2482,7 @@ namespace Game
 			// the stake, large, with arrows either side
 			const std::string stake = fmt::format("{}", bet);
 			const float       sw = Measure(F.titleMid, stake, 0.12f);
-			Glow(dl, F.titleMid, ImVec2(cx - sw * 0.5f, yy), Alpha(kWhite, 0.05f), stake, 0.12f, S(6));
-			TextC(dl, F.titleMid, cx, yy, IM_COL32(255, 255, 255, 255), stake, 0.12f, 0.9f);
+			TextC(dl, F.titleMid, cx, yy, IM_COL32(255, 255, 255, 255), stake, 0.12f);
 			bool h0 = false, h1 = false;
 			const float ay = yy + F.titleMid->FontSize * 0.5f;
 			if (Clicked("less", ImVec2(cx - sw * 0.5f - S(80), ay - S(24)), ImVec2(cx - sw * 0.5f - S(30), ay + S(24)), &h0, bet > cfg.minBet)) {
