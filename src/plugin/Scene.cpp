@@ -1011,11 +1011,9 @@ namespace Scene
 
 		void UpdateOverlay(float a_sinceShown)
 		{
-			if (auto* r = RE::BSGraphics::Renderer::GetSingleton()) {
-				const auto& win = r->GetRuntimeData().renderWindows[0];
-				g_screenW = static_cast<float>(win.windowWidth > 0 ? win.windowWidth : 1920);
-				g_screenH = static_cast<float>(win.windowHeight > 0 ? win.windowHeight : 1080);
-			}
+			// the size of the picture we draw into and the mouse moves over (the back buffer): the window's own size can
+			// differ (upscalers, resolution scaling, borderless at another size), which put the dice's hit boxes off them
+			Overlay::ScreenSize(g_screenW, g_screenH);
 			auto* model = g_worldTray.get();
 			if (!g_ovRoot || !model) {
 				return;
@@ -1192,7 +1190,9 @@ namespace Scene
 		} else if (auto* scn = RE::UI3DSceneManager::GetSingleton()) {
 			g_frustum = scn->viewFrustum;
 		}
-		if (auto* r = RE::BSGraphics::Renderer::GetSingleton()) {
+		if (g_overlay) {
+			Overlay::ScreenSize(g_screenW, g_screenH);
+		} else if (auto* r = RE::BSGraphics::Renderer::GetSingleton()) {
 			const auto& win = r->GetRuntimeData().renderWindows[0];
 			g_screenW = static_cast<float>(win.windowWidth > 0 ? win.windowWidth : 1920);
 			g_screenH = static_cast<float>(win.windowHeight > 0 ? win.windowHeight : 1080);

@@ -323,6 +323,12 @@ namespace Overlay
 
 	bool UsingPad() { return g_usingPad; }
 
+	void ScreenSize(float& a_w, float& a_h)
+	{
+		a_w = g_screenW.load();
+		a_h = g_screenH.load();
+	}
+
 	bool ButtonHeld(int a_button) { return a_button >= 0 && a_button < 3 && g_held[a_button].load(); }
 
 	std::string ToUtf8(const std::wstring& a_w)
