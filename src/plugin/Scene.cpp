@@ -1104,7 +1104,7 @@ namespace Scene
 					it.gloss = mat->specularPower;
 					it.alpha = mat->materialAlpha;
 					if (auto* ap = gd.alphaProperty.get()) {
-						if (auto* alpha = netimmerse_cast<RE::NiAlphaProperty*>(ap)) {
+						if (auto* alpha = ap) {
 							it.blend = alpha->GetAlphaBlending();
 							it.test = alpha->GetAlphaTesting();
 							it.alphaRef = alpha->alphaThreshold / 255.0f;
