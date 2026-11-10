@@ -107,8 +107,6 @@ namespace Menu
 			auto& v = Config::Edit();
 			Changed(UI::Checkbox("Show the tray outline and the dice the mouse can hit", &v.debugOverlay));
 			Hint("To check that clicks line up with the table.");
-			Changed(UI::Checkbox("Every dice set on sale for gold (no wins needed)", &v.allDiceForSale));
-			Hint("For testing the innkeepers' dice shop.");
 			SaveRow();
 		}
 	}
