@@ -930,6 +930,30 @@ namespace Game
 			c.q = Quat::Nlerp(c.q, target, 1 - std::exp(-dt * 9));
 		}
 
+		// A cup that isn't being shaken, poured or swung back from a pour goes upright on its spot, whatever the phase:
+		// so neither cup can ever be left lying on its side (a turn passing mid-pour, the end of a game, a new game ...)
+		bool CupBusy(int k)
+		{
+			if (k != g_turn) {
+				return false;
+			}
+			return g_phase == Phase::Shaking || g_phase == Phase::Pouring || g_tilt.on ||
+			       (g_phase == Phase::Rolling && g_rollingTime < 0.6);
+		}
+		void SettleCups(double dt)
+		{
+			for (int k = 0; k < 2; ++k) {
+				if (CupBusy(k)) {
+					continue;
+				}
+				auto& c = g_cups[k];
+				if (k != g_turn || g_phase == Phase::Idle || g_phase == Phase::Wager || g_phase == Phase::Over) {
+					SpringCup(c, c.rest, dt, 6, 0.8);
+				}
+				c.q = Quat::Nlerp(c.q, Quat{}, 1 - std::exp(-dt * 6));
+			}
+		}
+
 		Quat FaceUp(int a_face) { return yacht::DiceSim::FaceUp(a_face ? a_face : 1); }
 
 		void UpdateRoll(double a_dt)
@@ -1241,6 +1265,7 @@ namespace Game
 			}
 			if (g_phase == Phase::Idle || g_phase == Phase::Wager) {
 				// the table sits ready behind the wager: cups at rest, dice in the cup
+				SettleCups(dt);
 				for (int k = 0; k < 2; ++k) {
 					Scene::SetCup(k, g_cups[k].p, g_cups[k].q);
 				}
@@ -1303,12 +1328,7 @@ namespace Game
 				}
 			}
 
-			// the other cup, if the turn changed while it was still tipped from its pour: back upright on its spot
-			{
-				auto& o = g_cups[1 - g_turn];
-				SpringCup(o, o.rest, dt, 6, 0.8);
-				o.q = Quat::Nlerp(o.q, Quat{}, 1 - std::exp(-dt * 5));
-			}
+			SettleCups(dt);
 			const int nEv = g_sim.Step(dt, c.p, c.q);
 			g_soundCup = g_turn == 0 ? PlayerCup().sound : "tankard";
 			for (int e = 0; e < nEv; ++e) {
