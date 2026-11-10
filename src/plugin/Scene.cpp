@@ -482,8 +482,12 @@ namespace Scene
 			mesh->local.scale = s;
 			mesh->local.translate = { 0.0f, 0.0f, -c.floor * s };
 			if (a_which == 1) {  // the opponent's: turned about its own axis so the handle points away from the tray (left)
-				mesh->local.rotate.entry[0][0] = -1.0f;
-				mesh->local.rotate.entry[1][1] = -1.0f;
+				// a half turn about z on top of the mesh's own rotation (the tankard's root is turned already: writing the
+				// two diagonal entries made a skewed matrix that stretched it about 1.4 times)
+				for (int c = 0; c < 3; ++c) {
+					mesh->local.rotate.entry[0][c] = -mesh->local.rotate.entry[0][c];
+					mesh->local.rotate.entry[1][c] = -mesh->local.rotate.entry[1][c];
+				}
 			}
 			holder->AttachChild(mesh.get(), true);
 			// hidden until the game puts it where the old one stood (else it shows a frame at the table's middle)
