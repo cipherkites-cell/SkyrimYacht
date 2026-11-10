@@ -22,7 +22,9 @@ namespace Scene
 	void SetDie(int a_index, const yacht::Vec3& a_pos, const yacht::Quat& a_rot, bool a_visible);
 	void SetCup(int a_which, const yacht::Vec3& a_pos, const yacht::Quat& a_rot);  // 0 yours, 1 the opponent's
 	void UseDice(const std::string& a_set);   // bone, iron, ... (falls back to bone)
-	void UseCup(int a_which, const std::string& a_cupId);  // tankard, goblet, dwemer, silver, golden
+	void UseCup(int a_which, const std::string& a_cupId);
+	void RefreshOwnedCups();                    // which cups you carry (as the table opens)
+	bool OwnsCup(const std::string& a_cupId);  // tankard, goblet, dwemer, silver, golden
 
 	// Table space <-> screen pixels
 	bool Project(const yacht::Vec3& a_p, float& a_sx, float& a_sy);

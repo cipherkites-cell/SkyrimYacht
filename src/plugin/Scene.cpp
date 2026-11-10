@@ -2,6 +2,8 @@
 // Copyright (C) 2026 evodube. GPL-3.0 (LICENSE.txt).
 #include "Scene.h"
 
+#include <set>
+
 #include "Config.h"
 #include "Render3D.h"
 #include "EspIds.h"
@@ -344,6 +346,9 @@ namespace Scene
 			return copy;
 		}
 
+		std::map<std::string, std::vector<RE::TESBoundObject*>> g_cupItems;  // the game's items that are each cup
+		std::set<std::string>                                    g_ownedCups;
+
 		void FindCupPaths()
 		{
 			if (!g_cupPaths.empty()) {
@@ -372,6 +377,9 @@ namespace Scene
 				}
 				for (const auto& c : kCups) {
 					const auto n = std::strlen(c.file);
+					if (a_item && low.size() >= n && low.compare(low.size() - n, n, c.file) == 0) {
+						g_cupItems[c.id].push_back(a_form->As<RE::TESBoundObject>());
+					}
 					if (low.size() >= n && low.compare(low.size() - n, n, c.file) == 0 && (low.size() == n || low[low.size() - n - 1] == '\\' || low[low.size() - n - 1] == '/') &&
 						!g_cupPaths.contains(c.id)) {
 						g_cupPaths[c.id] = m;
@@ -829,6 +837,32 @@ namespace Scene
 			}
 		}
 	}
+
+	void RefreshOwnedCups()
+	{
+		FindCupPaths();
+		g_ownedCups.clear();
+		auto* pc = RE::PlayerCharacter::GetSingleton();
+		if (!pc) {
+			return;
+		}
+		const auto counts = pc->GetInventoryCounts([](RE::TESBoundObject& a_obj) { return a_obj.GetFormType() == RE::FormType::Misc; });
+		for (const auto& [id, items] : g_cupItems) {
+			for (auto* item : items) {
+				if (const auto it = counts.find(item); item && it != counts.end() && it->second > 0) {
+					g_ownedCups.insert(id);
+					break;
+				}
+			}
+		}
+		std::string list;
+		for (const auto& id : g_ownedCups) {
+			list += (list.empty() ? "" : ", ") + id;
+		}
+		spdlog::info("Cups you carry: {}", list.empty() ? "none (the tankard is always yours)" : list);
+	}
+
+	bool OwnsCup(const std::string& a_id) { return g_ownedCups.contains(a_id); }
 
 	void UseCup(int a_which, const std::string& a_cupId) { g_cupId[std::clamp(a_which, 0, 1)] = a_cupId; }
 

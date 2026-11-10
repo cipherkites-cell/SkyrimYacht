@@ -63,13 +63,6 @@ namespace Game
 			{ "silver2", "Silver Chalice", 4.39, "silver" },
 		};
 		constexpr int kNumCups = static_cast<int>(std::size(kCups));
-		// Your title at the table, from your best finished game
-		struct RankInfo
-		{
-			const char* rank;
-			int         need;
-		};
-		constexpr RankInfo kRanks[] = { { "Novice", 0 }, { "Apprentice", 150 }, { "Adept", 200 }, { "Expert", 250 }, { "Master", 300 } };
 		constexpr const char* kDiceSets[] = { "bone", "iron", "steel", "corundum", "dwemer", "orichalcum", "silver", "quicksilver", "moonstone",
 			"gold", "malachite", "ebony", "stalhrim", "dragonbone", "daedric" };
 
@@ -420,9 +413,8 @@ namespace Game
 			{ "Dragonbone", 130, 1500, "Pale dragon bone, fibrous grain, pips stained dark red." },
 			{ "Daedric", 140, 2500, "Black and red, cut with runes, the pips smouldering like coals." },
 		};
-		int  BestScore() { return (std::max)(g_bestScore, Config::Get().testBestScore); }
-		bool CupUnlocked(int k) { return k >= 0 && k < kNumCups; }  // every cup is yours to choose
-		bool RankReached(int k) { return k >= 0 && k < 5 && BestScore() >= kRanks[k].need; }  // the title (Novice ... Master)
+		// a cup is yours to play with while you carry one (the plain tankard always is)
+		bool CupUnlocked(int k) { return k == 0 || (k > 0 && k < kNumCups && Scene::OwnsCup(kCups[k].id)); }
 		bool DiceOwned(int k) { return k >= 0 && k < 15 && (k == 0 || (g_ownedDice >> k) & 1u); }
 		bool DiceOnSale(int k) { return k > 0 && k < 15 && !DiceOwned(k) && (Config::Get().allDiceForSale || g_totalWins >= kDiceInfo[k].wins); }
 		int  DiceIndex(const std::string& a_set)
@@ -446,7 +438,7 @@ namespace Game
 		const CupInfo& PlayerCup()
 		{
 			for (int k = 0; k < kNumCups; ++k) {
-				if (g_cupSel == kCups[k].id) {
+				if (g_cupSel == kCups[k].id && CupUnlocked(k)) {
 					return kCups[k];
 				}
 			}
@@ -696,11 +688,6 @@ namespace Game
 			g_lastScore = outcome == "forfeit" ? 0 : mine;
 			++g_games;
 			if (outcome != "forfeit" && mine > g_bestScore) {
-				for (int k = 1; k < 5; ++k) {
-					if (mine >= kRanks[k].need && g_bestScore < kRanks[k].need) {
-						Toast(fmt::format("You're now {} at the table", kRanks[k].rank));
-					}
-				}
 				g_bestScore = mine;
 			}
 			spdlog::info("Game over vs {}: {} ({} - {}), record {}-{}-{}", g_oppName, outcome, mine, theirs, r.w, r.l, r.d);
@@ -1558,6 +1545,7 @@ namespace Game
 			if (!a_npc || Scene::IsOpen()) {
 				return;
 			}
+			Scene::RefreshOwnedCups();
 			g_opponent = a_npc->GetHandle();
 			g_oppId = a_npc->GetFormID();
 			g_oppName = a_npc->GetDisplayFullName() ? a_npc->GetDisplayFullName() : "Your opponent";
@@ -2303,7 +2291,7 @@ namespace Game
 			const float px = x + S(32), pw = w - S(64);
 			yy += Para(dl, F.sans, px, yy, pw, kGrey, "Hold the left button and move to lift the cup and shake it. Let go to flick the dice out the way you last moved. A die that leaves the board means throw again.") + S(9);
 			yy += Para(dl, F.sans, px, yy, pw, kGrey, "Click a die to set it on the rack. Drag one back into the cup to roll it again. The cup waits until the board is clear.") + S(9);
-			yy += Para(dl, F.sans, px, yy, pw, kGrey, "Score high to rise from Novice to Master. Pick any cup you like. Every ten wins, innkeepers sell you a finer set of dice.");
+			yy += Para(dl, F.sans, px, yy, pw, kGrey, "Any cup you carry can be your cup at the table. Every ten wins, innkeepers sell you a finer set of dice.");
 			ImGui::End();
 		}
 
@@ -2316,32 +2304,8 @@ namespace Game
 			dl->AddRectFilledMultiColor(a, ImVec2(w * 0.62f, H), IM_COL32(0, 0, 0, 0), IM_COL32(0, 0, 0, 0), IM_COL32(0, 0, 0, 214), IM_COL32(0, 0, 0, 214));
 			dl->AddRectFilledMultiColor(ImVec2(w * 0.62f, a.y), b, IM_COL32(0, 0, 0, 0), IM_COL32(0, 0, 0, 0), IM_COL32(0, 0, 0, 0), IM_COL32(0, 0, 0, 184));
 			const auto& cup = PlayerCup();
-			int         rank = 0;
-			for (int k = 0; k < 5; ++k) {
-				if (RankReached(k)) {
-					rank = k;
-				}
-			}
 			const float x0 = S(30), x1 = w - S(44);
-			float       y = a.y + S(30);
-			Text(dl, F.skill, ImVec2(x0, y), kWhite, Upper(kRanks[rank].rank), 0.22f, 0.8f);
-			const std::string next = rank < 4 ? fmt::format("{} at {}", kRanks[rank + 1].rank, kRanks[rank + 1].need) : "Master of the table";
-			Text(dl, F.tiny, ImVec2(x1 - Measure(F.tiny, next, 0.05f), y + F.skill->FontSize - F.tiny->FontSize - S(2)), kGrey, next, 0.05f);
-			y += F.skill->FontSize + S(9);
-			// the skill bar: best score toward the next cup
-			const float lo = static_cast<float>(kRanks[rank].need), hi = rank < 4 ? static_cast<float>(kRanks[rank + 1].need) : lo + 1;
-			const float f = rank < 4 ? std::clamp((BestScore() - lo) / (hi - lo), 0.0f, 1.0f) : 1.0f;
-			const ImVec2 ba(x0 + S(9), y), bb(x1 - S(9), y + S(7));
-			dl->AddRectFilled(ba, bb, IM_COL32(0, 0, 0, 153));
-			dl->AddLine(ba, ImVec2(bb.x, ba.y), Alpha(kWhite, 0.62f));
-			dl->AddLine(ImVec2(ba.x, bb.y), bb, Alpha(kWhite, 0.62f));
-			if (f > 0) {
-				dl->AddRectFilledMultiColor(ba, ImVec2(ba.x + (bb.x - ba.x) * f, bb.y), IM_COL32(109, 107, 103, 255), IM_COL32(253, 251, 247, 255),
-					IM_COL32(253, 251, 247, 255), IM_COL32(109, 107, 103, 255));
-			}
-			Diamond(dl, ImVec2(ba.x - S(5), ba.y + S(3.5f)), S(5), IM_COL32(0, 0, 0, 255), kWhite);
-			Diamond(dl, ImVec2(bb.x + S(5), ba.y + S(3.5f)), S(5), IM_COL32(0, 0, 0, 255), kWhite);
-			y += S(22);
+			float       y = a.y + S(78);
 			auto line = [&](const char* label, const std::string& value) {
 				Text(dl, F.tiny, ImVec2(x0, y + S(3)), kGrey, label, 0.32f);
 				Text(dl, F.sans, ImVec2(x0 + S(90), y), kWhite, Upper(value), 0.08f, 0.7f);
