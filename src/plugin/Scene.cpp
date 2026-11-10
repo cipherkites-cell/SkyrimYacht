@@ -52,13 +52,13 @@ namespace Scene
 		};
 		constexpr CupModel kCups[] = {
 			{ "tankard", "basictankard01.nif", 2.9f, 4.32f, 1.04f },
-			{ "glazedcup", "glazedcup01.nif", 1.0f, 4.55f, 1.1f },
-			{ "goblet", "glazedgoblet01.nif", 6.6f, 4.6f, 1.1f },
+			{ "bloodtankard", "dlc01tankardblood.nif", 2.9f, 4.32f, 1.04f, "DLC01\\Clutter\\DLC01TankardBlood.nif" },
+			{ "glazedcup", "glazedcup01.nif", 2.5f, 4.55f, 1.47f },  // these narrow toward the floor: fit the bottom
+			{ "goblet", "glazedgoblet01.nif", 7.6f, 4.4f, 1.47f },
 			{ "dwemer", "dwecup01.nif", 0.8f, 4.36f, 1.22f },
 			{ "dwemer2", "dwecup02.nif", 1.29f, 4.36f, 1.22f },
 			{ "silver", "silvergoblet01.nif", 7.8f, 5.2f, 1.1f },
-			{ "silver2", "silvergoblet02.nif", 9.8f, 4.54f, 1.1f },
-			{ "bloodtankard", "dlc01tankardblood.nif", 2.9f, 4.32f, 1.04f, "DLC01\\Clutter\\DLC01TankardBlood.nif" },
+			{ "silver2", "silvergoblet02.nif", 10.9f, 4.54f, 1.376f },
 		};
 		constexpr float kCupRadius = 1.9f;
 		constexpr float kTableHalfWidth = 19.6f;  // tray, and the cups resting beside it

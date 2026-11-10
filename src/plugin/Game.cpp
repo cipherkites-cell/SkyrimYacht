@@ -54,13 +54,13 @@ namespace Game
 		};
 		constexpr CupInfo kCups[] = {
 			{ "tankard", "Tankard", 4.21, "tankard" },
-			{ "glazedcup", "Glazed Cup", 4.20, "goblet" },
-			{ "goblet", "Glazed Goblet", 3.82, "goblet" },
+			{ "bloodtankard", "Bloody Tankard", 4.21, "tankard" },
+			{ "glazedcup", "Glazed Cup", 4.68, "goblet" },
+			{ "goblet", "Glazed Goblet", 4.69, "goblet" },
 			{ "dwemer", "Dwemer Cup", 5.10, "dwemer" },
 			{ "dwemer2", "Ornate Dwemer Cup", 5.15, "dwemer" },
 			{ "silver", "Silver Goblet", 4.62, "silver" },
-			{ "silver2", "Silver Chalice", 4.01, "silver" },
-			{ "bloodtankard", "Bloody Tankard", 4.21, "tankard" },
+			{ "silver2", "Silver Chalice", 4.39, "silver" },
 		};
 		constexpr int kNumCups = static_cast<int>(std::size(kCups));
 		// Your title at the table, from your best finished game
