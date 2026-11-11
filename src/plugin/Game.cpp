@@ -3350,7 +3350,7 @@ namespace Game
 			const ImVec2 c(a_w * 0.5f, a_h - S(110));
 			const float  r = S(22);
 			dl->AddCircle(c, r, IM_COL32(0, 0, 0, 140), 48, S(6));
-			dl->PathArcTo(c, r, -IM_PI * 0.5f, -IM_PI * 0.5f + IM_PI * 2.0f * f, 48);
+			dl->PathArcTo(c, r, -1.5707963f, -1.5707963f + 6.2831853f * f, 48);
 			dl->PathStroke(kWhite, 0, S(4));
 			TextC(dl, F.tiny, c.x, c.y + r + S(14), kGrey, "LEAVING THE TABLE", 0.6f, 0.9f);
 			if (f >= 1.0f && !g_escLeaving) {
