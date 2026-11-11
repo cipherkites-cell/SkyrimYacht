@@ -39,16 +39,17 @@ namespace Game
 			const char* name;
 			double      height;  // inside depth (the vanilla meshes, scaled)
 			const char* sound;   // whose clang it makes in the hand (tankard, goblet, dwemer, silver, golden)
+			double      floor;   // the dice's floor, raised off the base so they never sink into the mesh's bottom
 		};
 		constexpr CupInfo kCups[] = {
-			{ "tankard", "Tankard", 4.21, "tankard" },
-			{ "bloodtankard", "Bloody Tankard", 4.21, "tankard" },
-			{ "glazedcup", "Glazed Cup", 4.68, "goblet" },
-			{ "goblet", "Glazed Goblet", 4.69, "goblet" },
-			{ "dwemer", "Dwemer Cup", 5.10, "dwemer" },
-			{ "dwemer2", "Ornate Dwemer Cup", 5.15, "dwemer" },
-			{ "silver", "Silver Goblet", 4.62, "silver" },
-			{ "silver2", "Silver Chalice", 4.39, "silver" },
+			{ "tankard", "Tankard", 4.21, "tankard", 0.4 },
+			{ "bloodtankard", "Bloody Tankard", 4.21, "tankard", 0.4 },
+			{ "glazedcup", "Glazed Cup", 4.68, "goblet", 0.65 },
+			{ "goblet", "Glazed Goblet", 4.69, "goblet", 0.65 },
+			{ "dwemer", "Dwemer Cup", 5.10, "dwemer", 0.4 },
+			{ "dwemer2", "Ornate Dwemer Cup", 5.15, "dwemer", 0.45 },
+			{ "silver", "Silver Goblet", 4.62, "silver", 0.55 },
+			{ "silver2", "Silver Chalice", 4.39, "silver", 0.65 },
 		};
 		constexpr int kNumCups = static_cast<int>(std::size(kCups));
 		constexpr const char* kDiceSets[] = { "bone", "iron", "steel", "corundum", "dwemer", "orichalcum", "silver", "quicksilver", "moonstone",
@@ -446,6 +447,7 @@ namespace Game
 			return "bone";
 		}
 		double ActiveCupH() { return g_turn == 0 ? PlayerCup().height : kCups[0].height; }
+		double ActiveCupFloor() { return g_turn == 0 ? PlayerCup().floor : kCups[0].floor; }
 
 		// ---------------------------------------------------------------- the dice
 		bool Active(int i) { return g_sim.DieAt(i).state == yacht::DieState::kActive; }
@@ -497,6 +499,7 @@ namespace Game
 			g_pour.on = false;
 			g_sim.PlaceCup(c.p, c.q);
 			g_sim.SetCupHeight(ActiveCupH());
+			g_sim.SetCupFloor(ActiveCupFloor());
 			g_npc = {};
 			for (int i = 0; i < 5; ++i) {
 				g_sim.SetFrozen(i, false);

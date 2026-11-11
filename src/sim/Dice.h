@@ -39,6 +39,7 @@ namespace yacht
 		double cupRadius{ 1.9 };         // inside radius
 		double cupWall{ 0.22 };          // wall thickness
 		double cupHeight{ 4.0 };         // base to rim, inside
+		double cupFloor{ 0.0 };          // the dice's floor, raised above the base: the meshes' insides aren't flat
 
 		double feltFriction{ 0.6 };      // grippy felt tips sliding dice over their edges
 		double feltRestitution{ 0.4 };
@@ -106,6 +107,8 @@ namespace yacht
 		const DiceSpec& Spec() const { return _spec; }
 		// Changes the cup's inside depth (cups of different shapes); dice already in it are left as they are.
 		void SetCupHeight(double a_height) { _spec.cupHeight = a_height; }
+		// Raises the floor the dice rest on in the cup above its base (keeps them clear of the mesh's bottom).
+		void SetCupFloor(double a_floor) { _spec.cupFloor = a_floor; }
 		const Die&      DieAt(int a_index) const { return _dice[a_index]; }
 
 		// The cup: position of the centre of its inside base, and orientation (its axis is local +z).

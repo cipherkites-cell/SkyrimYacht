@@ -90,7 +90,7 @@ namespace yacht
 				continue;
 			}
 			const double a = spots[slot][0] * m::kPi / 180.0;
-			const Vec3   local{ m::Cos(a) * spots[slot][1], m::Sin(a) * spots[slot][1], spots[slot][2] };
+			const Vec3   local{ m::Cos(a) * spots[slot][1], m::Sin(a) * spots[slot][1], spots[slot][2] + _spec.cupFloor };
 			++slot;
 
 			Die& d = _dice[i];
@@ -173,7 +173,7 @@ namespace yacht
 		double       yawDeg = 0.0;
 		bool         found = false;
 		for (int layer = 0; layer < 8 && !found; ++layer) {
-			const double z = h + 0.04 + layer * (_spec.dieSize + 0.06);
+			const double z = _spec.cupFloor + h + 0.04 + layer * (_spec.dieSize + 0.06);
 			for (const auto& s : spots) {
 				const double a = s[0] * m::kPi / 180.0;
 				const Vec3   cand{ m::Cos(a) * s[1], m::Sin(a) * s[1], z };
@@ -491,9 +491,10 @@ namespace yacht
 				if (s.z < H + r * 0.5 && sr + r > R && sr > 1e-9) {
 					add(sw, { -s.x / sr, -s.y / sr, 0.0 }, sr + r - R);
 				}
-				// Base.
-				if (s.z < r) {
-					add(sw, { 0.0, 0.0, 1.0 }, r - s.z);
+				// Base (the raised floor).
+				const double F = _spec.cupFloor;
+				if (s.z < F + r) {
+					add(sw, { 0.0, 0.0, 1.0 }, F + r - s.z);
 				}
 				// Palm over the mouth.
 				if (_lid && s.z + r > H) {
@@ -757,7 +758,7 @@ namespace yacht
 						wallOut = sr + r - R;
 						wallDir = { l.x / sr, l.y / sr, 0.0 };
 					}
-					baseIn = m::Max(baseIn, r - l.z);
+					baseIn = m::Max(baseIn, _spec.cupFloor + r - l.z);
 					if (_lid) {
 						lidIn = m::Max(lidIn, l.z + r - H);
 					}
