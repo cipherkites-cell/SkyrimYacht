@@ -950,7 +950,7 @@ namespace Game
 				if (k != g_turn || g_phase == Phase::Idle || g_phase == Phase::Wager || g_phase == Phase::Over) {
 					SpringCup(c, c.rest, dt, 6, 0.8);
 				}
-				c.q = Quat::Nlerp(c.q, Quat{}, 1 - std::exp(-dt * 6));
+				c.q = Quat{};  // straight upright: not eased, so a paused clock or a missed frame can't leave it tipped
 			}
 		}
 
@@ -1267,7 +1267,7 @@ namespace Game
 				// the table sits ready behind the wager: cups at rest, dice in the cup
 				SettleCups(dt);
 				for (int k = 0; k < 2; ++k) {
-					Scene::SetCup(k, g_cups[k].p, g_cups[k].q);
+					Scene::SetCup(k, g_cups[k].p, CupBusy(k) ? g_cups[k].q : Quat{});  // shown upright unless in use
 				}
 				for (int key : Overlay::TakeKeys()) {  // Esc (or B) leaves; Back opens the sound panel
 					if ((key == 0x01 || key == 0x0F) && g_phase == Phase::Wager) {
@@ -1442,7 +1442,7 @@ namespace Game
 				Scene::SetDie(i, g_drawPos[i], g_drawRot[i], true);
 			}
 			for (int k = 0; k < 2; ++k) {
-				Scene::SetCup(k, g_cups[k].p, g_cups[k].q);
+				Scene::SetCup(k, g_cups[k].p, CupBusy(k) ? g_cups[k].q : Quat{});  // shown upright unless in use
 			}
 		}
 
