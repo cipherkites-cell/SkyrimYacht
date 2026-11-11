@@ -3249,56 +3249,51 @@ namespace Game
 	{
 		g_ui = (std::max)(0.6f, a_screenH / 1080.0f) * Config::Get().uiScale;
 		auto& io = ImGui::GetIO();
-		const std::string fontPath = "Data\\interface\\ImGuiIcons\\Fonts\\msyh.ttf";
+		
+		// 正确指向 .ttc 文件
+		const std::string fontPath = "Data\\interface\\ImGuiIcons\\Fonts\\msyh.ttc";
 		std::error_code ec;
-		const bool hasMiSans = std::filesystem::exists(fontPath, ec);
-		const ImWchar* ranges = io.Fonts->GetGlyphRangesChineseFull();
+		const bool hasFont = std::filesystem::exists(fontPath, ec);
+		
+		// 用常用中文字库（2500字），配合两个字号不会超出图集上限
+		const ImWchar* ranges = io.Fonts->GetGlyphRangesChineseSimplifiedCommon();
+		
 		auto load = [&](float a_size) -> ImFont* {
-			if (!hasMiSans) {
+			if (!hasFont) {
 				return nullptr;
 			}
 			ImFontConfig fc;
 			fc.OversampleH = 2;
 			fc.OversampleV = 1;
+			fc.FontNo = 0; // 强制读取 ttc 集合里的第一个字体（常规体）
 			return io.Fonts->AddFontFromFileTTF(fontPath.c_str(), a_size * g_ui, &fc, ranges);
 		};
 
-		// Load four font sizes to preserve the original UI hierarchy
-		// while avoiding excessive duplication of Chinese glyphs.
-		F.sans = load(20.0f);       // 普通文字
-		F.menu = load(24.0f);       // 菜单及中等文字
-		F.skill = load(40.0f);      // 大字、提示、手牌
-		F.title = load(80.0f);      // 标题
+		// 恢复层次感：20px用于正文，40px用于标题/大字
+		F.sans = load(20.0f); 
+		F.menu = load(40.0f); 
 
-		// Small text uses the regular font
-		F.sansSemi = F.tiny = F.turn = F.book = F.bookIt = F.sans;
+		// 小字、普通 UI 使用 20px
+		F.sansSemi = F.tiny = F.turn = F.book = F.bookIt = F.bookSCsm = F.sans;
 
-		// Medium text uses the menu font
-		F.toastLong = F.score = F.bookSC = F.bookSCsm = F.menu;
+		// 菜单、大标题、分数等使用 40px
+		F.toastLong = F.skill = F.score = F.toast = F.hand = F.handBig = F.titleMid = F.words = F.title = F.bookSC = F.menu;
 
-		// Large text uses the large font
-		F.toast = F.hand = F.handBig = F.skill;
-
-		// Titles use the largest font
-		F.titleMid = F.words = F.title;
-
-		// Fallback if MiSans fails to load
+		// 兜底机制
 		ImFont* any = F.sans ? F.sans : io.Fonts->AddFontDefault();
-
-		for (ImFont** f : {
-			&F.sans, &F.sansSemi, &F.tiny, &F.turn, &F.menu,
-			&F.toastLong, &F.skill, &F.score, &F.toast,
-			&F.titleMid, &F.words, &F.title, &F.book,
-			&F.bookIt, &F.bookSC, &F.bookSCsm, &F.hand, &F.handBig
-		}) {
-			if (!*f) {
-				*f = any;
-			}
+		for (ImFont** f : { &F.sans, &F.sansSemi, &F.tiny, &F.turn, &F.menu, &F.toastLong, &F.skill, &F.score, &F.toast, &F.titleMid, &F.words, &F.title, &F.book, &F.bookIt, &F.bookSC, &F.bookSCsm, &F.hand, &F.handBig }) {
+			if (!*f) *f = any;
 		}
 
 		io.FontDefault = F.sans;
 
-		spdlog::info("Interface: scale {:.2f}, font {}", g_ui, F.sans && hasMiSans ? "msyh.ttf" : "MiSans missing or failed to load; ImGui default fallback");
+		if (hasFont && F.sans) {
+			spdlog::info("Interface: font msyh.ttc loaded successfully!");
+		} else {
+			spdlog::error("Interface: font FAILED to load! Check if the file exists at {}", fontPath);
+		}
+
+		// 样式设置（保持不变）
 		auto& st = ImGui::GetStyle();
 		st.WindowRounding = 0.0f;
 		st.WindowBorderSize = 0.0f;
