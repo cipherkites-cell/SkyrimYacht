@@ -1,0 +1,114 @@
+-- Running vcpkg install
+A suitable version of cmake was not found (required v4.4.0).
+Downloading https://github.com/Kitware/CMake/releases/download/v4.4.0/cmake-4.4.0-windows-x86_64.zip -> cmake-4.4.0-windows-x86_64.zip
+Successfully downloaded cmake-4.4.0-windows-x86_64.zip
+Extracting cmake...
+Detecting compiler hash for triplet x64-windows...
+Compiler found: C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe
+Detecting compiler hash for triplet x64-windows-static-md...
+Compiler found: C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe
+The following packages are already installed:
+    directxmath:x64-windows-static-md@2025-04-03
+    directxtk:x64-windows-static-md@2025-10-27
+    fmt:x64-windows-static-md@12.1.0
+    imgui[core,dx11-binding]:x64-windows-static-md@1.91.9
+    nlohmann-json:x64-windows-static-md@3.12.0#1
+    rapidcsv:x64-windows-static-md@8.90
+    simpleini:x64-windows-static-md@4.25
+    spdlog:x64-windows-static-md@1.16.0
+    toml11:x64-windows-static-md@4.4.0
+  * vcpkg-cmake:x64-windows@2024-04-23
+  * vcpkg-cmake-config:x64-windows@2024-05-23
+    xbyak:x64-windows-static-md@7.28
+The DirectXMath package provides CMake targets:
+
+    find_package(directxmath CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE Microsoft::DirectXMath)
+
+The DirectX Tool Kit for DX11 package provides CMake targets:
+
+    find_package(directxtk CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE Microsoft::DirectXTK)
+
+The package fmt provides CMake targets:
+
+    find_package(fmt CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE fmt::fmt)
+
+    # Or use the header-only version
+    find_package(fmt CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE fmt::fmt-header-only)
+
+imgui provides CMake targets:
+
+  # this is heuristically generated, and may not be correct
+  find_package(imgui CONFIG REQUIRED)
+  target_link_libraries(main PRIVATE imgui::imgui)
+
+The package nlohmann-json provides CMake targets:
+
+    find_package(nlohmann_json CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE nlohmann_json::nlohmann_json)
+
+The package nlohmann-json can be configured to not provide implicit conversions via a custom triplet file:
+
+    set(nlohmann-json_IMPLICIT_CONVERSIONS OFF)
+
+For more information, see the docs here:
+    
+    https://json.nlohmann.me/api/macros/json_use_implicit_conversions/
+
+rapidcsv is header-only and can be used from CMake via:
+
+  find_path(RAPIDCSV_INCLUDE_DIRS "rapidcsv.h")
+  target_include_directories(main PRIVATE ${RAPIDCSV_INCLUDE_DIRS})
+
+simpleini is header-only and can be used from CMake via:
+
+  find_path(SIMPLEINI_INCLUDE_DIRS "ConvertUTF.c")
+  target_include_directories(main PRIVATE ${SIMPLEINI_INCLUDE_DIRS})
+
+The package spdlog provides CMake targets:
+
+    find_package(spdlog CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE spdlog::spdlog)
+
+    # Or use the header-only version
+    find_package(spdlog CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE spdlog::spdlog_header_only)
+
+toml11 provides CMake targets:
+
+  # this is heuristically generated, and may not be correct
+  find_package(toml11 CONFIG REQUIRED)
+  target_link_libraries(main PRIVATE toml11::toml11)
+
+xbyak provides CMake targets:
+
+  # this is heuristically generated, and may not be correct
+  find_package(xbyak CONFIG REQUIRED)
+  target_link_libraries(main PRIVATE xbyak::xbyak)
+
+All requested installations completed successfully in: 444 us
+-- Running vcpkg install - done
+-- Selecting Windows SDK version 10.0.26100.0 to target Windows 10.0.20348.
+Options:
+	Enable Xbyak: OFF
+	Enable Patch Safety Checks: ON
+	Enable Skyrim SE: ON
+	Enable Skyrim AE: ON
+	Enable Skyrim VR: OFF
+	Build Tests: OFF
+Parsing commonlibsse_plugin_version 0.9.11
+Setting minor version to 9
+Setting patch version to 11
+Parsing ADD_COMMONLIBSSE_PLUGIN_MINIMUM_SKSE_VERSION 0
+-- Configuring done (23.9s)
+-- Generating done (0.5s)
+CMake Warning:
+  Manually-specified variables were not used by the project:
+
+    CMAKE_TOOLCHAIN_FILE
+
+
+-- Build files have been written to: D:/a/SkyrimYacht/SkyrimYacht/build
