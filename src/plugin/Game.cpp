@@ -3298,6 +3298,69 @@ namespace Game
 		st.Colors[ImGuiCol_Text] = ImVec4(0.945f, 0.933f, 0.91f, 1.0f);
 	}
 
+	namespace
+	{
+		// Hold Esc for 3 s on the wager screen: leave the table whatever state it's in. Read straight from the keyboard,
+		// not through the game's input, so it still works if the table has lost the cursor (an opponent who got up
+		// mid-dialogue). Nothing is staked yet, so nothing is won, lost or recorded.
+		constexpr double kEscHoldFor = 3.0;
+		double           g_escHeldAt = -1.0;
+		bool             g_escLeaving = false;
+
+		bool GameHasFocus()
+		{
+			DWORD pid = 0;
+			if (HWND w = ::GetForegroundWindow()) {
+				::GetWindowThreadProcessId(w, &pid);
+			}
+			return pid == ::GetCurrentProcessId();
+		}
+
+		void ForceLeave()
+		{
+			{
+				std::lock_guard lk(g_mtx);
+				g_escLeaving = false;
+				if (g_phase != Phase::Wager) {
+					return;
+				}
+				spdlog::info("Held Esc on the wager screen: leaving the table (nothing recorded)");
+				CloseGame();
+			}
+			Overlay::SetOpen(false);  // the cursor and keys go back to the game even if the menu never fully opened
+			if (auto* q = RE::UIMessageQueue::GetSingleton()) {
+				q->AddMessage("SkyrimYachtMenu", RE::UI_MESSAGE_TYPE::kHide, nullptr);
+			}
+		}
+
+		void EscHold(float a_w, float a_h)
+		{
+			const bool down = g_phase == Phase::Wager && GameHasFocus() && (::GetAsyncKeyState(VK_ESCAPE) & 0x8000) != 0;
+			if (!down) {
+				g_escHeldAt = -1.0;
+				return;
+			}
+			const double now = Now();
+			if (g_escHeldAt < 0) {
+				g_escHeldAt = now;
+			}
+			const float f = static_cast<float>((std::min)(1.0, (now - g_escHeldAt) / kEscHoldFor));
+			// a ring filling round, and what it does, bottom centre
+			auto*        dl = ImGui::GetForegroundDrawList();
+			const ImVec2 c(a_w * 0.5f, a_h - S(110));
+			const float  r = S(22);
+			dl->AddCircle(c, r, IM_COL32(0, 0, 0, 140), 48, S(6));
+			dl->PathArcTo(c, r, -IM_PI * 0.5f, -IM_PI * 0.5f + IM_PI * 2.0f * f, 48);
+			dl->PathStroke(kWhite, 0, S(4));
+			TextC(dl, F.tiny, c.x, c.y + r + S(14), kGrey, "LEAVING THE TABLE", 0.6f, 0.9f);
+			if (f >= 1.0f && !g_escLeaving) {
+				g_escLeaving = true;
+				g_escHeldAt = -1.0;
+				SKSE::GetTaskInterface()->AddTask([] { ForceLeave(); });
+			}
+		}
+	}
+
 	void DrawUi()
 	{
 		std::lock_guard lk(g_mtx);
@@ -3322,6 +3385,7 @@ namespace Game
 		auto& io = ImGui::GetIO();
 		io.MouseDrawCursor = false;
 		const float W = io.DisplaySize.x, H = io.DisplaySize.y;
+		EscHold(W, H);
 		if (!Scene::Ready() && g_phase != Phase::Shop && g_phase != Phase::Wager) {
 			// like the game's own loading prompt, bottom right
 			auto*       dl = ImGui::GetForegroundDrawList();
