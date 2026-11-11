@@ -3250,13 +3250,26 @@ namespace Game
 		g_ui = (std::max)(0.6f, a_screenH / 1080.0f) * Config::Get().uiScale;
 		auto& io = ImGui::GetIO();
 		
-		// 正确指向 .ttc 文件
-		const std::string fontPath = "Data\\interface\\ImGuiIcons\\Fonts\\msyh.ttc";
+		const std::string fontPath = "Data\\SKSE\\Plugins\\fonts\\MiSans-Regular.ttf";
 		std::error_code ec;
 		const bool hasFont = std::filesystem::exists(fontPath, ec);
+
+		// 1. 使用 ImGui 的字形构建器 (Builder)
+		ImFontGlyphRangesBuilder builder;
+		// 添加常用汉字（2500字）
+		builder.AddRanges(io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
+		// 添加默认的英文、数字、标点
+		builder.AddRanges(io.Fonts->GetGlyphRangesDefault());
 		
-		// 使用常用中文字库（2500字）
-		const ImWchar* ranges = io.Fonts->GetGlyphRangesChineseFull();
+		// ⚠️ 关键：把你之前遇到的所有问号字，以及游戏专属词汇补进来
+		// 比如“骰”、“凹”、“垢”，还有游戏里常见的“乔恩·战狂”等。
+		// 以后如果再看到别的字变成问号，直接把它加进下面这个引号里就行。
+		builder.AddText("骰凹垢掷");
+		
+		// 2. 生成自定义的字符范围
+		ImVector<ImWchar> ranges_data;
+		builder.BuildRanges(&ranges_data);
+		const ImWchar* ranges = ranges_data.Data;
 		
 		auto load = [&](float a_size) -> ImFont* {
 			if (!hasFont) return nullptr;
