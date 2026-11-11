@@ -157,8 +157,31 @@ namespace Overlay
 		using DispatchFn = void (*)(RE::BSTEventSource<RE::InputEvent*>*, RE::InputEvent* const*);
 		DispatchFn g_origDispatch = nullptr;
 
+		// When the hook last carried real input: if it never does (another game version where that call is something
+		// else), the plain event sink reads the input instead, so the pointer still moves.
+		std::atomic<std::int64_t> g_hookInputAt{ 0 };
+		std::int64_t              NowMs()
+		{
+			return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+		}
+
 		void DispatchHook(RE::BSTEventSource<RE::InputEvent*>* a_dispatcher, RE::InputEvent* const* a_events)
 		{
+			// only the game's input manager sending its input: in a game version where this call is something else,
+			// pass it straight on and leave the input to the event sink
+			static auto* s_mgr = static_cast<RE::BSTEventSource<RE::InputEvent*>*>(RE::BSInputDeviceManager::GetSingleton());
+			if (a_dispatcher != s_mgr) {
+				static bool s_warned = false;
+				if (!s_warned) {
+					s_warned = true;
+					spdlog::warn("Input hook: this call isn't the input manager's in this game version; using the event sink");
+				}
+				g_origDispatch(a_dispatcher, a_events);
+				return;
+			}
+			if (a_events && *a_events) {
+				g_hookInputAt = NowMs();
+			}
 			if (!g_inputDisabled) {
 				SafeHandleInput(a_events);
 			}
@@ -198,7 +221,8 @@ namespace Overlay
 		public:
 			RE::BSEventNotifyControl ProcessEvent(RE::InputEvent* const* a_event, RE::BSTEventSource<RE::InputEvent*>*) override
 			{
-				if (!g_inputDisabled) {
+				// the hook reads the input when it works; this is the fallback
+				if (!g_inputDisabled && NowMs() - g_hookInputAt.load() > 500) {
 					SafeHandleInput(a_event);
 				}
 				return RE::BSEventNotifyControl::kContinue;
@@ -360,9 +384,13 @@ namespace Overlay
 
 	bool InstallInputSink()
 	{
+		// The hook (on the game's own input call) reads the input and keeps it from the game while a table is open.
+		// The event sink is always there too: if the hook's call turns out to be something else in this game version,
+		// the sink reads the input instead, so the table still works.
 		if (SafeInstallDispatchHook()) {
 			spdlog::info("Input hook installed: the game and other mods get no input while a game is open");
-			return true;
+		} else {
+			spdlog::warn("Input hook not installed: reading input through an event sink");
 		}
 		static InputSink sink;
 		auto*            mgr = RE::BSInputDeviceManager::GetSingleton();
