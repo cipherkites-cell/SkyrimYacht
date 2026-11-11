@@ -2132,7 +2132,7 @@ namespace Game
 			// the sums underneath
 			const auto& card = g_cards[a_card];
 			const float sy = (std::max)(yu, yl) + S(4);
-			Text(dl, F.bookIt, ImVec2(x0 + S(10), sy), softC, "达到 63 分奖励 35 分");
+			Text(dl, F.bookIt, ImVec2(x0 + S(10), sy), softC, "满63分奖励35分");
 			const std::string up = fmt::format("{} / 63", card.UpperSum());
 			Text(dl, F.bookIt, ImVec2(x0 + cw0 - S(2) - Measure(F.bookIt, up, 0), sy), softC, up);
 			const float lx = x0 + cw0 + colGap;
@@ -3256,7 +3256,7 @@ namespace Game
 		const bool hasFont = std::filesystem::exists(fontPath, ec);
 		
 		// 用常用中文字库（2500字），配合两个字号不会超出图集上限
-		const ImWchar* ranges = io.Fonts->GetGlyphRangesChineseSimplifiedCommon();
+		const ImWchar* ranges = io.Fonts->GetGlyphRangesChineseFull();
 		
 		auto load = [&](float a_size) -> ImFont* {
 			if (!hasFont) {
@@ -3268,21 +3268,38 @@ namespace Game
 			fc.FontNo = 0; // 强制读取 ttc 集合里的第一个字体（常规体）
 			return io.Fonts->AddFontFromFileTTF(fontPath.c_str(), a_size * g_ui, &fc, ranges);
 		};
+		// Load four font sizes to preserve the original UI hierarchy
+		// while avoiding excessive duplication of Chinese glyphs.
 
-		// 恢复层次感：20px用于正文，40px用于标题/大字
-		F.sans = load(20.0f); 
-		F.menu = load(40.0f); 
+		F.sans = load(16.0f);       // 普通文字
+		F.menu = load(24.0f);       // 菜单及中等文字
+		F.skill = load(32.0f);      // 大字、提示、手牌
+		F.title = load(40.0f);      // 标题
 
-		// 小字、普通 UI 使用 20px
-		F.sansSemi = F.tiny = F.turn = F.book = F.bookIt = F.bookSCsm = F.sans;
+		// Small text uses the regular font
+		F.sansSemi = F.tiny = F.turn = F.book = F.bookIt = F.sans;
 
-		// 菜单、大标题、分数等使用 40px
-		F.toastLong = F.skill = F.score = F.toast = F.hand = F.handBig = F.titleMid = F.words = F.title = F.bookSC = F.menu;
+		// Medium text uses the menu font
+		F.toastLong = F.score = F.bookSC = F.bookSCsm = F.menu;
 
-		// 兜底机制
+		// Large text uses the large font
+		F.toast = F.hand = F.handBig = F.skill;
+
+		// Titles use the largest font
+		F.titleMid = F.words = F.title;
+
+		// Fallback if MiSans fails to load
 		ImFont* any = F.sans ? F.sans : io.Fonts->AddFontDefault();
-		for (ImFont** f : { &F.sans, &F.sansSemi, &F.tiny, &F.turn, &F.menu, &F.toastLong, &F.skill, &F.score, &F.toast, &F.titleMid, &F.words, &F.title, &F.book, &F.bookIt, &F.bookSC, &F.bookSCsm, &F.hand, &F.handBig }) {
-			if (!*f) *f = any;
+
+		for (ImFont** f : {
+			&F.sans, &F.sansSemi, &F.tiny, &F.turn, &F.menu,
+			&F.toastLong, &F.skill, &F.score, &F.toast,
+			&F.titleMid, &F.words, &F.title, &F.book,
+			&F.bookIt, &F.bookSC, &F.bookSCsm, &F.hand, &F.handBig
+		}) {
+			if (!*f) {
+				*f = any;
+			}
 		}
 
 		io.FontDefault = F.sans;
