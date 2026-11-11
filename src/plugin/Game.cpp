@@ -3249,10 +3249,10 @@ namespace Game
 	{
 		g_ui = (std::max)(0.6f, a_screenH / 1080.0f) * Config::Get().uiScale;
 		auto& io = ImGui::GetIO();
-		const std::string fontPath = "Data\\SKSE\\Plugins\\SkyrimYacht\\Fonts\\MiSans-Regular.ttf";
+		const std::string fontPath = "Data\\interface\\ImGuiIcons\\Fonts\\msyh.ttf";
 		std::error_code ec;
 		const bool hasMiSans = std::filesystem::exists(fontPath, ec);
-		const ImWchar* ranges = io.Fonts->GetGlyphRangesChineseSimplifiedCommon();
+		const ImWchar* ranges = io.Fonts->GetGlyphRangesChineseFull();
 		auto load = [&](float a_size) -> ImFont* {
 			if (!hasMiSans) {
 				return nullptr;
@@ -3262,41 +3262,43 @@ namespace Game
 			fc.OversampleV = 1;
 			return io.Fonts->AddFontFromFileTTF(fontPath.c_str(), a_size * g_ui, &fc, ranges);
 		};
-		// One consistent typeface at the original UI's size hierarchy. MiSans supplies Latin, digits and CJK glyphs.
-		// F.sans = load(20.0f);
-		// F.sansSemi = load(13.0f);
-		// F.tiny = load(15.0f);
-		// F.turn = load(21.0f);
-		// F.menu = load(24.0f);
-		// F.toastLong = load(26.0f);
-		// F.skill = load(30.0f);
-		// F.score = load(32.0f);
-		// F.toast = load(44.0f);
-		// F.titleMid = load(76.0f);
-		// F.words = load(92.0f);
-		// F.title = load(100.0f);
-		// F.book = load(18.0f);
-		// F.bookIt = load(16.0f);
-		// F.bookSC = load(27.0f);
-		// F.bookSCsm = load(17.0f);
-		// F.hand = load(21.0f);
-		// F.handBig = load(40.0f);
-		
-		// 4K 下 g_ui=2.0，2500 个中文字形 × 15 个字体 × 最大 200px 会远超 4096×4096 图集上限。
-		// 只加载一个中文字体（24px），其余全部复用它。
-		F.sans = load(24.0f);
-		F.sansSemi = F.tiny = F.turn = F.menu = F.toastLong = F.skill = F.score = 
-		F.toast = F.titleMid = F.words = F.title = F.book = F.bookIt = F.bookSC = 
-		F.bookSCsm = F.hand = F.handBig = F.sans;
+
+		// Load four font sizes to preserve the original UI hierarchy
+		// while avoiding excessive duplication of Chinese glyphs.
+		F.sans = load(20.0f);       // 普通文字
+		F.menu = load(24.0f);       // 菜单及中等文字
+		F.skill = load(40.0f);      // 大字、提示、手牌
+		F.title = load(80.0f);      // 标题
+
+		// Small text uses the regular font
+		F.sansSemi = F.tiny = F.turn = F.book = F.bookIt = F.sans;
+
+		// Medium text uses the menu font
+		F.toastLong = F.score = F.bookSC = F.bookSCsm = F.menu;
+
+		// Large text uses the large font
+		F.toast = F.hand = F.handBig = F.skill;
+
+		// Titles use the largest font
+		F.titleMid = F.words = F.title;
+
+		// Fallback if MiSans fails to load
 		ImFont* any = F.sans ? F.sans : io.Fonts->AddFontDefault();
-		for (ImFont** f : { &F.sans, &F.sansSemi, &F.tiny, &F.turn, &F.menu, &F.toastLong, &F.skill, &F.score, &F.toast, &F.titleMid, &F.words,
-				 &F.title, &F.book, &F.bookIt, &F.bookSC, &F.bookSCsm, &F.hand, &F.handBig }) {
+
+		for (ImFont** f : {
+			&F.sans, &F.sansSemi, &F.tiny, &F.turn, &F.menu,
+			&F.toastLong, &F.skill, &F.score, &F.toast,
+			&F.titleMid, &F.words, &F.title, &F.book,
+			&F.bookIt, &F.bookSC, &F.bookSCsm, &F.hand, &F.handBig
+		}) {
 			if (!*f) {
 				*f = any;
 			}
 		}
+
 		io.FontDefault = F.sans;
-		spdlog::info("Interface: scale {:.2f}, font {}", g_ui, F.sans && hasMiSans ? "MiSans-Regular.ttf" : "MiSans missing or failed to load; ImGui default fallback");
+
+		spdlog::info("Interface: scale {:.2f}, font {}", g_ui, F.sans && hasMiSans ? "msyh.ttf" : "MiSans missing or failed to load; ImGui default fallback");
 		auto& st = ImGui::GetStyle();
 		st.WindowRounding = 0.0f;
 		st.WindowBorderSize = 0.0f;
