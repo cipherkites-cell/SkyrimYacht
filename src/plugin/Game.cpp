@@ -3263,24 +3263,31 @@ namespace Game
 			return io.Fonts->AddFontFromFileTTF(fontPath.c_str(), a_size * g_ui, &fc, ranges);
 		};
 		// One consistent typeface at the original UI's size hierarchy. MiSans supplies Latin, digits and CJK glyphs.
-		F.sans = load(20.0f);
-		F.sansSemi = load(13.0f);
-		F.tiny = load(15.0f);
-		F.turn = load(21.0f);
-		F.menu = load(24.0f);
-		F.toastLong = load(26.0f);
-		F.skill = load(30.0f);
-		F.score = load(32.0f);
-		F.toast = load(44.0f);
-		F.titleMid = load(76.0f);
-		F.words = load(92.0f);
-		F.title = load(100.0f);
-		F.book = load(18.0f);
-		F.bookIt = load(16.0f);
-		F.bookSC = load(27.0f);
-		F.bookSCsm = load(17.0f);
-		F.hand = load(21.0f);
-		F.handBig = load(40.0f);
+		// F.sans = load(20.0f);
+		// F.sansSemi = load(13.0f);
+		// F.tiny = load(15.0f);
+		// F.turn = load(21.0f);
+		// F.menu = load(24.0f);
+		// F.toastLong = load(26.0f);
+		// F.skill = load(30.0f);
+		// F.score = load(32.0f);
+		// F.toast = load(44.0f);
+		// F.titleMid = load(76.0f);
+		// F.words = load(92.0f);
+		// F.title = load(100.0f);
+		// F.book = load(18.0f);
+		// F.bookIt = load(16.0f);
+		// F.bookSC = load(27.0f);
+		// F.bookSCsm = load(17.0f);
+		// F.hand = load(21.0f);
+		// F.handBig = load(40.0f);
+		
+		// 4K 下 g_ui=2.0，2500 个中文字形 × 15 个字体 × 最大 200px 会远超 4096×4096 图集上限。
+		// 只加载一个中文字体（24px），其余全部复用它。
+		F.sans = load(24.0f);
+		F.sansSemi = F.tiny = F.turn = F.menu = F.toastLong = F.skill = F.score = 
+		F.toast = F.titleMid = F.words = F.title = F.book = F.bookIt = F.bookSC = 
+		F.bookSCsm = F.hand = F.handBig = F.sans;
 		ImFont* any = F.sans ? F.sans : io.Fonts->AddFontDefault();
 		for (ImFont** f : { &F.sans, &F.sansSemi, &F.tiny, &F.turn, &F.menu, &F.toastLong, &F.skill, &F.score, &F.toast, &F.titleMid, &F.words,
 				 &F.title, &F.book, &F.bookIt, &F.bookSC, &F.bookSCsm, &F.hand, &F.handBig }) {
@@ -3289,6 +3296,11 @@ namespace Game
 			}
 		}
 		io.FontDefault = F.sans;
+		{
+			const bool built = io.Fonts->Build();
+			spdlog::info("Font atlas: built {}, {}x{}, tex {}", built, io.Fonts->TexWidth, io.Fonts->TexHeight,
+				(io.Fonts->TexData && io.Fonts->TexData->Pixels) ? "ok" : "NULL");
+		}
 		spdlog::info("Interface: scale {:.2f}, font {}", g_ui, F.sans && hasMiSans ? "MiSans-Regular.ttf" : "MiSans missing or failed to load; ImGui default fallback");
 		auto& st = ImGui::GetStyle();
 		st.WindowRounding = 0.0f;
