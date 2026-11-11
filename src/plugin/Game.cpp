@@ -42,14 +42,14 @@ namespace Game
 			double      floor;   // the dice's floor, raised off the base so they never sink into the mesh's bottom
 		};
 		constexpr CupInfo kCups[] = {
-			{ "tankard", "Tankard", 4.21, "tankard", 0.4 },
-			{ "bloodtankard", "Bloody Tankard", 4.21, "tankard", 0.4 },
-			{ "glazedcup", "Glazed Cup", 4.68, "goblet", 0.65 },
-			{ "goblet", "Glazed Goblet", 4.69, "goblet", 0.65 },
-			{ "dwemer", "Dwemer Cup", 5.10, "dwemer", 0.4 },
-			{ "dwemer2", "Ornate Dwemer Cup", 5.15, "dwemer", 0.45 },
-			{ "silver", "Silver Goblet", 4.62, "silver", 0.55 },
-			{ "silver2", "Silver Chalice", 4.39, "silver", 0.65 },
+			{ "tankard", "酒杯", 4.21, "tankard", 0.4 },
+			{ "bloodtankard", "血腥酒杯", 4.21, "tankard", 0.4 },
+			{ "glazedcup", "彩釉杯", 4.68, "goblet", 0.65 },
+			{ "goblet", "彩釉高脚杯", 4.69, "goblet", 0.65 },
+			{ "dwemer", "矮人杯", 5.10, "dwemer", 0.4 },
+			{ "dwemer2", "华饰矮人杯", 5.15, "dwemer", 0.45 },
+			{ "silver", "银制高脚杯", 4.62, "silver", 0.55 },
+			{ "silver2", "银圣杯", 4.39, "silver", 0.65 },
 		};
 		constexpr int kNumCups = static_cast<int>(std::size(kCups));
 		constexpr const char* kDiceSets[] = { "bone", "iron", "steel", "corundum", "dwemer", "orichalcum", "silver", "quicksilver", "moonstone",
@@ -168,7 +168,7 @@ namespace Game
 
 		// the opponent and the wager
 		RE::ActorHandle g_opponent;
-		std::string     g_oppName = "Your opponent";
+		std::string     g_oppName = "你的对手";
 		RE::FormID      g_oppId = 0;
 		int             g_bet = 25;
 		int             g_betHeld = 0;  // taken from you, not yet settled
@@ -386,21 +386,21 @@ namespace Game
 			const char* blurb;
 		};
 		constexpr DiceInfo kDiceInfo[15] = {
-			{ "Bone", 0, 0, "Hand-carved bone. Yellowed, scratched, and dirty in the pips." },
-			{ "Iron", 10, 50, "Hammered iron, pocked and spotted with rust, punched pips." },
-			{ "Steel", 20, 100, "Brushed steel with crisp engraved pips." },
-			{ "Corundum", 30, 150, "Coppery corundum, a little green at the edges." },
-			{ "Dwemer", 40, 200, "Dwarven bronze with gear-ring pips, green with age." },
-			{ "Orichalcum", 50, 250, "Orc-forged orichalcum, dark green-bronze, scored with claw marks." },
-			{ "Silver", 60, 300, "Polished silver, tarnished in the corners, black niello pips." },
-			{ "Quicksilver", 70, 400, "Mirror-bright quicksilver that looks wet." },
-			{ "Moonstone", 80, 500, "Pale elven moonstone with fine leaf lines." },
-			{ "Gold", 90, 650, "Solid gold with garnet pips." },
-			{ "Malachite", 100, 750, "Polished glass-green malachite, banded, with white pips." },
-			{ "Ebony", 110, 900, "Black ebony with inlaid gold pips." },
-			{ "Stalhrim", 120, 1100, "Enchanted ice from Solstheim. Cold blue, cracked, faintly glowing." },
-			{ "Dragonbone", 130, 1500, "Pale dragon bone, fibrous grain, pips stained dark red." },
-			{ "Daedric", 140, 2500, "Black and red, cut with runes, the pips smouldering like coals." },
+			{ "骨骰", 0, 0, "手工雕刻的骨骰，已经泛黄，表面带有划痕，点数凹槽里积着污垢。" },
+			{ "铁骰", 10, 50, "锻打铁制，表面布满凹痕与锈斑，点数由冲压制成。" },
+			{ "钢骰", 20, 100, "拉丝钢材质，点数刻痕清晰利落。" },
+			{ "刚玉骰", 30, 150, "带有铜色光泽的刚玉，边缘泛着些许绿色。" },
+			{ "矮人骰", 40, 200, "矮人青铜铸造，点数带有齿轮环纹，历经岁月已泛绿。" },
+			{ "奥利哈钢骰", 50, 250, "兽人锻造的奥利哈钢，呈深绿铜色，表面刻有爪痕。" },
+			{ "银骰", 60, 300, "抛光银制，边角略有氧化，点数以黑色镶嵌工艺装饰。" },
+			{ "水银骰", 70, 400, "亮如镜面的水银材质，仿佛表面仍带着湿润光泽。" },
+			{ "月长石骰", 80, 500, "浅色精灵月长石，饰有精细的叶脉纹路。" },
+			{ "金骰", 90, 650, "纯金打造，点数镶嵌着石榴石。" },
+			{ "孔雀石骰", 100, 750, "抛光的玻璃质感孔雀石，带有层状纹理与白色点数。" },
+			{ "乌木骰", 110, 900, "黑色乌木材质，点数以黄金镶嵌。" },
+			{ "寒冰骰", 120, 1100, "索瑟海姆的附魔寒冰，呈冷蓝色，布满裂纹并微微发光。" },
+			{ "龙骨骰", 130, 1500, "浅色龙骨制成，纹理纤维分明，点数染成暗红色。" },
+			{ "魔族骰", 140, 2500, "黑红配色，刻有符文，点数仿佛余烬般暗暗发光。" },
 		};
 		// a cup is yours to play with while you carry one (the plain tankard always is)
 		bool CupUnlocked(int k) { return k == 0 || (k > 0 && k < kNumCups && Scene::OwnsCup(kCups[k].id)); }
@@ -617,7 +617,7 @@ namespace Game
 		{
 			g_phase = Phase::Redo;
 			g_redoTime = 0;
-			Toast("Off the table! Throw again");
+			Toast("骰子掉出桌面！请重新投掷");
 		}
 
 		void FinishRoll()
@@ -660,20 +660,20 @@ namespace Game
 				if (g_gold && Player() && g_betHeld > 0) {
 					Player()->AddObjectToContainer(g_gold, nullptr, g_betHeld * 2, nullptr);
 				}
-				g_payoutText = fmt::format("You take {} septims", g_betHeld * 2);
+				g_payoutText = fmt::format("你赢得 {} 金币", g_betHeld * 2);
 				Ui("coins", 0.9f);
 				if (g_totalWins % 10 == 0 && g_totalWins / 10 < 15) {
-					Toast(fmt::format("Innkeepers now sell {} dice", kDiceInfo[g_totalWins / 10].name));
+					Toast(fmt::format("旅店老板现在开始出售{}", kDiceInfo[g_totalWins / 10].name));
 				}
 			} else if (outcome == "draw") {
 				++r.d;
 				if (g_gold && Player() && g_betHeld > 0) {
 					Player()->AddObjectToContainer(g_gold, nullptr, g_betHeld, nullptr);
 				}
-				g_payoutText = fmt::format("Your {} septims come back to you", g_betHeld);
+				g_payoutText = fmt::format("退还你的 {} 金币", g_betHeld);
 			} else {
 				++r.l;
-				g_payoutText = fmt::format("{} keeps your {} septims", g_oppName, g_betHeld);
+				g_payoutText = fmt::format("{} 赢走了你的 {} 金币", g_oppName, g_betHeld);
 			}
 			g_betHeld = 0;
 			g_lastScore = outcome == "forfeit" ? 0 : mine;
@@ -803,7 +803,7 @@ namespace Game
 					const int cat = g_ai.ChooseCategory(dice, g_cards[1]);
 					const int pts = g_cards[1].Fill(cat, dice);
 					g_fillAt[1][cat] = g_clock;
-					Toast(fmt::format("{} scores {}: {}", g_oppName, yacht::CategoryName(cat), pts));
+					Toast(fmt::format("{} 得分：{}（{}）", g_oppName, yacht::CategoryName(cat), pts));
 					Ui("quill");
 					g_npc.step = NpcStep::Done;
 					g_npc.t = 0;
@@ -834,7 +834,7 @@ namespace Game
 			if (pts < 0) {
 				return;
 			}
-			Toast(pts > 0 ? fmt::format("+{}", pts) : "Scratched");
+			Toast(pts > 0 ? fmt::format("+{}", pts) : "未得分");
 			Ui("quill");
 			g_phase = Phase::Scored;
 			g_scoredTime = 0;
@@ -861,11 +861,11 @@ namespace Game
 				return;
 			}
 			if (g_rollsUsed >= 3) {
-				Toast("No rolls left");
+				Toast("没有剩余投掷次数");
 				return;
 			}
 			if (!ShoutTargets()) {
-				Toast("The board is already clear");
+				Toast("骰盘上已经没有骰子");
 				return;
 			}
 			g_shoutAt = g_clock;
@@ -1124,9 +1124,9 @@ namespace Game
 				if (!g_press.moved && dist > 10) {
 					g_press.moved = true;
 					if (DiceOnPad()) {
-						Toast("Put the dice on the pad in the cup or on the rack first");
+						Toast("请先将骰子放入杯中或骰架上");
 					} else if (!AnyInCup()) {
-						Toast("The cup is empty");
+						Toast("骰杯是空的");
 					} else {
 						AimCup(mx, my);
 						BeginShake();
@@ -1178,14 +1178,14 @@ namespace Game
 					if (g_phase == Phase::Wager) {
 						const int bet = std::clamp(arg, Config::Get().minBet, Config::Get().maxBet);
 						if (GoldHeld() < bet || !g_gold) {
-							Toast("You don't have that much gold");
+							Toast("你的金币不够");
 							break;
 						}
 						Player()->RemoveItem(g_gold, bet, RE::ITEM_REMOVE_REASON::kRemove, nullptr, nullptr);
 						g_bet = bet;
 						g_betHeld = bet;
 						Ui("coins", 0.7f);
-						spdlog::info("Wager {} against {}", bet, g_oppName);
+						spdlog::info("下注 {}，对手：{}", bet, g_oppName);
 						Scene::Reveal();
 						NewGame();
 					}
@@ -1234,14 +1234,14 @@ namespace Game
 						const int price = kDiceInfo[arg].gold;
 						if (GoldHeld() < price || !g_gold) {
 							Ui("ui_deny");
-							Toast("You can't afford those");
+							Toast("你的金币不足以购买");
 							break;
 						}
 						Player()->RemoveItem(g_gold, price, RE::ITEM_REMOVE_REASON::kRemove, nullptr, nullptr);
 						Ui("coins", 0.7f);
 						g_ownedDice |= 1u << arg;
 						g_diceSel = kDiceSets[arg];
-						Toast(fmt::format("{} dice: yours", kDiceInfo[arg].name));
+						Toast(fmt::format("{}：已归你所有", kDiceInfo[arg].name));
 						spdlog::info("Bought {} dice for {}", kDiceInfo[arg].name, price);
 					}
 					break;
@@ -1599,7 +1599,7 @@ namespace Game
 			Scene::RefreshOwnedCups();
 			g_opponent = a_npc->GetHandle();
 			g_oppId = a_npc->GetFormID();
-			g_oppName = a_npc->GetDisplayFullName() ? a_npc->GetDisplayFullName() : "Your opponent";
+			g_oppName = a_npc->GetDisplayFullName() ? a_npc->GetDisplayFullName() : "你的对手";
 			g_bet = std::clamp(g_bet, Config::Get().minBet, Config::Get().maxBet);
 			g_cards[0].Clear();
 			g_cards[1].Clear();
@@ -1662,8 +1662,12 @@ namespace Game
 		}
 		std::string Upper(std::string a_s)
 		{
+			// Only uppercase ASCII. Applying toupper() to UTF-8 continuation bytes corrupts Chinese text.
 			for (auto& c : a_s) {
-				c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+				const auto u = static_cast<unsigned char>(c);
+				if (u < 0x80) {
+					c = static_cast<char>(std::toupper(u));
+				}
 			}
 			return a_s;
 		}
@@ -1682,7 +1686,7 @@ namespace Game
 			while (p < end) {
 				const unsigned char c = static_cast<unsigned char>(*p);
 				const int           len = c < 0x80 ? 1 : c < 0xE0 ? 2 : c < 0xF0 ? 3 : 4;
-				w += a_f->CalcTextSizeA(size, FLT_MAX, 0.0f, p, (std::min)(p + len, end)).x + a_track * size;
+				w += a_f->CalcTextSizeA(size, FLT_MAX, 0.0f, p, (std::min)(p + len, end)).x + (c < 0x80 ? a_track * size : 0.0f);
 				p += len;
 			}
 			return w;
@@ -1704,7 +1708,7 @@ namespace Game
 					a_dl->AddText(a_f, size, ImVec2(x + 1, a_pos.y + S(1.5f)), Alpha(IM_COL32(0, 0, 0, 255), a_shadow), p, q);
 				}
 				a_dl->AddText(a_f, size, ImVec2(x, a_pos.y), a_col, p, q);
-				x += a_f->CalcTextSizeA(size, FLT_MAX, 0.0f, p, q).x + a_track * size;
+				x += a_f->CalcTextSizeA(size, FLT_MAX, 0.0f, p, q).x + (c < 0x80 ? a_track * size : 0.0f);
 				p = q;
 			}
 			return x - a_pos.x;
@@ -1712,7 +1716,8 @@ namespace Game
 		// centred on x; tracking is added after each letter, so half of the last one is taken back
 		void TextC(ImDrawList* a_dl, ImFont* a_f, float a_cx, float a_y, ImU32 a_col, const std::string& a_s, float a_track = 0.0f, float a_shadow = 0.0f)
 		{
-			const float w = Measure(a_f, a_s, a_track) - (a_f ? a_track * a_f->FontSize : 0.0f);
+			const bool lastIsAscii = !a_s.empty() && static_cast<unsigned char>(a_s.back()) < 0x80;
+			const float w = Measure(a_f, a_s, a_track) - (a_f && lastIsAscii ? a_track * a_f->FontSize : 0.0f);
 			Text(a_dl, a_f, ImVec2(a_cx - w * 0.5f, a_y), a_col, a_s, a_track, a_shadow);
 		}
 		// a soft glow: the text drawn a few times around itself, faintly
@@ -1883,7 +1888,7 @@ namespace Game
 			cap(b.x - 1, -1);
 			// whose turn: the letters settle in as the turn changes
 			const bool        over = g_phase == Phase::Over;
-			const std::string t = Upper(over ? "Game over" : g_turn == 0 ? "Your turn" : g_oppName);
+			const std::string t = Upper(over ? "游戏结束" : g_turn == 0 ? "你的回合" : g_oppName);
 			const float       k = static_cast<float>(std::clamp((g_clock - g_turnAt) / 0.8, 0.0, 1.0));
 			const float       ease = 1.0f - std::pow(1.0f - k, 3.0f);
 			const float       track = 0.7f - (0.7f - 0.32f) * ease;
@@ -1909,7 +1914,7 @@ namespace Game
 					kFrost, kFrost, IM_COL32(143, 180, 232, 255));
 			}
 			// the stake, small, under it
-			TextC(dl, F.tiny, cx, my + S(10), kGrey, Upper(fmt::format("Wager {} septims", g_bet)), 0.3f, 0.8f);
+			TextC(dl, F.tiny, cx, my + S(10), kGrey, Upper(fmt::format("下注：{} 金币", g_bet)), 0.3f, 0.8f);
 		}
 
 		// The words of power, each appearing as it's spoken.
@@ -1958,20 +1963,20 @@ namespace Game
 			std::string hint;
 			bool        waiting = false;
 			if (g_turn == 1 && g_phase != Phase::Over) {
-				hint = g_oppName + " is playing";
+				hint = g_oppName + "正在进行回合";
 				waiting = true;
 			} else if (g_phase == Phase::Ready) {
-				hint = "Hold the left button and move to shake the cup. Let go to throw.";
+				hint = "按住鼠标左键并移动来摇晃骰杯，松开即可掷出骰子。";
 			} else if (g_phase == Phase::Shaking) {
-				hint = "Shake it, then let go: it tips the way you last moved.";
+				hint = "摇晃骰杯后松开，骰子会朝你最后移动的方向倒出。";
 			} else if (g_phase == Phase::Pouring || g_phase == Phase::Rolling) {
-				hint = "Rolling";
+				hint = "正在投掷";
 				waiting = true;
 			} else if (g_phase == Phase::Redo) {
-				hint = "Off the table. Throw again.";
+				hint = "骰子掉出桌面，请重新投掷。";
 			} else if (g_phase == Phase::Choose) {
-				hint = g_rollsUsed < 3 ? "Click a die to keep it. Drag dice into the cup to roll again, or pick a box on your card."
-				                       : "No rolls left. Pick a box on your card.";
+				hint = g_rollsUsed < 3 ? "点击骰子将其保留。将骰子拖回杯中重新投掷，或在计分卡上选择一项计分。"
+				                       : "没有剩余投掷次数，请在计分卡上选择一项。";
 			}
 			if (hint.empty()) {
 				return;
@@ -2061,13 +2066,13 @@ namespace Game
 			float       y = pos.y + padY;
 			const float x0 = pos.x + padX, x1 = pos.x + w - padX;
 			// head: who, and the total
-			Text(dl, F.bookSC, ImVec2(x0, y + S(6)), inkC, a_card == 0 ? "Yours" : g_oppName, 0.04f);
+			Text(dl, F.bookSC, ImVec2(x0, y + S(6)), inkC, a_card == 0 ? "你的计分卡" : g_oppName, 0.04f);
 			const std::string tot = std::to_string(g_cards[a_card].Total());
 			Text(dl, F.handBig, ImVec2(x1 - Measure(F.handBig, tot, 0), y - S(4)), inkC, tot);
 			y += S(36);
 			const auto& r = g_records[g_oppId];
 			const int   won = a_card == 0 ? r.w : r.l, lost = a_card == 0 ? r.l : r.w;
-			Text(dl, F.bookIt, ImVec2(x0, y), softC, fmt::format("Record {}-{}{}", won, lost, r.d ? fmt::format(", {} drawn", r.d) : ""));
+			Text(dl, F.bookIt, ImVec2(x0, y), softC, fmt::format("战绩：{}胜 {}负{}", won, lost, r.d ? fmt::format("，{}平", r.d) : ""));
 			y += S(26);
 			// two columns: the upper section with its bonus, the lower with the yacht bonuses
 			const float colGap = S(22), cw0 = (w - padX * 2 - colGap) / 2.18f, cw1 = cw0 * 1.18f;
@@ -2122,16 +2127,16 @@ namespace Game
                 }
                 return yy;
 			};
-			const float yu = column(x0, cw0, yacht::kOnes, yacht::kSixes, "Upper");
-			const float yl = column(x0 + cw0 + colGap, cw1, yacht::kThreeKind, yacht::kChance, "Lower");
+			const float yu = column(x0, cw0, yacht::kOnes, yacht::kSixes, "上区");
+			const float yl = column(x0 + cw0 + colGap, cw1, yacht::kThreeKind, yacht::kChance, "下区");
 			// the sums underneath
 			const auto& card = g_cards[a_card];
 			const float sy = (std::max)(yu, yl) + S(4);
-			Text(dl, F.bookIt, ImVec2(x0 + S(10), sy), softC, "Bonus 35 at 63");
+			Text(dl, F.bookIt, ImVec2(x0 + S(10), sy), softC, "达到 63 分奖励 35 分");
 			const std::string up = fmt::format("{} / 63", card.UpperSum());
 			Text(dl, F.bookIt, ImVec2(x0 + cw0 - S(2) - Measure(F.bookIt, up, 0), sy), softC, up);
 			const float lx = x0 + cw0 + colGap;
-			Text(dl, F.bookIt, ImVec2(lx + S(10), sy), softC, "Yacht bonuses");
+			Text(dl, F.bookIt, ImVec2(lx + S(10), sy), softC, "快艇奖励");
 			const std::string yb = std::to_string(card.yachtBonuses * yacht::kYachtBonus);
 			Text(dl, F.bookIt, ImVec2(lx + cw1 - S(2) - Measure(F.bookIt, yb, 0), sy), softC, yb);
 			ImGui::End();
@@ -2151,10 +2156,10 @@ namespace Game
 			const bool canShout = CanShout() && ShoutTargets();
 			const bool pad = Overlay::UsingPad();  // a controller: its buttons
 			const Key  keys[4] = {
-                { pad ? "Y" : "Z", "Fus Ro Dah", IM_COL32(185, 205, 234, 255), IM_COL32(255, 255, 255, 255), canShout, 0 },
-                { pad ? "X" : "H", "How to play", kGrey, kWhite, true, 1 },
-                { pad ? "Back" : "M", Audio::Muted() ? "Muted" : "Sound", kGrey, kWhite, true, 2 },
-                { pad ? "B" : "Tab", "Forfeit", kGrey, IM_COL32(240, 182, 166, 255), g_phase != Phase::Over, 3 },
+                { pad ? "Y" : "Z", "不卸之力", IM_COL32(185, 205, 234, 255), IM_COL32(255, 255, 255, 255), canShout, 0 },
+                { pad ? "X" : "H", "玩法说明", kGrey, kWhite, true, 1 },
+                { pad ? "返回" : "M", Audio::Muted() ? "已静音" : "声音", kGrey, kWhite, true, 2 },
+                { pad ? "B" : "Tab", "认输", kGrey, IM_COL32(240, 182, 166, 255), g_phase != Phase::Over, 3 },
 			};
 			float widths[4], total = 0;
 			for (int k = 0; k < 4; ++k) {
@@ -2232,7 +2237,7 @@ namespace Game
 			// a little pointer down to the key
 			const float px = std::clamp(g_soundKey.x, x + S(20), x + w - S(20));
 			dl->AddTriangleFilled(ImVec2(px - S(9), y + h), ImVec2(px + S(9), y + h), ImVec2(px, y + h + S(9)), IM_COL32(0, 0, 0, 199));
-			TextC(dl, F.sansSemi, x + w * 0.5f, y + padY, kWhite, "SOUND", 0.3f);
+			TextC(dl, F.sansSemi, x + w * 0.5f, y + padY, kWhite, "声音", 0.3f);
 			struct Row
 			{
 				const char* id;
@@ -2242,10 +2247,10 @@ namespace Game
 				ImU32       tint;
 			};
 			const Row rows[4] = {
-				{ "music", "Music", &v.musicVolume, 1.0f, IM_COL32(222, 196, 140, 255) },
-				{ "dice", "Dice & cups", &v.volume, 2.0f, kWhite },
-				{ "shout", "Fus Ro Dah", &v.shoutVolume, 2.0f, IM_COL32(185, 205, 234, 255) },
-				{ "effects", "Effects", &v.effectsVolume, 2.0f, kGrey },
+				{ "music", "音乐", &v.musicVolume, 1.0f, IM_COL32(222, 196, 140, 255) },
+				{ "dice", "骰子与骰杯", &v.volume, 2.0f, kWhite },
+				{ "shout", "不卸之力", &v.shoutVolume, 2.0f, IM_COL32(185, 205, 234, 255) },
+				{ "effects", "音效", &v.effectsVolume, 2.0f, kGrey },
 			};
 			const bool muted = Audio::Muted();
 			float      ry = y + padY + S(34);
@@ -2280,7 +2285,7 @@ namespace Game
 			}
 			// mute everything, or not
 			{
-				const std::string lbl = muted ? "UNMUTE" : "MUTE ALL";
+				const std::string lbl = muted ? "取消静音" : "全部静音";
 				bool              hov = false;
 				const float       bw = Measure(F.sans, lbl, 0.16f) + S(24), by = y + h - padY - S(22);
 				if (Clicked("mute", ImVec2(x + w * 0.5f - bw * 0.5f, by - S(4)), ImVec2(x + w * 0.5f + bw * 0.5f, by + S(22)), &hov)) {
@@ -2337,12 +2342,12 @@ namespace Game
 			BeginArea("##help", ImVec2(x, y), ImVec2(w, h));
 			auto* dl = ImGui::GetWindowDrawList();
 			MsgBox(dl, ImVec2(x, y), ImVec2(x + w, y + h));
-			TextC(dl, F.menu, W * 0.5f, y + S(22), kWhite, "YACHT", 0.26f);
+			TextC(dl, F.menu, W * 0.5f, y + S(22), kWhite, "快艇骰子", 0.26f);
 			float yy = y + S(64);
 			const float px = x + S(32), pw = w - S(64);
-			yy += Para(dl, F.sans, px, yy, pw, kGrey, "Hold the left button and move to lift the cup and shake it. Let go to flick the dice out the way you last moved. A die that leaves the board means throw again.") + S(9);
-			yy += Para(dl, F.sans, px, yy, pw, kGrey, "Click a die to set it on the rack. Drag one back into the cup to roll it again. The cup waits until the board is clear.") + S(9);
-			yy += Para(dl, F.sans, px, yy, pw, kGrey, "Any cup you carry can be your cup at the table. Every ten wins, innkeepers sell you a finer set of dice.");
+			yy += Para(dl, F.sans, px, yy, pw, kGrey, "按住鼠标左键并移动，提起骰杯并摇晃。松开后，骰子会朝你最后移动的方向掷出。若骰子掉出桌面，则需要重新投掷。") + S(9);
+			yy += Para(dl, F.sans, px, yy, pw, kGrey, "点击骰子可将其放到骰架上。将骰子拖回杯中即可再次投掷；必须等骰盘清空后才能摇杯。") + S(9);
+			yy += Para(dl, F.sans, px, yy, pw, kGrey, "你携带的任何骰杯都可以在游戏中使用。每赢得十场比赛，旅店老板就会出售一套更精良的骰子。");
 			ImGui::End();
 		}
 
@@ -2364,9 +2369,9 @@ namespace Game
 					Alpha(kWhite, 0.62f));
 				y += S(30);
 			};
-			line("CUP", cup.name);
+			line("骰杯", cup.name);
 			const int di = (std::max)(0, DiceIndex(PlayerDice()));
-			line("DICE", kDiceInfo[di].name);
+			line("骰子", kDiceInfo[di].name);
 		}
 
 		void DrawPlay()
@@ -2400,9 +2405,9 @@ namespace Game
 				BeginArea("##forfeit", ImVec2(x, y), ImVec2(w, h));
 				auto* dl = ImGui::GetWindowDrawList();
 				MsgBox(dl, ImVec2(x, y), ImVec2(x + w, y + h));
-				TextC(dl, F.menu, W * 0.5f, y + S(24), kWhite, "FORFEIT THIS GAME?", 0.26f);
-				TextC(dl, F.tiny, W * 0.5f, y + S(62), kGrey, Upper(fmt::format("It counts as a loss. {} keeps your {} septims", g_oppName, g_betHeld)), 0.2f);
-				switch (MenuButtons("fb", { { "Forfeit", true }, { "Keep playing", false } }, W * 0.5f, y + S(100))) {
+				TextC(dl, F.menu, W * 0.5f, y + S(24), kWhite, "确定要认输吗？", 0.26f);
+				TextC(dl, F.tiny, W * 0.5f, y + S(62), kGrey, Upper(fmt::format("认输将计为失败，{} 会赢走你的 {} 金币。", g_oppName, g_betHeld)), 0.2f);
+				switch (MenuButtons("fb", { { "认输", true }, { "继续游戏", false } }, W * 0.5f, y + S(100))) {
 				case 0:
 					Post(UiAct::ForfeitYes);
 					break;
@@ -2492,7 +2497,7 @@ namespace Game
 			const int   top = std::clamp(gold - gold % 5, cfg.minBet, cfg.maxBet);
 			const int   bet = std::clamp(g_bet, cfg.minBet, top);
 			float       yy = y;
-			TextC(dl, F.tiny, cx, yy, kGrey, Upper(fmt::format("A game of Yacht with {}", g_oppName)), 0.6f, 0.8f);
+			TextC(dl, F.tiny, cx, yy, kGrey, Upper(fmt::format("与 {} 进行快艇骰子游戏", g_oppName)), 0.6f, 0.8f);
 			yy += S(30);
 			// the stake, large, with arrows either side
 			const std::string stake = fmt::format("{}", bet);
@@ -2513,9 +2518,9 @@ namespace Game
 			tri(cx - sw * 0.5f - S(55), -1, h0, bet > cfg.minBet);
 			tri(cx + sw * 0.5f + S(55), 1, h1, bet < top);
 			yy += F.titleMid->FontSize + S(6);
-			TextC(dl, F.tiny, cx, yy, kGrey, Upper(fmt::format("Septims wagered. Win and you take {}", bet * 2)), 0.34f, 0.8f);
+			TextC(dl, F.tiny, cx, yy, kGrey, Upper(fmt::format("赢得比赛即可获得 {} 金币", bet * 2)), 0.34f, 0.8f);
 			yy += S(22);
-			TextC(dl, F.tiny, cx, yy, kDimC, Upper(fmt::format("Your purse: {} septims", gold)), 0.34f, 0.8f);
+			TextC(dl, F.tiny, cx, yy, kDimC, Upper(fmt::format("你的金币：{}", gold)), 0.34f, 0.8f);
 			yy += S(34);
 			DiamondRule(dl, cx, yy, S(560));
 			yy += S(28);
@@ -2526,11 +2531,11 @@ namespace Game
 					cupIdx = k;
 				}
 			}
-			Chooser(dl, "cup", cx, yy, S(520), "CUP", kCups[cupIdx].name, cupIdx, kNumCups,
+			Chooser(dl, "cup", cx, yy, S(520), "骰杯", kCups[cupIdx].name, cupIdx, kNumCups,
 				[](int k) { return CupUnlocked(k); }, UiAct::ChooseCup);
 			yy += S(40);
 			const int diceIdx = (std::max)(0, DiceIndex(PlayerDice()));
-			Chooser(dl, "dice", cx, yy, S(520), "DICE", kDiceInfo[diceIdx].name, diceIdx, 15, [](int k) { return DiceOwned(k); }, UiAct::ChooseDice);
+			Chooser(dl, "dice", cx, yy, S(520), "骰子", kDiceInfo[diceIdx].name, diceIdx, 15, [](int k) { return DiceOwned(k); }, UiAct::ChooseDice);
 			yy += S(40);
 			// the item card: what these dice are
 			FadeRule(dl, cx - S(260), cx + S(260), yy);
@@ -2541,7 +2546,7 @@ namespace Game
 			FadeRule(dl, cx - S(260), cx + S(260), yy);
 			yy += S(12);
 			yy += S(34);
-			switch (MenuButtons("wb", { { "Place bet", false }, { "Leave", false } }, cx, yy)) {
+			switch (MenuButtons("wb", { { "下注", false }, { "离开", false } }, cx, yy)) {
 			case 0:
 				Post(UiAct::PlaceBet, bet);
 				break;
@@ -2570,11 +2575,11 @@ namespace Game
 			BeginArea("##shop", ImVec2(x, y), ImVec2(w, h));
 			auto* dl = ImGui::GetWindowDrawList();
 			float yy = y;
-			TextC(dl, F.tiny, cx, yy, kGrey, Upper(fmt::format("{}'s stock", g_shopName)), 0.6f, 0.8f);
+			TextC(dl, F.tiny, cx, yy, kGrey, Upper(fmt::format("{} 的商品", g_shopName)), 0.6f, 0.8f);
 			yy += S(26);
-			TextC(dl, F.title, cx, yy, IM_COL32(255, 255, 255, 255), "DICE", 0.16f, 0.9f);
+			TextC(dl, F.title, cx, yy, IM_COL32(255, 255, 255, 255), "骰子", 0.16f, 0.9f);
 			yy += F.title->FontSize + S(4);
-			TextC(dl, F.tiny, cx, yy, kGrey, Upper(fmt::format("Your purse: {} septims  -  {} wins", GoldHeld(), g_totalWins)), 0.34f, 0.8f);
+			TextC(dl, F.tiny, cx, yy, kGrey, Upper(fmt::format("你的金币：{}  -  胜场：{}", GoldHeld(), g_totalWins)), 0.34f, 0.8f);
 			yy += S(30);
 			DiamondRule(dl, cx, yy, S(760));
 			yy += S(18);
@@ -2608,7 +2613,7 @@ namespace Game
 						kWhite);
 				}
 				Text(dl, F.sans, ImVec2(ra.x + S(16), ra.y + (rowH - F.sans->FontSize) * 0.5f), col, Upper(d.name), 0.08f, 0.7f);
-				const std::string tag = inUse == kDiceSets[k] ? "In use" : owned ? "Owned" : sale ? fmt::format("{} septims", d.gold) : fmt::format("{} wins", d.wins);
+				const std::string tag = inUse == kDiceSets[k] ? "使用中" : owned ? "已拥有" : sale ? fmt::format("{} 金币", d.gold) : fmt::format("{} 胜", d.wins);
 				const ImU32 tc = inUse == kDiceSets[k] ? kWhite : sale ? IM_COL32(230, 200, 140, 255) : kDimC;
 				Text(dl, F.tiny, ImVec2(rb.x - S(8) - Measure(F.tiny, Upper(tag), 0.14f), ra.y + (rowH - F.tiny->FontSize) * 0.5f), tc, Upper(tag), 0.14f);
 			}
@@ -2621,7 +2626,7 @@ namespace Game
 			ry += F.turn->FontSize + S(10);
 			FadeRule(dl, rx0, rx1, ry);
 			ry += S(10);
-			const std::string stats = k == 0 ? "STARTING DICE" : fmt::format("PRICE  {}     WINS  {}", d.gold, d.wins);
+			const std::string stats = k == 0 ? "初始骰子" : fmt::format("价格：{}     解锁胜场：{}", d.gold, d.wins);
 			TextC(dl, F.tiny, rcx, ry, kGrey, stats, 0.22f);
 			ry += S(26);
 			const ImVec2 bsz = F.sans->CalcTextSizeA(F.sans->FontSize, FLT_MAX, rx1 - rx0 - S(20), d.blurb);
@@ -2631,28 +2636,28 @@ namespace Game
 			ry += S(24);
 			const bool owned = DiceOwned(k), sale = DiceOnSale(k);
 			if (owned && inUse != kDiceSets[k]) {
-				if (MenuButton("use", "Use these", rcx, ry)) {
+				if (MenuButton("use", "使用这套骰子", rcx, ry)) {
 					Post(UiAct::ChooseDice, k);
 				}
 			} else if (sale) {
 				const bool afford = GoldHeld() >= d.gold;
-				if (MenuButton("buy", fmt::format("Buy  {}", d.gold), rcx, ry, false, afford)) {
+				if (MenuButton("buy", fmt::format("购买（{} 金币）", d.gold), rcx, ry, false, afford)) {
 					Post(UiAct::BuyDice, k);
 				}
 				if (!afford) {
-					TextC(dl, F.tiny, rcx, ry + S(48), IM_COL32(240, 182, 166, 255), "NOT ENOUGH GOLD", 0.22f);
+					TextC(dl, F.tiny, rcx, ry + S(48), IM_COL32(240, 182, 166, 255), "金币不足", 0.22f);
 				}
 			} else if (!owned) {
-				TextC(dl, F.tiny, rcx, ry + S(8), kDimC, Upper(fmt::format("For sale after {} wins", d.wins)), 0.22f);
+				TextC(dl, F.tiny, rcx, ry + S(8), kDimC, Upper(fmt::format("赢得 {} 场后解锁出售", d.wins)), 0.22f);
 			} else {
-				TextC(dl, F.tiny, rcx, ry + S(8), kGrey, "THE DICE YOU PLAY WITH", 0.22f);
+				TextC(dl, F.tiny, rcx, ry + S(8), kGrey, "当前使用的骰子", 0.22f);
 			}
 			if (!g_toast.empty() && g_clock - g_toastTime < 2.2) {
 				TextC(dl, F.sans, rcx, ry + S(80), kWhite, Upper(g_toast), 0.14f, 0.9f);
 			}
 			// done
 			const float by = yy + 15 * rowH + S(26);
-			if (MenuButton("done", "Done", cx, by)) {
+			if (MenuButton("done", "完成", cx, by)) {
 				Post(UiAct::CloseShop);
 			}
 			ImGui::End();
@@ -2670,9 +2675,9 @@ namespace Game
 			auto*       dl = ImGui::GetWindowDrawList();
 			const bool  win = g_outcome == "win";
 			const bool  lose = g_outcome == "lose" || g_outcome == "forfeit";
-			const char* title = win ? "YOU WIN" : g_outcome == "draw" ? "A DRAW" : g_outcome == "forfeit" ? "FORFEIT" : "YOU LOSE";
+			const char* title = win ? "你赢了" : g_outcome == "draw" ? "平局" : g_outcome == "forfeit" ? "认输" : "你输了";
 			float       yy = y;
-			TextC(dl, F.tiny, cx, yy, kGrey, "GAME OVER", 0.6f, 0.8f);
+			TextC(dl, F.tiny, cx, yy, kGrey, "游戏结束", 0.6f, 0.8f);
 			yy += S(26);
 			const ImU32 tc = lose ? IM_COL32(240, 195, 182, 255) : IM_COL32(255, 255, 255, 255);
 			const float tw = Measure(F.title, title, 0.16f) - 0.16f * F.title->FontSize;
@@ -2689,11 +2694,11 @@ namespace Game
 			yy += S(24);
 			const auto& r = g_records[g_oppId];
 			TextC(dl, F.tiny, cx, yy, kGrey,
-				Upper(fmt::format("Your record against {}: {}-{}{}", g_oppName, r.w, r.l, r.d ? fmt::format(", {} drawn", r.d) : "")), 0.34f, 0.8f);
+				Upper(fmt::format("你与 {} 的战绩：{}胜 {}负{}", g_oppName, r.w, r.l, r.d ? fmt::format("，{}平", r.d) : "")), 0.34f, 0.8f);
 			yy += S(24);
-			TextC(dl, F.tiny, cx, yy, kDimC, Upper(fmt::format("Your cup: the {}", PlayerCup().name)), 0.34f, 0.8f);
+			TextC(dl, F.tiny, cx, yy, kDimC, Upper(fmt::format("当前骰杯：{}", PlayerCup().name)), 0.34f, 0.8f);
 			yy += S(44);
-			switch (MenuButtons("ob", { { "Rematch", false }, { "Leave", false } }, cx, yy)) {
+			switch (MenuButtons("ob", { { "再战一局", false }, { "离开", false } }, cx, yy)) {
 			case 0:
 				Post(UiAct::Rematch);
 				break;
@@ -2837,7 +2842,7 @@ namespace Game
 				chests.size(), added, everything);
 		}
 
-		// Other mods hand out keywords by name (KID): "Dragonbone" picked up a dragon-bone icon. What they give every set
+		// Other mods hand out keywords by name (KID): "龙骨骰" picked up a dragon-bone icon. What they give every set
 		// alike stays (the inventory's "Clutter" type comes that way); what only some sets got by their name comes off.
 		void KeepDiceKeywords()
 		{
@@ -2953,7 +2958,7 @@ namespace Game
 				}
 				g_ownedDice |= 1u << k;
 				g_diceSel = kDiceSets[k];
-				RE::SendHUDMessage::ShowHUDMessage(fmt::format("{} dice: yours. You'll play with them at the next table.", kDiceInfo[k].name).c_str());
+				RE::SendHUDMessage::ShowHUDMessage(fmt::format("{}：已归你所有。下一次牌局将使用这套骰子。", kDiceInfo[k].name).c_str());
 				spdlog::info("Bought {} dice", kDiceInfo[k].name);
 			}
 		}
@@ -3104,7 +3109,7 @@ namespace Game
 			std::lock_guard lk(g_mtx);
 			if (!Scene::IsOpen()) {
 				auto* keeper = RE::TESForm::LookupByID<RE::Actor>(id);
-				g_shopName = keeper && keeper->GetDisplayFullName() ? keeper->GetDisplayFullName() : "The innkeeper";
+				g_shopName = keeper && keeper->GetDisplayFullName() ? keeper->GetDisplayFullName() : "旅店老板";
 				g_phase = Phase::Shop;
 				g_shopSel = -1;
 				Scene::Open(false);
@@ -3244,43 +3249,38 @@ namespace Game
 	{
 		g_ui = (std::max)(0.6f, a_screenH / 1080.0f) * Config::Get().uiScale;
 		auto& io = ImGui::GetIO();
-		char  windir[MAX_PATH]{};
-		::GetWindowsDirectoryA(windir, MAX_PATH);
-		const std::string ours = "Data\\SKSE\\Plugins\\SkyrimYacht\\Fonts\\";
-		const std::string sys = std::string(windir) + "\\Fonts\\";
-		std::error_code   ec;
-		static const ImWchar kCaps[] = { 0x0020, 0x007E, 0 };  // the huge display faces only need plain ASCII
-		auto load = [&](const char* a_file, const char* a_fallback, float a_size, const ImWchar* a_ranges = nullptr) -> ImFont* {
-			std::string p = ours + a_file;
-			if (!std::filesystem::exists(p, ec)) {
-				p = sys + a_fallback;
-				if (!std::filesystem::exists(p, ec)) {
-					return nullptr;
-				}
+		const std::string fontPath = "Data\\SKSE\\Plugins\\SkyrimYacht\\Fonts\\MiSans-Regular.ttf";
+		std::error_code ec;
+		const bool hasMiSans = std::filesystem::exists(fontPath, ec);
+		const ImWchar* ranges = io.Fonts->GetGlyphRangesChineseSimplifiedCommon();
+		auto load = [&](float a_size) -> ImFont* {
+			if (!hasMiSans) {
+				return nullptr;
 			}
 			ImFontConfig fc;
 			fc.OversampleH = 2;
 			fc.OversampleV = 1;
-			return io.Fonts->AddFontFromFileTTF(p.c_str(), a_size * g_ui, &fc, a_ranges);
+			return io.Fonts->AddFontFromFileTTF(fontPath.c_str(), a_size * g_ui, &fc, ranges);
 		};
-		F.sans = load("BarlowCondensed-Medium.ttf", "arialn.ttf", 20.0f);
-		F.sansSemi = load("BarlowCondensed-SemiBold.ttf", "arialnb.ttf", 13.0f);
-		F.tiny = load("BarlowCondensed-Medium.ttf", "arialn.ttf", 15.0f);
-		F.turn = load("BarlowCondensed-Medium.ttf", "arialn.ttf", 21.0f);
-		F.menu = load("BarlowCondensed-Medium.ttf", "arialn.ttf", 24.0f);
-		F.toastLong = load("BarlowCondensed-Medium.ttf", "arialn.ttf", 26.0f, kCaps);
-		F.skill = load("BarlowCondensed-Medium.ttf", "arialn.ttf", 30.0f, kCaps);
-		F.score = load("BarlowCondensed-Medium.ttf", "arialn.ttf", 32.0f, kCaps);
-		F.toast = load("BarlowCondensed-Medium.ttf", "arialn.ttf", 44.0f, kCaps);
-		F.titleMid = load("BarlowCondensed-Medium.ttf", "arialn.ttf", 76.0f, kCaps);
-		F.words = load("BarlowCondensed-Medium.ttf", "arialn.ttf", 92.0f, kCaps);
-		F.title = load("BarlowCondensed-Medium.ttf", "arialn.ttf", 100.0f, kCaps);
-		F.book = load("IMFellEnglish-Regular.ttf", "georgia.ttf", 18.0f);
-		F.bookIt = load("IMFellEnglish-Italic.ttf", "georgiai.ttf", 16.0f);
-		F.bookSC = load("IMFellEnglishSC-Regular.ttf", "georgia.ttf", 27.0f);
-		F.bookSCsm = load("IMFellEnglishSC-Regular.ttf", "georgia.ttf", 17.0f);
-		F.hand = load("Fondamento-Regular.ttf", "georgiai.ttf", 21.0f);
-		F.handBig = load("Fondamento-Regular.ttf", "georgiai.ttf", 40.0f);
+		// One consistent typeface at the original UI's size hierarchy. MiSans supplies Latin, digits and CJK glyphs.
+		F.sans = load(20.0f);
+		F.sansSemi = load(13.0f);
+		F.tiny = load(15.0f);
+		F.turn = load(21.0f);
+		F.menu = load(24.0f);
+		F.toastLong = load(26.0f);
+		F.skill = load(30.0f);
+		F.score = load(32.0f);
+		F.toast = load(44.0f);
+		F.titleMid = load(76.0f);
+		F.words = load(92.0f);
+		F.title = load(100.0f);
+		F.book = load(18.0f);
+		F.bookIt = load(16.0f);
+		F.bookSC = load(27.0f);
+		F.bookSCsm = load(17.0f);
+		F.hand = load(21.0f);
+		F.handBig = load(40.0f);
 		ImFont* any = F.sans ? F.sans : io.Fonts->AddFontDefault();
 		for (ImFont** f : { &F.sans, &F.sansSemi, &F.tiny, &F.turn, &F.menu, &F.toastLong, &F.skill, &F.score, &F.toast, &F.titleMid, &F.words,
 				 &F.title, &F.book, &F.bookIt, &F.bookSC, &F.bookSCsm, &F.hand, &F.handBig }) {
@@ -3289,7 +3289,7 @@ namespace Game
 			}
 		}
 		io.FontDefault = F.sans;
-		spdlog::info("Interface: scale {:.2f}, fonts {}", g_ui, std::filesystem::exists(ours + "BarlowCondensed-Medium.ttf", ec) ? "ours" : "Windows'");
+		spdlog::info("Interface: scale {:.2f}, font {}", g_ui, F.sans && hasMiSans ? "MiSans-Regular.ttf" : "MiSans missing or failed to load; ImGui default fallback");
 		auto& st = ImGui::GetStyle();
 		st.WindowRounding = 0.0f;
 		st.WindowBorderSize = 0.0f;
@@ -3352,7 +3352,7 @@ namespace Game
 			dl->AddCircle(c, r, IM_COL32(0, 0, 0, 140), 48, S(6));
 			dl->PathArcTo(c, r, -1.5707963f, -1.5707963f + 6.2831853f * f, 48);
 			dl->PathStroke(kWhite, 0, S(4));
-			TextC(dl, F.tiny, c.x, c.y + r + S(14), kGrey, "LEAVING THE TABLE", 0.6f, 0.9f);
+			TextC(dl, F.tiny, c.x, c.y + r + S(14), kGrey, "正在离开牌桌", 0.6f, 0.9f);
 			if (f >= 1.0f && !g_escLeaving) {
 				g_escLeaving = true;
 				g_escHeldAt = -1.0;
@@ -3389,7 +3389,7 @@ namespace Game
 		if (!Scene::Ready() && g_phase != Phase::Shop && g_phase != Phase::Wager) {
 			// like the game's own loading prompt, bottom right
 			auto*       dl = ImGui::GetForegroundDrawList();
-			const auto  t = std::string("SETTING UP THE TABLE");
+			const auto  t = std::string("正在布置牌桌");
 			const float tw = Measure(F.sans, t, 0.4f);
 			Text(dl, F.sans, ImVec2(W - S(60) - S(30) - tw, H - S(50) - F.sans->FontSize), kGrey, t, 0.4f, 0.9f);
 			const float a = static_cast<float>(Now() * 2.0);

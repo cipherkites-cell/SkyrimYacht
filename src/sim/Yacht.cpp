@@ -58,8 +58,8 @@ namespace yacht
 
 	const char* CategoryName(int a_category)
 	{
-		static const char* names[kCategories] = { "Ones", "Twos", "Threes", "Fours", "Fives", "Sixes", "Three of a Kind",
-			"Four of a Kind", "Full House", "Small Straight", "Large Straight", "Yacht", "Chance" };
+		static const char* names[kCategories] = { "一点", "二点", "三点", "四点", "五点", "六点", "三条",
+			"四条", "葫芦", "小顺子", "大顺子", "快艇", "机会" };
 		return a_category >= 0 && a_category < kCategories ? names[a_category] : "";
 	}
 
