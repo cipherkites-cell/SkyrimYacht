@@ -2132,7 +2132,7 @@ namespace Game
 			// the sums underneath
 			const auto& card = g_cards[a_card];
 			const float sy = (std::max)(yu, yl) + S(4);
-			Text(dl, F.bookIt, ImVec2(x0 + S(10), sy), softC, "满63分奖励35分");
+			Text(dl, F.bookIt, ImVec2(x0 + S(10), sy), softC, "满63加35");
 			const std::string up = fmt::format("{} / 63", card.UpperSum());
 			Text(dl, F.bookIt, ImVec2(x0 + cw0 - S(2) - Measure(F.bookIt, up, 0), sy), softC, up);
 			const float lx = x0 + cw0 + colGap;
@@ -3250,34 +3250,44 @@ namespace Game
 		g_ui = (std::max)(0.6f, a_screenH / 1080.0f) * Config::Get().uiScale;
 		auto& io = ImGui::GetIO();
 		
-		// 正确指向 .ttc 文件
 		const std::string fontPath = "Data\\interface\\ImGuiIcons\\Fonts\\msyh.ttc";
 		std::error_code ec;
 		const bool hasFont = std::filesystem::exists(fontPath, ec);
+
+		// 1. 使用 ImGui 的字形构建器
+		ImFontGlyphRangesBuilder builder;
+		builder.AddRanges(io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
+		builder.AddRanges(io.Fonts->GetGlyphRangesDefault());
 		
-		// 使用常用中文字库（2500字）
-		const ImWchar* ranges = io.Fonts->GetGlyphRangesChineseSimplifiedCommon();
+		// ⚠️ 关键1：字符串前加 u8，强制编译器按 UTF-8 处理。
+		// 这样无论你的源文件是 GBK 还是 UTF-8，都不会产生乱码。
+		builder.AddText(u8"骰凹垢掷");
+		
+		// ⚠️ 关键2：static，保证这块内存活到游戏关闭，ImGui 随时能读
+		static ImVector<ImWchar> ranges_data;
+		ranges_data.clear();
+		builder.BuildRanges(&ranges_data);
+		const ImWchar* ranges = ranges_data.Data;
+
+		// ⚠️ 关键3：强制让 ImGui 立刻把字库烤进图集。这样之后的渲染绝对不会读到坏内存
+		io.Fonts->Build();
 		
 		auto load = [&](float a_size) -> ImFont* {
 			if (!hasFont) return nullptr;
 			ImFontConfig fc;
 			fc.OversampleH = 2;
 			fc.OversampleV = 1;
-			fc.FontNo = 0; // 强制读取 ttc 集合里的常规体
+			fc.FontNo = 0; 
 			return io.Fonts->AddFontFromFileTTF(fontPath.c_str(), a_size * g_ui, &fc, ranges);
 		};
 
-		// 安全双字号：18px(正文) 和 28px(大字)
+		// 安全双字号
 		F.sans = load(18.0f); 
 		F.menu = load(28.0f); 
 
-		// 小字、普通 UI 使用 18px
 		F.sansSemi = F.tiny = F.turn = F.book = F.bookIt = F.bookSCsm = F.sans;
-
-		// 菜单、大标题、分数、Toast等使用 28px
 		F.toastLong = F.skill = F.score = F.toast = F.hand = F.handBig = F.titleMid = F.words = F.title = F.bookSC = F.menu;
 
-		// 兜底机制
 		ImFont* any = F.sans ? F.sans : io.Fonts->AddFontDefault();
 		for (ImFont** f : { &F.sans, &F.sansSemi, &F.tiny, &F.turn, &F.menu, &F.toastLong, &F.skill, &F.score, &F.toast, &F.titleMid, &F.words, &F.title, &F.book, &F.bookIt, &F.bookSC, &F.bookSCsm, &F.hand, &F.handBig }) {
 			if (!*f) *f = any;
