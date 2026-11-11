@@ -3261,7 +3261,7 @@ namespace Game
 		
 		// ⚠️ 关键1：字符串前加 u8，强制编译器按 UTF-8 处理。
 		// 这样无论你的源文件是 GBK 还是 UTF-8，都不会产生乱码。
-		builder.AddText("骰凹垢掷");
+		builder.AddText("骰凹垢掷葫");
 		
 		// ⚠️ 关键2：static，保证这块内存活到游戏关闭，ImGui 随时能读
 		static ImVector<ImWchar> ranges_data;
@@ -3282,8 +3282,8 @@ namespace Game
 		};
 
 		// 安全双字号
-		F.sans = load(18.0f); 
-		F.menu = load(28.0f); 
+		F.sans = load(20.0f); 
+		F.menu = load(30.0f); 
 
 		F.sansSemi = F.tiny = F.turn = F.book = F.bookIt = F.bookSCsm = F.sans;
 		F.toastLong = F.skill = F.score = F.toast = F.hand = F.handBig = F.titleMid = F.words = F.title = F.bookSC = F.menu;
