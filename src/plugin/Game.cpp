@@ -3255,51 +3255,32 @@ namespace Game
 		std::error_code ec;
 		const bool hasFont = std::filesystem::exists(fontPath, ec);
 		
-		// 用常用中文字库（2500字），配合两个字号不会超出图集上限
+		// 使用常用中文字库（2500字）
 		const ImWchar* ranges = io.Fonts->GetGlyphRangesChineseFull();
 		
 		auto load = [&](float a_size) -> ImFont* {
-			if (!hasFont) {
-				return nullptr;
-			}
+			if (!hasFont) return nullptr;
 			ImFontConfig fc;
 			fc.OversampleH = 2;
 			fc.OversampleV = 1;
-			fc.FontNo = 0; // 强制读取 ttc 集合里的第一个字体（常规体）
+			fc.FontNo = 0; // 强制读取 ttc 集合里的常规体
 			return io.Fonts->AddFontFromFileTTF(fontPath.c_str(), a_size * g_ui, &fc, ranges);
 		};
-		// Load four font sizes to preserve the original UI hierarchy
-		// while avoiding excessive duplication of Chinese glyphs.
 
-		F.sans = load(16.0f);       // 普通文字
-		F.menu = load(24.0f);       // 菜单及中等文字
-		F.skill = load(32.0f);      // 大字、提示、手牌
-		F.title = load(40.0f);      // 标题
+		// 安全双字号：18px(正文) 和 28px(大字)
+		F.sans = load(18.0f); 
+		F.menu = load(28.0f); 
 
-		// Small text uses the regular font
-		F.sansSemi = F.tiny = F.turn = F.book = F.bookIt = F.sans;
+		// 小字、普通 UI 使用 18px
+		F.sansSemi = F.tiny = F.turn = F.book = F.bookIt = F.bookSCsm = F.sans;
 
-		// Medium text uses the menu font
-		F.toastLong = F.score = F.bookSC = F.bookSCsm = F.menu;
+		// 菜单、大标题、分数、Toast等使用 28px
+		F.toastLong = F.skill = F.score = F.toast = F.hand = F.handBig = F.titleMid = F.words = F.title = F.bookSC = F.menu;
 
-		// Large text uses the large font
-		F.toast = F.hand = F.handBig = F.skill;
-
-		// Titles use the largest font
-		F.titleMid = F.words = F.title;
-
-		// Fallback if MiSans fails to load
+		// 兜底机制
 		ImFont* any = F.sans ? F.sans : io.Fonts->AddFontDefault();
-
-		for (ImFont** f : {
-			&F.sans, &F.sansSemi, &F.tiny, &F.turn, &F.menu,
-			&F.toastLong, &F.skill, &F.score, &F.toast,
-			&F.titleMid, &F.words, &F.title, &F.book,
-			&F.bookIt, &F.bookSC, &F.bookSCsm, &F.hand, &F.handBig
-		}) {
-			if (!*f) {
-				*f = any;
-			}
+		for (ImFont** f : { &F.sans, &F.sansSemi, &F.tiny, &F.turn, &F.menu, &F.toastLong, &F.skill, &F.score, &F.toast, &F.titleMid, &F.words, &F.title, &F.book, &F.bookIt, &F.bookSC, &F.bookSCsm, &F.hand, &F.handBig }) {
+			if (!*f) *f = any;
 		}
 
 		io.FontDefault = F.sans;
