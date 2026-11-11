@@ -3296,11 +3296,6 @@ namespace Game
 			}
 		}
 		io.FontDefault = F.sans;
-		{
-			const bool built = io.Fonts->Build();
-			spdlog::info("Font atlas: built {}, {}x{}, tex {}", built, io.Fonts->TexWidth, io.Fonts->TexHeight,
-				(io.Fonts->TexData && io.Fonts->TexData->Pixels) ? "ok" : "NULL");
-		}
 		spdlog::info("Interface: scale {:.2f}, font {}", g_ui, F.sans && hasMiSans ? "MiSans-Regular.ttf" : "MiSans missing or failed to load; ImGui default fallback");
 		auto& st = ImGui::GetStyle();
 		st.WindowRounding = 0.0f;
