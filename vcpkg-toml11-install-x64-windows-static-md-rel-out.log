@@ -1,0 +1,67 @@
+Change Dir: 'D:/a/SkyrimYacht/SkyrimYacht/vcpkg/buildtrees/toml11/x64-windows-static-md-rel'
+
+Run Build Command(s): D:\a\SkyrimYacht\SkyrimYacht\vcpkg\downloads\tools\ninja-1.13.2-windows\ninja.exe -v -v -j5 install
+[0/1] C:\Windows\system32\cmd.exe /C "cd /D D:\a\SkyrimYacht\SkyrimYacht\vcpkg\buildtrees\toml11\x64-windows-static-md-rel && D:\a\SkyrimYacht\SkyrimYacht\vcpkg\downloads\tools\cmake-4.4.0-windows\cmake-4.4.0-windows-x86_64\bin\cmake.exe -P cmake_install.cmake"
+-- Install configuration: "Release"
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/lib/cmake/toml11/toml11Config.cmake
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/lib/cmake/toml11/toml11ConfigVersion.cmake
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/color.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/comments.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/compat.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/context.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/conversion.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/datetime.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/error_info.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/exception.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/find.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/format.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/from.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/get.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/into.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/literal.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/location.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/ordered_map.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/parser.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/region.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/result.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/scanner.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/serializer.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/skip.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/source_location.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/spec.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/storage.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/syntax.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/traits.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/types.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/utility.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/value.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/value_t.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/version.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/visit.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/fwd/color_fwd.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/fwd/comments_fwd.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/fwd/datetime_fwd.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/fwd/error_info_fwd.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/fwd/format_fwd.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/fwd/literal_fwd.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/fwd/location_fwd.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/fwd/region_fwd.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/fwd/scanner_fwd.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/fwd/source_location_fwd.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/fwd/syntax_fwd.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/fwd/value_t_fwd.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/impl/color_impl.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/impl/comments_impl.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/impl/datetime_impl.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/impl/error_info_impl.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/impl/format_impl.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/impl/literal_impl.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/impl/location_impl.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/impl/region_impl.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/impl/scanner_impl.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/impl/source_location_impl.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/impl/syntax_impl.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/include/toml11/impl/value_t_impl.hpp
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/lib/cmake/toml11/toml11Targets.cmake
+

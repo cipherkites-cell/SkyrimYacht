@@ -1,0 +1,9 @@
+Downloading https://github.com/ToruNiina/toml11/archive/v4.4.0.tar.gz -> ToruNiina-toml11-v4.4.0.tar.gz
+Successfully downloaded ToruNiina-toml11-v4.4.0.tar.gz
+-- Extracting source D:/a/SkyrimYacht/SkyrimYacht/vcpkg/downloads/ToruNiina-toml11-v4.4.0.tar.gz
+-- Using source at D:/a/SkyrimYacht/SkyrimYacht/vcpkg/buildtrees/toml11/src/v4.4.0-e6c50d7814.clean
+-- Configuring x64-windows-static-md
+-- Building x64-windows-static-md-dbg
+-- Building x64-windows-static-md-rel
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/share/toml11/copyright
+-- Performing post-build validation

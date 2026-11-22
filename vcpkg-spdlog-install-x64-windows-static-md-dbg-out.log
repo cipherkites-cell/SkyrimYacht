@@ -1,0 +1,115 @@
+Change Dir: 'D:/a/SkyrimYacht/SkyrimYacht/vcpkg/buildtrees/spdlog/x64-windows-static-md-dbg'
+
+Run Build Command(s): D:\a\SkyrimYacht\SkyrimYacht\vcpkg\downloads\tools\ninja-1.13.2-windows\ninja.exe -v -v -j5 install
+[1/8] "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.44.35207\bin\Hostx64\x64\cl.exe"   /TP -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSPDLOG_FWRITE_UNLOCKED -ID:\a\SkyrimYacht\SkyrimYacht\vcpkg\buildtrees\spdlog\src\v1.16.0-e349c3b9b7.clean\include -external:ID:\a\SkyrimYacht\SkyrimYacht\build\vcpkg_installed\x64-windows-static-md\include -external:W0 /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP  /MDd /Z7 /Ob0 /Od /RTC1  -MDd /Zc:__cplusplus /utf-8 /showIncludes /FoCMakeFiles\spdlog.dir\src\file_sinks.cpp.obj /FdCMakeFiles\spdlog.dir\spdlog.pdb /FS -c D:\a\SkyrimYacht\SkyrimYacht\vcpkg\buildtrees\spdlog\src\v1.16.0-e349c3b9b7.clean\src\file_sinks.cpp
+[2/8] "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.44.35207\bin\Hostx64\x64\cl.exe"   /TP -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSPDLOG_FWRITE_UNLOCKED -ID:\a\SkyrimYacht\SkyrimYacht\vcpkg\buildtrees\spdlog\src\v1.16.0-e349c3b9b7.clean\include -external:ID:\a\SkyrimYacht\SkyrimYacht\build\vcpkg_installed\x64-windows-static-md\include -external:W0 /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP  /MDd /Z7 /Ob0 /Od /RTC1  -MDd /Zc:__cplusplus /utf-8 /showIncludes /FoCMakeFiles\spdlog.dir\src\stdout_sinks.cpp.obj /FdCMakeFiles\spdlog.dir\spdlog.pdb /FS -c D:\a\SkyrimYacht\SkyrimYacht\vcpkg\buildtrees\spdlog\src\v1.16.0-e349c3b9b7.clean\src\stdout_sinks.cpp
+[3/8] "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.44.35207\bin\Hostx64\x64\cl.exe"   /TP -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSPDLOG_FWRITE_UNLOCKED -ID:\a\SkyrimYacht\SkyrimYacht\vcpkg\buildtrees\spdlog\src\v1.16.0-e349c3b9b7.clean\include -external:ID:\a\SkyrimYacht\SkyrimYacht\build\vcpkg_installed\x64-windows-static-md\include -external:W0 /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP  /MDd /Z7 /Ob0 /Od /RTC1  -MDd /Zc:__cplusplus /utf-8 /showIncludes /FoCMakeFiles\spdlog.dir\src\color_sinks.cpp.obj /FdCMakeFiles\spdlog.dir\spdlog.pdb /FS -c D:\a\SkyrimYacht\SkyrimYacht\vcpkg\buildtrees\spdlog\src\v1.16.0-e349c3b9b7.clean\src\color_sinks.cpp
+[4/8] "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.44.35207\bin\Hostx64\x64\cl.exe"   /TP -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSPDLOG_FWRITE_UNLOCKED -ID:\a\SkyrimYacht\SkyrimYacht\vcpkg\buildtrees\spdlog\src\v1.16.0-e349c3b9b7.clean\include -external:ID:\a\SkyrimYacht\SkyrimYacht\build\vcpkg_installed\x64-windows-static-md\include -external:W0 /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP  /MDd /Z7 /Ob0 /Od /RTC1  -MDd /Zc:__cplusplus /utf-8 /showIncludes /FoCMakeFiles\spdlog.dir\src\async.cpp.obj /FdCMakeFiles\spdlog.dir\spdlog.pdb /FS -c D:\a\SkyrimYacht\SkyrimYacht\vcpkg\buildtrees\spdlog\src\v1.16.0-e349c3b9b7.clean\src\async.cpp
+[5/8] "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.44.35207\bin\Hostx64\x64\cl.exe"   /TP -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSPDLOG_FWRITE_UNLOCKED -ID:\a\SkyrimYacht\SkyrimYacht\vcpkg\buildtrees\spdlog\src\v1.16.0-e349c3b9b7.clean\include -external:ID:\a\SkyrimYacht\SkyrimYacht\build\vcpkg_installed\x64-windows-static-md\include -external:W0 /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP  /MDd /Z7 /Ob0 /Od /RTC1  -MDd /Zc:__cplusplus /utf-8 /showIncludes /FoCMakeFiles\spdlog.dir\src\cfg.cpp.obj /FdCMakeFiles\spdlog.dir\spdlog.pdb /FS -c D:\a\SkyrimYacht\SkyrimYacht\vcpkg\buildtrees\spdlog\src\v1.16.0-e349c3b9b7.clean\src\cfg.cpp
+[6/8] "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.44.35207\bin\Hostx64\x64\cl.exe"   /TP -DSPDLOG_COMPILED_LIB -DSPDLOG_FMT_EXTERNAL -DSPDLOG_FWRITE_UNLOCKED -ID:\a\SkyrimYacht\SkyrimYacht\vcpkg\buildtrees\spdlog\src\v1.16.0-e349c3b9b7.clean\include -external:ID:\a\SkyrimYacht\SkyrimYacht\build\vcpkg_installed\x64-windows-static-md\include -external:W0 /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP  /MDd /Z7 /Ob0 /Od /RTC1  -MDd /Zc:__cplusplus /utf-8 /showIncludes /FoCMakeFiles\spdlog.dir\src\spdlog.cpp.obj /FdCMakeFiles\spdlog.dir\spdlog.pdb /FS -c D:\a\SkyrimYacht\SkyrimYacht\vcpkg\buildtrees\spdlog\src\v1.16.0-e349c3b9b7.clean\src\spdlog.cpp
+[7/8] C:\Windows\system32\cmd.exe /C "cd . && "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.44.35207\bin\Hostx64\x64\lib.exe"  /machine:x64 /nologo /out:spdlogd.lib CMakeFiles\spdlog.dir\src\spdlog.cpp.obj CMakeFiles\spdlog.dir\src\stdout_sinks.cpp.obj CMakeFiles\spdlog.dir\src\color_sinks.cpp.obj CMakeFiles\spdlog.dir\src\file_sinks.cpp.obj CMakeFiles\spdlog.dir\src\async.cpp.obj CMakeFiles\spdlog.dir\src\cfg.cpp.obj && cd ."
+[7/8] C:\Windows\system32\cmd.exe /C "cd /D D:\a\SkyrimYacht\SkyrimYacht\vcpkg\buildtrees\spdlog\x64-windows-static-md-dbg && D:\a\SkyrimYacht\SkyrimYacht\vcpkg\downloads\tools\cmake-4.4.0-windows\cmake-4.4.0-windows-x86_64\bin\cmake.exe -P cmake_install.cmake"
+-- Install configuration: "Debug"
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/async.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/async_logger-inl.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/async_logger.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/cfg
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/cfg/argv.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/cfg/env.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/cfg/helpers-inl.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/cfg/helpers.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/common-inl.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/common.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/details
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/details/backtracer-inl.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/details/backtracer.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/details/circular_q.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/details/console_globals.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/details/file_helper-inl.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/details/file_helper.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/details/fmt_helper.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/details/log_msg-inl.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/details/log_msg.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/details/log_msg_buffer-inl.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/details/log_msg_buffer.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/details/mpmc_blocking_q.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/details/null_mutex.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/details/os-inl.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/details/os.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/details/periodic_worker-inl.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/details/periodic_worker.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/details/registry-inl.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/details/registry.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/details/synchronous_factory.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/details/tcp_client-windows.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/details/tcp_client.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/details/thread_pool-inl.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/details/thread_pool.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/details/udp_client-windows.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/details/udp_client.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/details/windows_include.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/fmt
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/fmt/bin_to_hex.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/fmt/chrono.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/fmt/compile.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/fmt/fmt.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/fmt/ostr.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/fmt/ranges.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/fmt/std.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/fmt/xchar.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/formatter.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/fwd.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/logger-inl.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/logger.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/mdc.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/pattern_formatter-inl.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/pattern_formatter.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/sinks
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/sinks/android_sink.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/sinks/ansicolor_sink-inl.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/sinks/ansicolor_sink.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/sinks/base_sink-inl.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/sinks/base_sink.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/sinks/basic_file_sink-inl.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/sinks/basic_file_sink.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/sinks/callback_sink.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/sinks/daily_file_sink.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/sinks/dist_sink.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/sinks/dup_filter_sink.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/sinks/hourly_file_sink.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/sinks/kafka_sink.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/sinks/mongo_sink.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/sinks/msvc_sink.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/sinks/null_sink.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/sinks/ostream_sink.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/sinks/qt_sinks.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/sinks/ringbuffer_sink.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/sinks/rotating_file_sink-inl.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/sinks/rotating_file_sink.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/sinks/sink-inl.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/sinks/sink.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/sinks/stdout_color_sinks-inl.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/sinks/stdout_color_sinks.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/sinks/stdout_sinks-inl.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/sinks/stdout_sinks.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/sinks/syslog_sink.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/sinks/systemd_sink.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/sinks/tcp_sink.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/sinks/udp_sink.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/sinks/wincolor_sink-inl.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/sinks/wincolor_sink.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/sinks/win_eventlog_sink.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/spdlog-inl.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/spdlog.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/stopwatch.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/tweakme.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/include/spdlog/version.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/lib/spdlogd.lib
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/lib/pkgconfig/spdlog.pc
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/lib/cmake/spdlog/spdlogConfigTargets.cmake
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/lib/cmake/spdlog/spdlogConfigTargets-debug.cmake
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/lib/cmake/spdlog/spdlogConfig.cmake
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/lib/cmake/spdlog/spdlogConfigVersion.cmake
+

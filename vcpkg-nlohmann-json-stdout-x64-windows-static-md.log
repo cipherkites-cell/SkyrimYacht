@@ -1,0 +1,15 @@
+Downloading https://github.com/nlohmann/json/archive/v3.12.0.tar.gz -> nlohmann-json-v3.12.0.tar.gz
+Successfully downloaded nlohmann-json-v3.12.0.tar.gz
+-- Extracting source D:/a/SkyrimYacht/SkyrimYacht/vcpkg/downloads/nlohmann-json-v3.12.0.tar.gz
+-- Applying patch fix-4742_std_optional.patch
+-- Using source at D:/a/SkyrimYacht/SkyrimYacht/vcpkg/buildtrees/nlohmann-json/src/v3.12.0-087f34fe5c.clean
+-- Configuring x64-windows-static-md
+-- Building x64-windows-static-md-dbg
+-- Building x64-windows-static-md-rel
+-- Fixing pkgconfig file: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/nlohmann-json_x64-windows-static-md/share/pkgconfig/nlohmann_json.pc
+-- Using cached msys2-mingw-w64-x86_64-pkgconf-1~2.5.1-1-any.pkg.tar.zst
+-- Using cached msys2-msys2-runtime-3.6.5-1-x86_64.pkg.tar.zst
+-- Using msys root at D:/a/SkyrimYacht/SkyrimYacht/vcpkg/downloads/tools/msys2/3e71d1f8e22ab23f
+-- Fixing pkgconfig file: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/nlohmann-json_x64-windows-static-md/debug/share/pkgconfig/nlohmann_json.pc
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/nlohmann-json_x64-windows-static-md/share/nlohmann-json/copyright
+-- Performing post-build validation

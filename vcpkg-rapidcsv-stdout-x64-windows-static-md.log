@@ -1,0 +1,9 @@
+Downloading https://github.com/d99kris/rapidcsv/archive/v8.90.tar.gz -> d99kris-rapidcsv-v8.90.tar.gz
+Successfully downloaded d99kris-rapidcsv-v8.90.tar.gz
+-- Extracting source D:/a/SkyrimYacht/SkyrimYacht/vcpkg/downloads/d99kris-rapidcsv-v8.90.tar.gz
+-- Using source at D:/a/SkyrimYacht/SkyrimYacht/vcpkg/buildtrees/rapidcsv/src/v8.90-936565c436.clean
+-- Configuring x64-windows-static-md
+-- Building x64-windows-static-md-dbg
+-- Building x64-windows-static-md-rel
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/rapidcsv_x64-windows-static-md/share/rapidcsv/copyright
+-- Performing post-build validation

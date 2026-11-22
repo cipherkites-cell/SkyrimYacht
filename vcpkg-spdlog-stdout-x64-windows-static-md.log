@@ -1,0 +1,15 @@
+Downloading https://github.com/gabime/spdlog/archive/v1.16.0.tar.gz -> gabime-spdlog-v1.16.0.tar.gz
+Successfully downloaded gabime-spdlog-v1.16.0.tar.gz
+-- Extracting source D:/a/SkyrimYacht/SkyrimYacht/vcpkg/downloads/gabime-spdlog-v1.16.0.tar.gz
+-- Using source at D:/a/SkyrimYacht/SkyrimYacht/vcpkg/buildtrees/spdlog/src/v1.16.0-e349c3b9b7.clean
+-- Configuring x64-windows-static-md
+-- Building x64-windows-static-md-dbg
+-- Building x64-windows-static-md-rel
+-- Fixing pkgconfig file: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/lib/pkgconfig/spdlog.pc
+-- Using cached msys2-mingw-w64-x86_64-pkgconf-1~2.5.1-1-any.pkg.tar.zst
+-- Using cached msys2-msys2-runtime-3.6.5-1-x86_64.pkg.tar.zst
+-- Using msys root at D:/a/SkyrimYacht/SkyrimYacht/vcpkg/downloads/tools/msys2/3e71d1f8e22ab23f
+-- Fixing pkgconfig file: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/lib/pkgconfig/spdlog.pc
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/share/spdlog/usage
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/share/spdlog/copyright
+-- Performing post-build validation

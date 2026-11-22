@@ -1,0 +1,13 @@
+Change Dir: 'D:/a/SkyrimYacht/SkyrimYacht/vcpkg/buildtrees/xbyak/x64-windows-static-md-rel'
+
+Run Build Command(s): D:\a\SkyrimYacht\SkyrimYacht\vcpkg\downloads\tools\ninja-1.13.2-windows\ninja.exe -v -v -j5 install
+[0/1] C:\Windows\system32\cmd.exe /C "cd /D D:\a\SkyrimYacht\SkyrimYacht\vcpkg\buildtrees\xbyak\x64-windows-static-md-rel && D:\a\SkyrimYacht\SkyrimYacht\vcpkg\downloads\tools\cmake-4.4.0-windows\cmake-4.4.0-windows-x86_64\bin\cmake.exe -P cmake_install.cmake"
+-- Install configuration: "Release"
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/xbyak_x64-windows-static-md/lib/cmake/xbyak/xbyak-config.cmake
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/xbyak_x64-windows-static-md/lib/cmake/xbyak/xbyak-config-version.cmake
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/xbyak_x64-windows-static-md/lib/cmake/xbyak/xbyak-targets.cmake
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/xbyak_x64-windows-static-md/include/xbyak/xbyak.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/xbyak_x64-windows-static-md/include/xbyak/xbyak_bin2hex.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/xbyak_x64-windows-static-md/include/xbyak/xbyak_mnemonic.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/xbyak_x64-windows-static-md/include/xbyak/xbyak_util.h
+

@@ -1,0 +1,9 @@
+Downloading https://github.com/brofield/simpleini/archive/v4.25.tar.gz -> brofield-simpleini-v4.25.tar.gz
+Successfully downloaded brofield-simpleini-v4.25.tar.gz
+-- Extracting source D:/a/SkyrimYacht/SkyrimYacht/vcpkg/downloads/brofield-simpleini-v4.25.tar.gz
+-- Using source at D:/a/SkyrimYacht/SkyrimYacht/vcpkg/buildtrees/simpleini/src/v4.25-ce9cf217ce.clean
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/simpleini_x64-windows-static-md/include/SimpleIni.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/simpleini_x64-windows-static-md/include/ConvertUTF.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/simpleini_x64-windows-static-md/include/ConvertUTF.c
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/simpleini_x64-windows-static-md/share/simpleini/copyright
+-- Performing post-build validation

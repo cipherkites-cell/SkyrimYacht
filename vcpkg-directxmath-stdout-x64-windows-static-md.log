@@ -1,0 +1,21 @@
+Downloading https://github.com/Microsoft/DirectXMath/archive/apr2025.tar.gz -> Microsoft-DirectXMath-apr2025.tar.gz
+Successfully downloaded Microsoft-DirectXMath-apr2025.tar.gz
+-- Extracting source D:/a/SkyrimYacht/SkyrimYacht/vcpkg/downloads/Microsoft-DirectXMath-apr2025.tar.gz
+-- Applying patch MinGW-fix.patch
+-- Applying patch Linux-SHMath-SAL.patch
+-- Using source at D:/a/SkyrimYacht/SkyrimYacht/vcpkg/buildtrees/directxmath/src/apr2025-1285488dd7.clean
+-- Configuring x64-windows-static-md
+-- Building x64-windows-static-md-dbg
+-- Building x64-windows-static-md-rel
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/directxmath_x64-windows-static-md/share/pkgconfig/DirectXMath.pc
+-- Fixing pkgconfig file: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/directxmath_x64-windows-static-md/lib/pkgconfig/DirectXMath.pc
+-- Fixing pkgconfig file: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/directxmath_x64-windows-static-md/share/pkgconfig/DirectXMath.pc
+Downloading msys2-mingw-w64-x86_64-pkgconf-1~2.5.1-1-any.pkg.tar.zst, trying https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-pkgconf-1~2.5.1-1-any.pkg.tar.zst
+Successfully downloaded msys2-mingw-w64-x86_64-pkgconf-1~2.5.1-1-any.pkg.tar.zst
+Downloading msys2-msys2-runtime-3.6.5-1-x86_64.pkg.tar.zst, trying https://mirror.msys2.org/msys/x86_64/msys2-runtime-3.6.5-1-x86_64.pkg.tar.zst
+Successfully downloaded msys2-msys2-runtime-3.6.5-1-x86_64.pkg.tar.zst
+-- Using msys root at D:/a/SkyrimYacht/SkyrimYacht/vcpkg/downloads/tools/msys2/3e71d1f8e22ab23f
+-- Fixing pkgconfig file: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/directxmath_x64-windows-static-md/debug/lib/pkgconfig/DirectXMath.pc
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/directxmath_x64-windows-static-md/share/directxmath/usage
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/directxmath_x64-windows-static-md/share/directxmath/copyright
+-- Performing post-build validation

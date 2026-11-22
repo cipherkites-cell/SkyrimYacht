@@ -1,0 +1,307 @@
+A suitable version of cmake was not found (required v4.4.0).
+Downloading https://github.com/Kitware/CMake/releases/download/v4.4.0/cmake-4.4.0-windows-x86_64.zip -> cmake-4.4.0-windows-x86_64.zip
+Successfully downloaded cmake-4.4.0-windows-x86_64.zip
+Extracting cmake...
+Detecting compiler hash for triplet x64-windows...
+Compiler found: C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe
+Detecting compiler hash for triplet x64-windows-static-md...
+Compiler found: C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe
+The following packages will be built and installed:
+    directxmath:x64-windows-static-md@2025-04-03
+    directxtk:x64-windows-static-md@2025-10-27
+    fmt:x64-windows-static-md@12.1.0
+    imgui[core,dx11-binding]:x64-windows-static-md@1.91.9
+    nlohmann-json:x64-windows-static-md@3.12.0#1
+    rapidcsv:x64-windows-static-md@8.90
+    simpleini:x64-windows-static-md@4.25
+    spdlog:x64-windows-static-md@1.16.0
+    toml11:x64-windows-static-md@4.4.0
+  * vcpkg-cmake:x64-windows@2024-04-23
+  * vcpkg-cmake-config:x64-windows@2024-05-23
+    xbyak:x64-windows-static-md@7.28
+Additional packages (*) will be modified to complete this operation.
+Restored 0 package(s) from D:\a\SkyrimYacht\SkyrimYacht\vcpkg-bincache in 233 us. Use --debug to see more details.
+Installing 1/12 vcpkg-cmake-config:x64-windows@2024-05-23...
+vcpkg-cmake-config:x64-windows@2024-05-23 package ABI: af1e503fb303739951b585b88abe4214db0dc17be3e43a8c3328083742de25bc
+Building vcpkg-cmake-config:x64-windows@2024-05-23...
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/vcpkg-cmake-config_x64-windows/share/vcpkg-cmake-config/vcpkg_cmake_config_fixup.cmake
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/vcpkg-cmake-config_x64-windows/share/vcpkg-cmake-config/vcpkg-port-config.cmake
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/vcpkg-cmake-config_x64-windows/share/vcpkg-cmake-config/copyright
+-- Skipping post-build validation due to VCPKG_POLICY_EMPTY_PACKAGE
+Starting submission of vcpkg-cmake-config:x64-windows@2024-05-23 to 1 binary cache(s) in the background
+Elapsed time to handle vcpkg-cmake-config:x64-windows: 49.7 ms
+Installing 2/12 vcpkg-cmake:x64-windows@2024-04-23...
+vcpkg-cmake:x64-windows@2024-04-23 package ABI: 6b46dcf5c0c9c169d418c03827d2821abcb19b7ebb3bc5751582feb9eae6a356
+Building vcpkg-cmake:x64-windows@2024-04-23...
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/vcpkg-cmake_x64-windows/share/vcpkg-cmake/vcpkg_cmake_configure.cmake
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/vcpkg-cmake_x64-windows/share/vcpkg-cmake/vcpkg_cmake_build.cmake
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/vcpkg-cmake_x64-windows/share/vcpkg-cmake/vcpkg_cmake_install.cmake
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/vcpkg-cmake_x64-windows/share/vcpkg-cmake/vcpkg-port-config.cmake
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/vcpkg-cmake_x64-windows/share/vcpkg-cmake/copyright
+-- Performing post-build validation
+Starting submission of vcpkg-cmake:x64-windows@2024-04-23 to 1 binary cache(s) in the background
+Elapsed time to handle vcpkg-cmake:x64-windows: 48 ms
+Installing 3/12 directxmath:x64-windows-static-md@2025-04-03...
+directxmath:x64-windows-static-md@2025-04-03 package ABI: e19629c6f1a0413af95e5dfa6a8b5be513f336b10f0a9faadc936b97f2471328
+Building directxmath:x64-windows-static-md@2025-04-03...
+Downloading https://github.com/Microsoft/DirectXMath/archive/apr2025.tar.gz -> Microsoft-DirectXMath-apr2025.tar.gz
+Successfully downloaded Microsoft-DirectXMath-apr2025.tar.gz
+-- Extracting source D:/a/SkyrimYacht/SkyrimYacht/vcpkg/downloads/Microsoft-DirectXMath-apr2025.tar.gz
+-- Applying patch MinGW-fix.patch
+-- Applying patch Linux-SHMath-SAL.patch
+-- Using source at D:/a/SkyrimYacht/SkyrimYacht/vcpkg/buildtrees/directxmath/src/apr2025-1285488dd7.clean
+-- Configuring x64-windows-static-md
+-- Building x64-windows-static-md-dbg
+-- Building x64-windows-static-md-rel
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/directxmath_x64-windows-static-md/share/pkgconfig/DirectXMath.pc
+-- Fixing pkgconfig file: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/directxmath_x64-windows-static-md/lib/pkgconfig/DirectXMath.pc
+-- Fixing pkgconfig file: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/directxmath_x64-windows-static-md/share/pkgconfig/DirectXMath.pc
+Downloading msys2-mingw-w64-x86_64-pkgconf-1~2.5.1-1-any.pkg.tar.zst, trying https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-pkgconf-1~2.5.1-1-any.pkg.tar.zst
+Successfully downloaded msys2-mingw-w64-x86_64-pkgconf-1~2.5.1-1-any.pkg.tar.zst
+Downloading msys2-msys2-runtime-3.6.5-1-x86_64.pkg.tar.zst, trying https://mirror.msys2.org/msys/x86_64/msys2-runtime-3.6.5-1-x86_64.pkg.tar.zst
+Successfully downloaded msys2-msys2-runtime-3.6.5-1-x86_64.pkg.tar.zst
+-- Using msys root at D:/a/SkyrimYacht/SkyrimYacht/vcpkg/downloads/tools/msys2/3e71d1f8e22ab23f
+-- Fixing pkgconfig file: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/directxmath_x64-windows-static-md/debug/lib/pkgconfig/DirectXMath.pc
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/directxmath_x64-windows-static-md/share/directxmath/usage
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/directxmath_x64-windows-static-md/share/directxmath/copyright
+-- Performing post-build validation
+Starting submission of directxmath:x64-windows-static-md@2025-04-03 to 1 binary cache(s) in the background
+Elapsed time to handle directxmath:x64-windows-static-md: 4.5 s
+Completed submission of vcpkg-cmake-config:x64-windows@2024-05-23 to 1 binary cache(s) in 80.3 ms
+Completed submission of vcpkg-cmake:x64-windows@2024-04-23 to 1 binary cache(s) in 50 ms
+Installing 4/12 directxtk:x64-windows-static-md@2025-10-27...
+directxtk:x64-windows-static-md@2025-10-27 package ABI: fc633aa3d64ad5a8cb18df9087235cc081365b034d4b1dacebf943de315f3daa
+Building directxtk:x64-windows-static-md@2025-10-27...
+Downloading https://github.com/Microsoft/DirectXTK/archive/oct2025.tar.gz -> Microsoft-DirectXTK-oct2025.tar.gz
+Successfully downloaded Microsoft-DirectXTK-oct2025.tar.gz
+-- Extracting source D:/a/SkyrimYacht/SkyrimYacht/vcpkg/downloads/Microsoft-DirectXTK-oct2025.tar.gz
+-- Applying patch CMake-build-options-improvements.patch
+-- Using source at D:/a/SkyrimYacht/SkyrimYacht/vcpkg/buildtrees/directxtk/src/oct2025-d895e80ef0.clean
+-- Configuring x64-windows-static-md
+-- Building x64-windows-static-md-dbg
+-- Building x64-windows-static-md-rel
+-- Fixing pkgconfig file: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/directxtk_x64-windows-static-md/lib/pkgconfig/DirectXTK.pc
+-- Using cached msys2-mingw-w64-x86_64-pkgconf-1~2.5.1-1-any.pkg.tar.zst
+-- Using cached msys2-msys2-runtime-3.6.5-1-x86_64.pkg.tar.zst
+-- Using msys root at D:/a/SkyrimYacht/SkyrimYacht/vcpkg/downloads/tools/msys2/3e71d1f8e22ab23f
+-- Fixing pkgconfig file: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/directxtk_x64-windows-static-md/debug/lib/pkgconfig/DirectXTK.pc
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/directxtk_x64-windows-static-md/share/directxtk/usage
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/directxtk_x64-windows-static-md/share/directxtk/copyright
+-- Performing post-build validation
+Starting submission of directxtk:x64-windows-static-md@2025-10-27 to 1 binary cache(s) in the background
+Elapsed time to handle directxtk:x64-windows-static-md: 41 s
+Completed submission of directxmath:x64-windows-static-md@2025-04-03 to 1 binary cache(s) in 123 ms
+Installing 5/12 fmt:x64-windows-static-md@12.1.0...
+fmt:x64-windows-static-md@12.1.0 package ABI: da05e0297db0e73faf44ba5d8d7137bee93196b2ef42067585efc5c6084eaafe
+Building fmt:x64-windows-static-md@12.1.0...
+Downloading https://github.com/fmtlib/fmt/archive/12.1.0.tar.gz -> fmtlib-fmt-12.1.0.tar.gz
+Successfully downloaded fmtlib-fmt-12.1.0.tar.gz
+-- Extracting source D:/a/SkyrimYacht/SkyrimYacht/vcpkg/downloads/fmtlib-fmt-12.1.0.tar.gz
+-- Using source at D:/a/SkyrimYacht/SkyrimYacht/vcpkg/buildtrees/fmt/src/12.1.0-54f1f91231.clean
+-- Configuring x64-windows-static-md
+-- Building x64-windows-static-md-dbg
+-- Building x64-windows-static-md-rel
+-- Fixing pkgconfig file: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/fmt_x64-windows-static-md/lib/pkgconfig/fmt.pc
+-- Using cached msys2-mingw-w64-x86_64-pkgconf-1~2.5.1-1-any.pkg.tar.zst
+-- Using cached msys2-msys2-runtime-3.6.5-1-x86_64.pkg.tar.zst
+-- Using msys root at D:/a/SkyrimYacht/SkyrimYacht/vcpkg/downloads/tools/msys2/3e71d1f8e22ab23f
+-- Fixing pkgconfig file: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/fmt_x64-windows-static-md/debug/lib/pkgconfig/fmt.pc
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/fmt_x64-windows-static-md/share/fmt/usage
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/fmt_x64-windows-static-md/share/fmt/copyright
+-- Performing post-build validation
+Starting submission of fmt:x64-windows-static-md@12.1.0 to 1 binary cache(s) in the background
+Elapsed time to handle fmt:x64-windows-static-md: 5.5 s
+Completed submission of directxtk:x64-windows-static-md@2025-10-27 to 1 binary cache(s) in 3.6 s
+Installing 6/12 imgui[core,dx11-binding]:x64-windows-static-md@1.91.9...
+imgui[core,dx11-binding]:x64-windows-static-md@1.91.9 package ABI: bc4dfe02d79378c6bdb9a9bd06f5dbef8ac022710b84c3093b36beaef5c741f2
+Building imgui[core,dx11-binding]:x64-windows-static-md@1.91.9...
+Downloading https://github.com/ocornut/imgui/archive/v1.91.9.tar.gz -> ocornut-imgui-v1.91.9.tar.gz
+Successfully downloaded ocornut-imgui-v1.91.9.tar.gz
+-- Extracting source D:/a/SkyrimYacht/SkyrimYacht/vcpkg/downloads/ocornut-imgui-v1.91.9.tar.gz
+-- Using source at D:/a/SkyrimYacht/SkyrimYacht/vcpkg/buildtrees/imgui/src/v1.91.9-afb09617a6.clean
+-- Configuring x64-windows-static-md
+-- Building x64-windows-static-md-dbg
+-- Building x64-windows-static-md-rel
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/imgui_x64-windows-static-md/share/imgui/copyright
+-- Performing post-build validation
+Starting submission of imgui[core,dx11-binding]:x64-windows-static-md@1.91.9 to 1 binary cache(s) in the background
+Elapsed time to handle imgui:x64-windows-static-md: 11 s
+Completed submission of fmt:x64-windows-static-md@12.1.0 to 1 binary cache(s) in 406 ms
+Installing 7/12 nlohmann-json:x64-windows-static-md@3.12.0#1...
+nlohmann-json:x64-windows-static-md@3.12.0#1 package ABI: 3c44b70d36ec7da7ce6924ee52f0b0c1a53916f5125e1f11ba468fa6a9a9c4ae
+Building nlohmann-json:x64-windows-static-md@3.12.0#1...
+Downloading https://github.com/nlohmann/json/archive/v3.12.0.tar.gz -> nlohmann-json-v3.12.0.tar.gz
+Successfully downloaded nlohmann-json-v3.12.0.tar.gz
+-- Extracting source D:/a/SkyrimYacht/SkyrimYacht/vcpkg/downloads/nlohmann-json-v3.12.0.tar.gz
+-- Applying patch fix-4742_std_optional.patch
+-- Using source at D:/a/SkyrimYacht/SkyrimYacht/vcpkg/buildtrees/nlohmann-json/src/v3.12.0-087f34fe5c.clean
+-- Configuring x64-windows-static-md
+-- Building x64-windows-static-md-dbg
+-- Building x64-windows-static-md-rel
+-- Fixing pkgconfig file: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/nlohmann-json_x64-windows-static-md/share/pkgconfig/nlohmann_json.pc
+-- Using cached msys2-mingw-w64-x86_64-pkgconf-1~2.5.1-1-any.pkg.tar.zst
+-- Using cached msys2-msys2-runtime-3.6.5-1-x86_64.pkg.tar.zst
+-- Using msys root at D:/a/SkyrimYacht/SkyrimYacht/vcpkg/downloads/tools/msys2/3e71d1f8e22ab23f
+-- Fixing pkgconfig file: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/nlohmann-json_x64-windows-static-md/debug/share/pkgconfig/nlohmann_json.pc
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/nlohmann-json_x64-windows-static-md/share/nlohmann-json/copyright
+-- Performing post-build validation
+Starting submission of nlohmann-json:x64-windows-static-md@3.12.0#1 to 1 binary cache(s) in the background
+Elapsed time to handle nlohmann-json:x64-windows-static-md: 2.4 s
+Completed submission of imgui[core,dx11-binding]:x64-windows-static-md@1.91.9 to 1 binary cache(s) in 1.1 s
+Installing 8/12 rapidcsv:x64-windows-static-md@8.90...
+rapidcsv:x64-windows-static-md@8.90 package ABI: 8eb5d33a528d97e887bb3c54d02304ecbef9abf4d37176042008c2c0cbc083f4
+Building rapidcsv:x64-windows-static-md@8.90...
+Downloading https://github.com/d99kris/rapidcsv/archive/v8.90.tar.gz -> d99kris-rapidcsv-v8.90.tar.gz
+Successfully downloaded d99kris-rapidcsv-v8.90.tar.gz
+-- Extracting source D:/a/SkyrimYacht/SkyrimYacht/vcpkg/downloads/d99kris-rapidcsv-v8.90.tar.gz
+-- Using source at D:/a/SkyrimYacht/SkyrimYacht/vcpkg/buildtrees/rapidcsv/src/v8.90-936565c436.clean
+-- Configuring x64-windows-static-md
+-- Building x64-windows-static-md-dbg
+-- Building x64-windows-static-md-rel
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/rapidcsv_x64-windows-static-md/share/rapidcsv/copyright
+-- Performing post-build validation
+Starting submission of rapidcsv:x64-windows-static-md@8.90 to 1 binary cache(s) in the background
+Elapsed time to handle rapidcsv:x64-windows-static-md: 1.9 s
+Completed submission of nlohmann-json:x64-windows-static-md@3.12.0#1 to 1 binary cache(s) in 90.8 ms
+Installing 9/12 simpleini:x64-windows-static-md@4.25...
+simpleini:x64-windows-static-md@4.25 package ABI: e66a4aea0bce37e68c5d9a0e1c55f96737f26b79b09d52be71b68288f3ea5eaf
+Building simpleini:x64-windows-static-md@4.25...
+Downloading https://github.com/brofield/simpleini/archive/v4.25.tar.gz -> brofield-simpleini-v4.25.tar.gz
+Successfully downloaded brofield-simpleini-v4.25.tar.gz
+-- Extracting source D:/a/SkyrimYacht/SkyrimYacht/vcpkg/downloads/brofield-simpleini-v4.25.tar.gz
+-- Using source at D:/a/SkyrimYacht/SkyrimYacht/vcpkg/buildtrees/simpleini/src/v4.25-ce9cf217ce.clean
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/simpleini_x64-windows-static-md/include/SimpleIni.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/simpleini_x64-windows-static-md/include/ConvertUTF.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/simpleini_x64-windows-static-md/include/ConvertUTF.c
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/simpleini_x64-windows-static-md/share/simpleini/copyright
+-- Performing post-build validation
+Starting submission of simpleini:x64-windows-static-md@4.25 to 1 binary cache(s) in the background
+Elapsed time to handle simpleini:x64-windows-static-md: 854 ms
+Completed submission of rapidcsv:x64-windows-static-md@8.90 to 1 binary cache(s) in 58.2 ms
+Installing 10/12 spdlog:x64-windows-static-md@1.16.0...
+spdlog:x64-windows-static-md@1.16.0 package ABI: f846d19de61a689feba83fbde22f717f0b06da934cc21039befb2eceabf8fcb5
+Building spdlog:x64-windows-static-md@1.16.0...
+Downloading https://github.com/gabime/spdlog/archive/v1.16.0.tar.gz -> gabime-spdlog-v1.16.0.tar.gz
+Successfully downloaded gabime-spdlog-v1.16.0.tar.gz
+-- Extracting source D:/a/SkyrimYacht/SkyrimYacht/vcpkg/downloads/gabime-spdlog-v1.16.0.tar.gz
+-- Using source at D:/a/SkyrimYacht/SkyrimYacht/vcpkg/buildtrees/spdlog/src/v1.16.0-e349c3b9b7.clean
+-- Configuring x64-windows-static-md
+-- Building x64-windows-static-md-dbg
+-- Building x64-windows-static-md-rel
+-- Fixing pkgconfig file: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/lib/pkgconfig/spdlog.pc
+-- Using cached msys2-mingw-w64-x86_64-pkgconf-1~2.5.1-1-any.pkg.tar.zst
+-- Using cached msys2-msys2-runtime-3.6.5-1-x86_64.pkg.tar.zst
+-- Using msys root at D:/a/SkyrimYacht/SkyrimYacht/vcpkg/downloads/tools/msys2/3e71d1f8e22ab23f
+-- Fixing pkgconfig file: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/debug/lib/pkgconfig/spdlog.pc
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/share/spdlog/usage
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/spdlog_x64-windows-static-md/share/spdlog/copyright
+-- Performing post-build validation
+Starting submission of spdlog:x64-windows-static-md@1.16.0 to 1 binary cache(s) in the background
+Elapsed time to handle spdlog:x64-windows-static-md: 11 s
+Completed submission of simpleini:x64-windows-static-md@4.25 to 1 binary cache(s) in 68.9 ms
+Installing 11/12 toml11:x64-windows-static-md@4.4.0...
+toml11:x64-windows-static-md@4.4.0 package ABI: dc853a10682b510e2c9783be0a38736a5ef0c04ea4c7be3673acbb5d3ebc0d2d
+Building toml11:x64-windows-static-md@4.4.0...
+Downloading https://github.com/ToruNiina/toml11/archive/v4.4.0.tar.gz -> ToruNiina-toml11-v4.4.0.tar.gz
+Successfully downloaded ToruNiina-toml11-v4.4.0.tar.gz
+-- Extracting source D:/a/SkyrimYacht/SkyrimYacht/vcpkg/downloads/ToruNiina-toml11-v4.4.0.tar.gz
+-- Using source at D:/a/SkyrimYacht/SkyrimYacht/vcpkg/buildtrees/toml11/src/v4.4.0-e6c50d7814.clean
+-- Configuring x64-windows-static-md
+-- Building x64-windows-static-md-dbg
+-- Building x64-windows-static-md-rel
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/toml11_x64-windows-static-md/share/toml11/copyright
+-- Performing post-build validation
+Starting submission of toml11:x64-windows-static-md@4.4.0 to 1 binary cache(s) in the background
+Elapsed time to handle toml11:x64-windows-static-md: 3.3 s
+Completed submission of spdlog:x64-windows-static-md@1.16.0 to 1 binary cache(s) in 1.9 s
+Installing 12/12 xbyak:x64-windows-static-md@7.28...
+xbyak:x64-windows-static-md@7.28 package ABI: bb0a1969a7577706bedc3fa6d0b046a5bb1ab661d6e230dca5ded9da398d2bdc
+Building xbyak:x64-windows-static-md@7.28...
+Downloading https://github.com/herumi/xbyak/archive/v7.28.tar.gz -> herumi-xbyak-v7.28.tar.gz
+Successfully downloaded herumi-xbyak-v7.28.tar.gz
+-- Extracting source D:/a/SkyrimYacht/SkyrimYacht/vcpkg/downloads/herumi-xbyak-v7.28.tar.gz
+-- Using source at D:/a/SkyrimYacht/SkyrimYacht/vcpkg/buildtrees/xbyak/src/v7.28-a06d7369c4.clean
+-- Configuring x64-windows-static-md
+-- Building x64-windows-static-md-dbg
+-- Building x64-windows-static-md-rel
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/xbyak_x64-windows-static-md/share/xbyak/copyright
+-- Performing post-build validation
+Starting submission of xbyak:x64-windows-static-md@7.28 to 1 binary cache(s) in the background
+Elapsed time to handle xbyak:x64-windows-static-md: 1.9 s
+Installed contents are licensed to you by owners. Microsoft is not responsible for, nor does it grant any licenses to, third-party packages.
+Packages installed in this vcpkg installation declare the following licenses:
+BSD-3-Clause
+MIT
+The DirectXMath package provides CMake targets:
+
+    find_package(directxmath CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE Microsoft::DirectXMath)
+
+The DirectX Tool Kit for DX11 package provides CMake targets:
+
+    find_package(directxtk CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE Microsoft::DirectXTK)
+
+The package fmt provides CMake targets:
+
+    find_package(fmt CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE fmt::fmt)
+
+    # Or use the header-only version
+    find_package(fmt CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE fmt::fmt-header-only)
+
+imgui provides CMake targets:
+
+  # this is heuristically generated, and may not be correct
+  find_package(imgui CONFIG REQUIRED)
+  target_link_libraries(main PRIVATE imgui::imgui)
+
+The package nlohmann-json provides CMake targets:
+
+    find_package(nlohmann_json CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE nlohmann_json::nlohmann_json)
+
+The package nlohmann-json can be configured to not provide implicit conversions via a custom triplet file:
+
+    set(nlohmann-json_IMPLICIT_CONVERSIONS OFF)
+
+For more information, see the docs here:
+    
+    https://json.nlohmann.me/api/macros/json_use_implicit_conversions/
+
+rapidcsv is header-only and can be used from CMake via:
+
+  find_path(RAPIDCSV_INCLUDE_DIRS "rapidcsv.h")
+  target_include_directories(main PRIVATE ${RAPIDCSV_INCLUDE_DIRS})
+
+simpleini is header-only and can be used from CMake via:
+
+  find_path(SIMPLEINI_INCLUDE_DIRS "ConvertUTF.c")
+  target_include_directories(main PRIVATE ${SIMPLEINI_INCLUDE_DIRS})
+
+The package spdlog provides CMake targets:
+
+    find_package(spdlog CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE spdlog::spdlog)
+
+    # Or use the header-only version
+    find_package(spdlog CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE spdlog::spdlog_header_only)
+
+toml11 provides CMake targets:
+
+  # this is heuristically generated, and may not be correct
+  find_package(toml11 CONFIG REQUIRED)
+  target_link_libraries(main PRIVATE toml11::toml11)
+
+xbyak provides CMake targets:
+
+  # this is heuristically generated, and may not be correct
+  find_package(xbyak CONFIG REQUIRED)
+  target_link_libraries(main PRIVATE xbyak::xbyak)
+
+Completed submission of toml11:x64-windows-static-md@4.4.0 to 1 binary cache(s) in 71.9 ms
+Waiting for 1 remaining binary cache submissions...
+Completed submission of xbyak:x64-windows-static-md@7.28 to 1 binary cache(s) in 71.7 ms (1/1)
+All requested installations completed successfully in: 1.4 min

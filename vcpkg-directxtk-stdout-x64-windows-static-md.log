@@ -1,0 +1,16 @@
+Downloading https://github.com/Microsoft/DirectXTK/archive/oct2025.tar.gz -> Microsoft-DirectXTK-oct2025.tar.gz
+Successfully downloaded Microsoft-DirectXTK-oct2025.tar.gz
+-- Extracting source D:/a/SkyrimYacht/SkyrimYacht/vcpkg/downloads/Microsoft-DirectXTK-oct2025.tar.gz
+-- Applying patch CMake-build-options-improvements.patch
+-- Using source at D:/a/SkyrimYacht/SkyrimYacht/vcpkg/buildtrees/directxtk/src/oct2025-d895e80ef0.clean
+-- Configuring x64-windows-static-md
+-- Building x64-windows-static-md-dbg
+-- Building x64-windows-static-md-rel
+-- Fixing pkgconfig file: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/directxtk_x64-windows-static-md/lib/pkgconfig/DirectXTK.pc
+-- Using cached msys2-mingw-w64-x86_64-pkgconf-1~2.5.1-1-any.pkg.tar.zst
+-- Using cached msys2-msys2-runtime-3.6.5-1-x86_64.pkg.tar.zst
+-- Using msys root at D:/a/SkyrimYacht/SkyrimYacht/vcpkg/downloads/tools/msys2/3e71d1f8e22ab23f
+-- Fixing pkgconfig file: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/directxtk_x64-windows-static-md/debug/lib/pkgconfig/DirectXTK.pc
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/directxtk_x64-windows-static-md/share/directxtk/usage
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/directxtk_x64-windows-static-md/share/directxtk/copyright
+-- Performing post-build validation

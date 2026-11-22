@@ -1,0 +1,9 @@
+Downloading https://github.com/ocornut/imgui/archive/v1.91.9.tar.gz -> ocornut-imgui-v1.91.9.tar.gz
+Successfully downloaded ocornut-imgui-v1.91.9.tar.gz
+-- Extracting source D:/a/SkyrimYacht/SkyrimYacht/vcpkg/downloads/ocornut-imgui-v1.91.9.tar.gz
+-- Using source at D:/a/SkyrimYacht/SkyrimYacht/vcpkg/buildtrees/imgui/src/v1.91.9-afb09617a6.clean
+-- Configuring x64-windows-static-md
+-- Building x64-windows-static-md-dbg
+-- Building x64-windows-static-md-rel
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/imgui_x64-windows-static-md/share/imgui/copyright
+-- Performing post-build validation

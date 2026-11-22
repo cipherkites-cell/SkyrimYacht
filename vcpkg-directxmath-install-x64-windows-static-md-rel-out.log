@@ -1,0 +1,20 @@
+Change Dir: 'D:/a/SkyrimYacht/SkyrimYacht/vcpkg/buildtrees/directxmath/x64-windows-static-md-rel'
+
+Run Build Command(s): D:\a\SkyrimYacht\SkyrimYacht\vcpkg\downloads\tools\ninja-1.13.2-windows\ninja.exe -v -v -j5 install
+[0/1] C:\Windows\system32\cmd.exe /C "cd /D D:\a\SkyrimYacht\SkyrimYacht\vcpkg\buildtrees\directxmath\x64-windows-static-md-rel && D:\a\SkyrimYacht\SkyrimYacht\vcpkg\downloads\tools\cmake-4.4.0-windows\cmake-4.4.0-windows-x86_64\bin\cmake.exe -P cmake_install.cmake"
+-- Install configuration: "Release"
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/directxmath_x64-windows-static-md/share/directxmath/DirectXMath-targets.cmake
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/directxmath_x64-windows-static-md/include/DirectXCollision.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/directxmath_x64-windows-static-md/include/DirectXCollision.inl
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/directxmath_x64-windows-static-md/include/DirectXColors.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/directxmath_x64-windows-static-md/include/DirectXMath.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/directxmath_x64-windows-static-md/include/DirectXMathConvert.inl
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/directxmath_x64-windows-static-md/include/DirectXMathMatrix.inl
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/directxmath_x64-windows-static-md/include/DirectXMathMisc.inl
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/directxmath_x64-windows-static-md/include/DirectXMathVector.inl
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/directxmath_x64-windows-static-md/include/DirectXPackedVector.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/directxmath_x64-windows-static-md/include/DirectXPackedVector.inl
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/directxmath_x64-windows-static-md/share/directxmath/directxmath-config.cmake
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/directxmath_x64-windows-static-md/share/directxmath/directxmath-config-version.cmake
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/directxmath_x64-windows-static-md/lib/pkgconfig/DirectXMath.pc
+

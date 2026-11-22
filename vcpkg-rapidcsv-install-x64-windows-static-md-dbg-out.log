@@ -1,0 +1,7 @@
+Change Dir: 'D:/a/SkyrimYacht/SkyrimYacht/vcpkg/buildtrees/rapidcsv/x64-windows-static-md-dbg'
+
+Run Build Command(s): D:\a\SkyrimYacht\SkyrimYacht\vcpkg\downloads\tools\ninja-1.13.2-windows\ninja.exe -v -v -j5 install
+[0/1] C:\Windows\system32\cmd.exe /C "cd /D D:\a\SkyrimYacht\SkyrimYacht\vcpkg\buildtrees\rapidcsv\x64-windows-static-md-dbg && D:\a\SkyrimYacht\SkyrimYacht\vcpkg\downloads\tools\cmake-4.4.0-windows\cmake-4.4.0-windows-x86_64\bin\cmake.exe -P cmake_install.cmake"
+-- Install configuration: "Debug"
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/rapidcsv_x64-windows-static-md/debug/include/rapidcsv.h
+

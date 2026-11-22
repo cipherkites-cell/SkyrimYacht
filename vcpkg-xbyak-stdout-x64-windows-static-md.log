@@ -1,0 +1,9 @@
+Downloading https://github.com/herumi/xbyak/archive/v7.28.tar.gz -> herumi-xbyak-v7.28.tar.gz
+Successfully downloaded herumi-xbyak-v7.28.tar.gz
+-- Extracting source D:/a/SkyrimYacht/SkyrimYacht/vcpkg/downloads/herumi-xbyak-v7.28.tar.gz
+-- Using source at D:/a/SkyrimYacht/SkyrimYacht/vcpkg/buildtrees/xbyak/src/v7.28-a06d7369c4.clean
+-- Configuring x64-windows-static-md
+-- Building x64-windows-static-md-dbg
+-- Building x64-windows-static-md-rel
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/xbyak_x64-windows-static-md/share/xbyak/copyright
+-- Performing post-build validation

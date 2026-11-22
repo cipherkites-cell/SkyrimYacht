@@ -1,0 +1,32 @@
+Change Dir: 'D:/a/SkyrimYacht/SkyrimYacht/vcpkg/buildtrees/fmt/x64-windows-static-md-dbg'
+
+Run Build Command(s): D:\a\SkyrimYacht\SkyrimYacht\vcpkg\downloads\tools\ninja-1.13.2-windows\ninja.exe -v -v -j5 install
+[1/4] "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.44.35207\bin\Hostx64\x64\cl.exe"   /TP  -ID:\a\SkyrimYacht\SkyrimYacht\vcpkg\buildtrees\fmt\src\12.1.0-54f1f91231.clean\include /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP  /MDd /Z7 /Ob0 /Od /RTC1  -MDd /utf-8 /showIncludes /FoCMakeFiles\fmt.dir\src\os.cc.obj /Fdfmtd.pdb /FS -c D:\a\SkyrimYacht\SkyrimYacht\vcpkg\buildtrees\fmt\src\12.1.0-54f1f91231.clean\src\os.cc
+[2/4] "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.44.35207\bin\Hostx64\x64\cl.exe"   /TP  -ID:\a\SkyrimYacht\SkyrimYacht\vcpkg\buildtrees\fmt\src\12.1.0-54f1f91231.clean\include /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP  /MDd /Z7 /Ob0 /Od /RTC1  -MDd /utf-8 /showIncludes /FoCMakeFiles\fmt.dir\src\format.cc.obj /Fdfmtd.pdb /FS -c D:\a\SkyrimYacht\SkyrimYacht\vcpkg\buildtrees\fmt\src\12.1.0-54f1f91231.clean\src\format.cc
+D:\a\SkyrimYacht\SkyrimYacht\vcpkg\buildtrees\fmt\src\12.1.0-54f1f91231.clean\include\fmt\base.h(930): warning C4834: discarding return value of function with [[nodiscard]] attribute
+D:\a\SkyrimYacht\SkyrimYacht\vcpkg\buildtrees\fmt\src\12.1.0-54f1f91231.clean\include\fmt\base.h(930): note: the template instantiation context (the oldest one first) is
+D:\a\SkyrimYacht\SkyrimYacht\vcpkg\buildtrees\fmt\src\12.1.0-54f1f91231.clean\src\format.cc(13): note: see reference to function template instantiation 'fmt::v12::locale_ref::locale_ref<std::locale,0>(const std::locale &)' being compiled
+[3/4] C:\Windows\system32\cmd.exe /C "cd . && "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC\14.44.35207\bin\Hostx64\x64\lib.exe"  /machine:x64 /nologo /out:fmtd.lib CMakeFiles\fmt.dir\src\format.cc.obj CMakeFiles\fmt.dir\src\os.cc.obj && cd ."
+[3/4] C:\Windows\system32\cmd.exe /C "cd /D D:\a\SkyrimYacht\SkyrimYacht\vcpkg\buildtrees\fmt\x64-windows-static-md-dbg && D:\a\SkyrimYacht\SkyrimYacht\vcpkg\downloads\tools\cmake-4.4.0-windows\cmake-4.4.0-windows-x86_64\bin\cmake.exe -P cmake_install.cmake"
+-- Install configuration: "Debug"
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/fmt_x64-windows-static-md/debug/lib/fmtd.lib
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/fmt_x64-windows-static-md/debug/include/fmt/args.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/fmt_x64-windows-static-md/debug/include/fmt/base.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/fmt_x64-windows-static-md/debug/include/fmt/chrono.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/fmt_x64-windows-static-md/debug/include/fmt/color.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/fmt_x64-windows-static-md/debug/include/fmt/compile.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/fmt_x64-windows-static-md/debug/include/fmt/core.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/fmt_x64-windows-static-md/debug/include/fmt/format.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/fmt_x64-windows-static-md/debug/include/fmt/format-inl.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/fmt_x64-windows-static-md/debug/include/fmt/os.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/fmt_x64-windows-static-md/debug/include/fmt/ostream.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/fmt_x64-windows-static-md/debug/include/fmt/printf.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/fmt_x64-windows-static-md/debug/include/fmt/ranges.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/fmt_x64-windows-static-md/debug/include/fmt/std.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/fmt_x64-windows-static-md/debug/include/fmt/xchar.h
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/fmt_x64-windows-static-md/debug/share/fmt/fmt-config.cmake
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/fmt_x64-windows-static-md/debug/share/fmt/fmt-config-version.cmake
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/fmt_x64-windows-static-md/debug/share/fmt/fmt-targets.cmake
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/fmt_x64-windows-static-md/debug/share/fmt/fmt-targets-debug.cmake
+-- Installing: D:/a/SkyrimYacht/SkyrimYacht/vcpkg/packages/fmt_x64-windows-static-md/debug/lib/pkgconfig/fmt.pc
+
