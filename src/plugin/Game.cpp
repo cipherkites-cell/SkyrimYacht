@@ -1972,7 +1972,7 @@ namespace Game
 			std::string hint;
 			bool        waiting = false;
 			if (g_turn == 1 && g_phase != Phase::Over) {
-				hint = g_oppName + " is playing";
+				hint = g_oppName + "正在掷骰";
 				waiting = true;
 			} else if (g_phase == Phase::Ready) {
 				hint = "按住左键移动来摇盅，松手投出。";
