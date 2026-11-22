@@ -145,6 +145,7 @@ namespace Game
 			double angle = 0, vel = 0;
 			Quat   lean0;
 		} g_tilt;
+		double g_tiltBackFor = 0;  // how long the cup has been swinging back upright after a pour
 		struct
 		{
 			bool  on = false;
@@ -603,6 +604,7 @@ namespace Game
 			const double tipY = Clamp(py + dy * reach, -kYh + 2.6, kYh - 2.6) - dy * reach;
 			g_pour = { true, 0.0, { tipX, tipY, kShakeZ - 0.4 } };
 			g_tilt.on = true;
+			g_tiltBackFor = 0;
 			g_tilt.axis = Vec3{ -dy, dx, 0 }.Normalized();
 			g_tilt.angle = 0;
 			g_tilt.vel = 10;
@@ -1323,8 +1325,16 @@ namespace Game
 				if (g_tilt.on) {
 					SpringTilt(0, dt, 7, 0.38);
 					ApplyTilt(c, 1);
-					if (std::fabs(g_tilt.angle) < 0.01 && std::fabs(g_tilt.vel) < 0.05) {
+					g_tiltBackFor += dt;
+					// back upright: settled, or at most 1.5 s after the pour (a cup can never be left tipped)
+					if ((std::fabs(g_tilt.angle) < 0.01 && std::fabs(g_tilt.vel) < 0.05) || g_tiltBackFor > 1.5) {
+						if (g_tiltBackFor > 1.5) {
+							spdlog::warn("Cup {} hadn't swung back upright 1.5 s after the pour (at {:.0f} degrees); set upright", g_turn,
+								g_tilt.angle * 57.2958);
+							c.q = Quat{};
+						}
 						g_tilt.on = false;
+						g_tiltBackFor = 0;
 					}
 				} else {
 					LeanCup(c, dt, 0.25);

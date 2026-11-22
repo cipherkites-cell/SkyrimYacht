@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   tests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04   # the physics tests are tuned on this compiler (ubuntu-latest moved to 26)
     steps:
       - uses: actions/checkout@v4
       - name: Dice, scoring and opponent tests

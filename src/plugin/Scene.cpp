@@ -77,7 +77,8 @@ namespace Scene
 		bool                          g_cupWaiting[2]{};
 		RE::NiPointer<RE::NiAVObject> g_cupMesh[2];     // the cup's own mesh inside its holder
 		RE::NiTransform               g_cupMeshAt[2];   // and where it should sit in it (upright, scaled, floor at 0)
-		bool                          g_cupMeshWarned[2]{};  // a new cup, hidden until it's first put in its place
+		bool                          g_cupMeshWarned[2]{};
+		std::vector<std::pair<RE::NiPointer<RE::NiAVObject>, RE::NiTransform>> g_cupParts[2];  // every node inside, as loaded  // a new cup, hidden until it's first put in its place
 		std::string              g_diceSet = "bone", g_loadedSet;
 		std::string              g_cupId[2] = { "tankard", "tankard" }, g_loadedCup[2];
 		int                      g_diceSide = 0;    // which set is showing
@@ -158,8 +159,83 @@ namespace Scene
 					m->local = want;
 					any = true;
 				}
+				// and every part inside it, as it was loaded (not just the root)
+				for (auto& [obj, at] : g_cupParts[w]) {
+					float d = std::abs(obj->local.scale - at.scale);
+					for (int i = 0; i < 3; ++i) {
+						d += std::abs(obj->local.translate[i] - at.translate[i]);
+						for (int j = 0; j < 3; ++j) {
+							d += std::abs(obj->local.rotate.entry[i][j] - at.rotate.entry[i][j]);
+						}
+					}
+					if (d > 0.01f) {
+						if (!g_cupMeshWarned[w]) {
+							g_cupMeshWarned[w] = true;
+							spdlog::warn("Cup {}: something moved {} inside it (by {:.2f}); put back", w, obj->name.c_str(), d);
+						}
+						obj->local = at;
+						any = true;
+					}
+				}
 			}
 			return any;
+		}
+
+		// Where a rotation sends straight up (its third column).
+		RE::NiPoint3 UpOf(const RE::NiMatrix3& a_m) { return { a_m.entry[0][2], a_m.entry[1][2], a_m.entry[2][2] }; }
+
+		// Every cup the game has is modelled standing up (+z). If the loaded mesh would draw its shapes tipped (a replacer
+		// whose root is turned, or a shared model another mod has changed since), the root is turned back by the tilt
+		// alone, keeping which way the handle points. Logs what it found, so a tipped cup can be traced.
+		void StandCupUp(RE::NiAVObject* a_mesh, int a_which, const std::string& a_path)
+		{
+			RE::NiUpdateData ud{};
+			a_mesh->Update(ud);  // unparented: its world transforms are its own, from the root down
+			RE::BSGeometry* big = nullptr;
+			int             shapes = 0;
+			RE::BSVisit::TraverseScenegraphGeometries(a_mesh, [&](RE::BSGeometry* a_geo) {
+				if (a_geo && !a_geo->GetAppCulled()) {
+					++shapes;
+					if (!big || a_geo->worldBound.radius > big->worldBound.radius) {
+						big = a_geo;
+					}
+				}
+				return RE::BSVisit::BSVisitControl::kContinue;
+			});
+			if (!big) {
+				spdlog::warn("Cup {} ({}): no shapes to stand up", a_which, a_path);
+				return;
+			}
+			const auto up = UpOf(big->world.rotate);
+			spdlog::info("Cup {} from {}: {} shape(s), the largest ({}) points up ({:.2f}, {:.2f}, {:.2f})", a_which, a_path, shapes,
+				big->name.c_str(), up.x, up.y, up.z);
+			if (up.z > 0.98f) {
+				return;
+			}
+			// turn `up` onto +z about the axis between them (Rodrigues)
+			RE::NiPoint3 ax{ up.y, -up.x, 0.0f };  // up x z
+			const float  sn = std::sqrt(ax.x * ax.x + ax.y * ax.y);
+			const float  cs = std::clamp(up.z, -1.0f, 1.0f);
+			if (sn < 1e-4f) {
+				ax = { 1.0f, 0.0f, 0.0f };  // upside down: half a turn about x
+			} else {
+				ax = { ax.x / sn, ax.y / sn, 0.0f };
+			}
+			const float   sa = sn < 1e-4f ? 0.0f : sn, ca = cs, t = 1.0f - ca;
+			RE::NiMatrix3 c;
+			c.entry[0][0] = t * ax.x * ax.x + ca;
+			c.entry[0][1] = t * ax.x * ax.y - sa * ax.z;
+			c.entry[0][2] = t * ax.x * ax.z + sa * ax.y;
+			c.entry[1][0] = t * ax.x * ax.y + sa * ax.z;
+			c.entry[1][1] = t * ax.y * ax.y + ca;
+			c.entry[1][2] = t * ax.y * ax.z - sa * ax.x;
+			c.entry[2][0] = t * ax.x * ax.z - sa * ax.y;
+			c.entry[2][1] = t * ax.y * ax.z + sa * ax.x;
+			c.entry[2][2] = t * ax.z * ax.z + ca;
+			a_mesh->local.rotate = c * a_mesh->local.rotate;
+			a_mesh->Update(ud);
+			const auto now = UpOf(big->world.rotate);
+			spdlog::warn("Cup {}: its mesh came in tipped; stood it up (now ({:.2f}, {:.2f}, {:.2f}))", a_which, now.x, now.y, now.z);
 		}
 
 		RE::NiMatrix3 FromQuat(const yacht::Quat& q)
@@ -480,6 +556,7 @@ namespace Scene
 			}
 			Detach(g_cupNode[a_which]);
 			g_cupMesh[a_which].reset();
+			g_cupParts[a_which].clear();
 			FindCupPaths();
 			const auto& c = Cup(g_cupId[a_which]);
 			const auto  it = g_cupPaths.find(c.id);
@@ -523,8 +600,16 @@ namespace Scene
 					mesh->local.rotate.entry[1][c] = -mesh->local.rotate.entry[1][c];
 				}
 			}
+			StandCupUp(mesh.get(), a_which, it != g_cupPaths.end() ? it->second : std::string(c.fallback));
 			g_cupMesh[a_which] = RE::NiPointer<RE::NiAVObject>(mesh.get());
 			g_cupMeshAt[a_which] = mesh->local;
+			g_cupParts[a_which].clear();
+			RE::BSVisit::TraverseScenegraphObjects(mesh.get(), [&](RE::NiAVObject* a_obj) {
+				if (a_obj && a_obj != mesh.get()) {
+					g_cupParts[a_which].emplace_back(RE::NiPointer<RE::NiAVObject>(a_obj), a_obj->local);
+				}
+				return RE::BSVisit::BSVisitControl::kContinue;
+			});
 			g_cupMeshWarned[a_which] = false;
 			holder->AttachChild(mesh.get(), true);
 			// hidden until the game puts it where the old one stood (else it shows a frame at the table's middle)
@@ -1212,6 +1297,9 @@ namespace Scene
 			}
 			for (auto& m : g_cupMesh) {
 				m.reset();
+			}
+			for (auto& p : g_cupParts) {
+				p.clear();
 			}
 			for (auto& d : g_dice[0]) {
 				d.reset();
